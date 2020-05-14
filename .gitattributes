@@ -1,0 +1,8 @@
+*.b linguist-language=Assembly
+*.a linguist-language=Assembly
+*.prg linguist-detectable=false
+bin/* linguist-detectable=false
+disk/* linguist-detectable=false
+font/* linguist-detectable=false
+info/* linguist-detectable=false
+original/* liguist-detectable=false

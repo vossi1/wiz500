@@ -1,0 +1,5617 @@
+; disassembled by DASM6502b v.3.1 by Marat Fayzullin
+; modified by Vossi 02/2019
+!cpu 6502
+*= $e000
+le000:	sei
+le001:	cld
+le002:	ldx #$ff
+le004:	txs
+le005:	ldx #$2e
+le007:	lda $f170,x
+le00a:	sta $d000,x
+le00d:	dex
+le00e:	bpl le007
+le010:	ldx #$18
+le012:	lda $f19f,x
+le015:	sta $d400,x
+le018:	dex
+le019:	bpl le012
+le01b:	ldx #$00
+le01d:	txa
+le01e:	sta $02,x
+le020:	sta $0200,x
+le023:	sta $0300,x
+le026:	inx
+le027:	bne le01e
+le029:	lda #$1f
+le02b:	sta $dc0d
+le02e:	lda #$82
+le030:	sta $dc0d
+le033:	lda #$01
+le035:	sta $dc0f
+le038:	lda #$38
+le03a:	sta $dc06
+le03d:	lda #$00
+le03f:	sta $dc07
+le042:	cli
+le043:	jsr le474
+le046:	jsr le2f5
+le049:	jsr le310
+le04c:	jsr le21e
+le04f:	jsr le36b
+le052:	lda #$1f
+le054:	sta $d418
+le057:	ldx #$01
+le059:	lda $29
+le05b:	bpl le05f
+le05d:	ldx #$02
+le05f:	txa
+le060:	jsr led31
+le063:	lda $13
+le065:	bne le063
+le067:	jsr le1a9
+le06a:	lda $d01e
+le06d:	sta $55
+le06f:	lda $d01f
+le072:	sta $56
+le074:	inc $2a
+le076:	lda $2a
+le078:	bne le089
+le07a:	inc $2b
+le07c:	lda #$05
+le07e:	cmp $2b
+le080:	bne le089
+le082:	lda #$02
+le084:	jsr led31
+le087:	dec $29
+le089:	lda $2b
+le08b:	cmp #$10
+le08d:	bcc le092
+le08f:	jsr le855
+le092:	jsr le754
+le095:	jsr le535
+le098:	jsr le855
+le09b:	jsr le944
+le09e:	jsr lebfe
+le0a1:	jsr lecab
+le0a4:	jsr leaef
+le0a7:	jsr lea17
+le0aa:	jsr ledc3
+le0ad:	lda $1e
+le0af:	cmp #$ff
+le0b1:	beq le0be
+le0b3:	lda $26
+le0b5:	bne le063
+le0b7:	lda $1e
+le0b9:	bmi le0be
+le0bb:	jmp le3af
+le0be:	dec $28
+le0c0:	bne le04c
+le0c2:	jmp le3da
+le0c5:	ldx #$ff
+le0c7:	stx $dc02
+le0ca:	inx
+le0cb:	stx $dc03
+le0ce:	ldy #$00
+le0d0:	ldx #$fe
+le0d2:	jsr le120
+le0d5:	cpx #$ef
+le0d7:	bne le0da
+le0d9:	iny
+le0da:	rts
+le0db:	ldx #$ff
+le0dd:	stx $dc02
+le0e0:	inx
+le0e1:	stx $dc03
+le0e4:	lda #$1f
+le0e6:	ldx #$df
+le0e8:	jsr le120
+le0eb:	cpx #$fb
+le0ed:	bne le0f3
+le0ef:	and #$fb
+le0f1:	bne le11b
+le0f3:	cpx #$fd
+le0f5:	bne le0fb
+le0f7:	and #$fe
+le0f9:	bne le11b
+le0fb:	cpx #$ef
+le0fd:	bne le103
+le0ff:	and #$fd
+le101:	bne le11b
+le103:	ldx #$fd
+le105:	jsr le120
+le108:	cpx #$fb
+le10a:	bne le110
+le10c:	and #$ef
+le10e:	bne le11b
+le110:	ldx #$bf
+le112:	jsr le120
+le115:	cpx #$fb
+le117:	bne le11b
+le119:	and #$f7
+le11b:	sta $08
+le11d:	jmp le12c
+le120:	stx $dc00
+le123:	ldx $dc01
+le126:	cpx $dc01
+le129:	bne le123
+le12b:	rts
+le12c:	ldx #$00
+le12e:	stx $2c
+le130:	stx $dc02
+le133:	stx $dc03
+le136:	lda $dc01
+le139:	cmp $dc01
+le13c:	bne le136
+le13e:	and $08
+le140:	tay
+le141:	and #$10
+le143:	bne le14b
+le145:	lda #$80
+le147:	sta $2c
+le149:	bne le16d
+le14b:	tya
+le14c:	and #$02
+le14e:	bne le154
+le150:	ldx #$02
+le152:	bne le16d
+le154:	tya
+le155:	and #$01
+le157:	bne le15d
+le159:	ldx #$01
+le15b:	bne le16d
+le15d:	tya
+le15e:	and #$04
+le160:	bne le166
+le162:	ldx #$03
+le164:	bne le16d
+le166:	tya
+le167:	and #$08
+le169:	bne le16d
+le16b:	ldx #$04
+le16d:	stx $46
+le16f:	rts
+le170:	lda $13
+le172:	bne le170
+le174:	tya
+le175:	pha
+le176:	txa
+le177:	pha
+le178:	jsr ledc3
+le17b:	pla
+le17c:	tax
+le17d:	pla
+le17e:	tay
+le17f:	lda $13
+le181:	bne le17f
+le183:	dex
+le184:	bne le170
+le186:	rts
+le187:	ldx #$00
+le189:	lda $14
+le18b:	sta $d800,x
+le18e:	sta $d900,x
+le191:	sta $da00,x
+le194:	sta $dae8,x
+le197:	lda #$00
+le199:	sta $0400,x
+le19c:	sta $0500,x
+le19f:	sta $0600,x
+le1a2:	sta $06e8,x
+le1a5:	inx
+le1a6:	bne le189
+le1a8:	rts
+le1a9:	ldx #$08
+le1ab:	lda $4c,x
+le1ad:	sta $07f7,x
+le1b0:	dex
+le1b1:	bne le1ab
+le1b3:	ldx #$08
+le1b5:	lda $4c,x
+le1b7:	cmp $07f7,x
+le1ba:	bne le1a9
+le1bc:	dex
+le1bd:	bne le1b5
+le1bf:	rts
+le1c0:	stx $09
+le1c2:	sty $0a
+le1c4:	ldy #$00
+le1c6:	sty $0e
+le1c8:	lda ($09),y
+le1ca:	sta $0b
+le1cc:	iny
+le1cd:	lda ($09),y
+le1cf:	sta $0c
+le1d1:	iny
+le1d2:	lda ($09),y
+le1d4:	cmp #$ff
+le1d6:	beq le219
+le1d8:	cmp #$fe
+le1da:	beq le1f6
+le1dc:	cmp #$fd
+le1de:	beq le206
+le1e0:	sty $0d
+le1e2:	ldy $0e
+le1e4:	sta ($0b),y
+le1e6:	inc $0e
+le1e8:	ldy $0d
+le1ea:	lda $4c
+le1ec:	beq le1d1
+le1ee:	ldx #$0a
+le1f0:	jsr le170
+le1f3:	jmp le1d1
+le1f6:	iny
+le1f7:	clc
+le1f8:	tya
+le1f9:	adc $09
+le1fb:	sta $09
+le1fd:	lda $0a
+le1ff:	adc #$00
+le201:	sta $0a
+le203:	jmp le1c4
+le206:	clc
+le207:	lda $0b
+le209:	adc #$28
+le20b:	sta $0b
+le20d:	lda $0c
+le20f:	adc #$00
+le211:	sta $0c
+le213:	lda #$00
+le215:	sta $0e
+le217:	beq le1d1
+le219:	lda #$00
+le21b:	sta $4c
+le21d:	rts
+le21e:	lda #$03
+le220:	sta $14
+le222:	jsr le187
+le225:	ldx #$2d
+le227:	ldy #$f3
+le229:	jsr le1c0
+le22c:	lda $3b
+le22e:	and #$03
+le230:	asl
+le231:	tax
+le232:	lda le29b,x
+le235:	sta $44
+le237:	lda le29c,x
+le23a:	sta $45
+le23c:	lda #$00
+le23e:	sta $12
+le240:	sta $3d
+le242:	sta $3c
+le244:	ldy $12
+le246:	lda ($44),y
+le248:	cmp #$19
+le24a:	bne le24f
+le24c:	jsr le2a3
+le24f:	cmp #$18
+le251:	bne le256
+le253:	jsr le2c1
+le256:	cmp #$1a
+le258:	bne le25d
+le25a:	jsr le2dc
+le25d:	inc $12
+le25f:	lda #$03
+le261:	clc
+le262:	adc $3c
+le264:	sta $3c
+le266:	cmp #$27
+le268:	bne le244
+le26a:	lda #$00
+le26c:	sta $3c
+le26e:	lda #$03
+le270:	clc
+le271:	adc $3d
+le273:	sta $3d
+le275:	cmp #$15
+le277:	bne le244
+le279:	lda #$00
+le27b:	jsr le429
+le27e:	ldx $28
+le280:	stx $38
+le282:	lda #$1e
+le284:	sta $36
+le286:	lda #$18
+le288:	sta $37
+le28a:	jsr le72e
+le28d:	ldx #$d0
+le28f:	ldy #$07
+le291:	stx $09
+le293:	sty $0a
+le295:	ldx #$03
+le297:	jsr le440
+le29a:	rts
+le29b:	clv
+le29c:	sbc ($13),y
+le29e:	!byte $f2
+le29f:	ror $c9f2
+le2a2:	!byte $f2
+le2a3:	ldx #$00
+le2a5:	lda $3d
+le2a7:	clc
+le2a8:	adc #$02
+le2aa:	sta $37
+le2ac:	txa
+le2ad:	clc
+le2ae:	adc $3c
+le2b0:	sta $36
+le2b2:	lda #$2b
+le2b4:	sta $38
+le2b6:	jsr le72e
+le2b9:	inx
+le2ba:	cpx #$03
+le2bc:	bne le2a5
+le2be:	lda #$05
+le2c0:	rts
+le2c1:	ldx #$00
+le2c3:	lda $3c
+le2c5:	sta $36
+le2c7:	txa
+le2c8:	clc
+le2c9:	adc $3d
+le2cb:	sta $37
+le2cd:	lda #$2a
+le2cf:	sta $38
+le2d1:	jsr le72e
+le2d4:	inx
+le2d5:	cpx #$03
+le2d7:	bne le2c3
+le2d9:	lda #$05
+le2db:	rts
+le2dc:	jsr le2a3
+le2df:	jsr le2c1
+le2e2:	lda #$02
+le2e4:	clc
+le2e5:	adc $3d
+le2e7:	sta $37
+le2e9:	lda $3c
+le2eb:	sta $36
+le2ed:	lda #$2c
+le2ef:	sta $38
+le2f1:	jsr le72e
+le2f4:	rts
+le2f5:	ldy #$00
+le2f7:	sty $02
+le2f9:	sty $03
+le2fb:	sty $04
+le2fd:	sty $3b
+le2ff:	sty $76
+le301:	lda #$03
+le303:	sta $28
+le305:	lda #$06
+le307:	ldx #$07
+le309:	sta $d027,x
+le30c:	dex
+le30d:	bpl le309
+le30f:	rts
+le310:	ldx #$00
+le312:	stx $d015
+le315:	lda #$ff
+le317:	sta $1e,x
+le319:	inx
+le31a:	cpx #$08
+le31c:	bne le315
+le31e:	ldy #$00
+le320:	sty $2b
+le322:	sty $2a
+le324:	sty $29
+le326:	inc $3b
+le328:	ldx $3b
+le32a:	cpx #$04
+le32c:	bcc le330
+le32e:	ldx #$04
+le330:	lda le352,x
+le333:	sta $27
+le335:	lda le356,x
+le338:	sta $47
+le33a:	lda le35a,x
+le33d:	sta $48
+le33f:	lda le35e,x
+le342:	sta $49
+le344:	lda le362,x
+le347:	sta $4a
+le349:	lda le366,x
+le34c:	sta $26
+le34e:	lda #$00
+le350:	sta $4b
+le352:	rts
+le353:	!byte $04
+le354:	ora $06
+le356:	asl $03
+le358:	!byte $04
+le359:	ora $06
+le35b:	!byte $02
+le35c:	!byte $04
+le35d:	asl $06
+le35f:	ora ($02,x)
+le361:	!byte $03
+le362:	!byte $04
+le363:	brk
+le364:	ora ($00,x)
+le366:	!byte $02
+le367:	asl
+le368:	bpl le37e
+le36a:	clc
+le36b:	lda #$e6
+le36d:	sta $4d
+le36f:	sta $07f8
+le372:	lda #$03
+le374:	sta $2e
+le376:	lda #$01
+le378:	sta $d010
+le37b:	lda #$37
+le37d:	sta $d000
+le380:	lda #$ab
+le382:	sta $d001
+le385:	lda #$fd
+le387:	sta $54
+le389:	ldx #$ff
+le38b:	stx $25
+le38d:	stx $24
+le38f:	inx
+le390:	stx $1e
+le392:	stx $2d
+le394:	lda $d015
+le397:	ora #$01
+le399:	and #$7f
+le39b:	sta $d015
+le39e:	rts
+le39f:	and $4d,x
+le3a1:	adc $7d
+le3a3:	sta $ad,x
+le3a5:	cmp $f5
+le3a7:	!byte $7b
+le3a8:	!byte $63
+le3a9:	!byte $7b
+le3aa:	!byte $93
+le3ab:	!byte $ab
+le3ac:	!byte $c3
+le3ad:	!byte $7b
+le3ae:	!byte $ab
+le3af:	lda #$00
+le3b1:	sta $d015
+le3b4:	ldx #$cd
+le3b6:	ldy #$e3
+le3b8:	jsr le1c0
+le3bb:	lda #$07
+le3bd:	jsr led31
+le3c0:	lda #$30
+le3c2:	jsr le429
+le3c5:	ldx #$00
+le3c7:	jsr le170
+le3ca:	jmp le049
+le3cd:	bit $05
+le3cf:	!byte $0c
+le3d0:	ora $1e18,y
+le3d3:	!byte $1c
+le3d4:	brk
+le3d5:	!byte $04
+le3d6:	ora ($01,x)
+le3d8:	ora ($ff,x)
+le3da:	ldx #$02
+le3dc:	lda $05,x
+le3de:	cmp $02,x
+le3e0:	bcc le3e7
+le3e2:	bne le400
+le3e4:	dex
+le3e5:	bpl le3dc
+le3e7:	lda $02
+le3e9:	sta $05
+le3eb:	lda $03
+le3ed:	sta $06
+le3ef:	lda $04
+le3f1:	sta $07
+le3f3:	ldx #$d0
+le3f5:	ldy #$07
+le3f7:	stx $09
+le3f9:	sty $0a
+le3fb:	ldx #$03
+le3fd:	jsr le440
+le400:	lda #$00
+le402:	sta $d418
+le405:	inc $4c
+le407:	ldx #$16
+le409:	ldy #$e4
+le40b:	jsr le1c0
+le40e:	ldx #$50
+le410:	jsr le170
+le413:	jmp le043
+le416:	bit $05
+le418:	ora ($00),y
+le41a:	!byte $0b
+le41b:	brk
+le41c:	!byte $17
+le41d:	brk
+le41e:	!byte $0f
+le41f:	brk
+le420:	brk
+le421:	ora $1f00,y
+le424:	brk
+le425:	!byte $0f
+le426:	brk
+le427:	!byte $1b
+le428:	!byte $ff
+le429:	clc
+le42a:	sed
+le42b:	adc $03
+le42d:	sta $03
+le42f:	lda $04
+le431:	adc #$00
+le433:	sta $04
+le435:	cld
+le436:	ldx #$c4
+le438:	ldy #$07
+le43a:	stx $09
+le43c:	sty $0a
+le43e:	ldx #$00
+le440:	ldy #$05
+le442:	lda $02,x
+le444:	and #$0f
+le446:	clc
+le447:	adc #$01
+le449:	sta ($09),y
+le44b:	dey
+le44c:	lda $02,x
+le44e:	lsr
+le44f:	lsr
+le450:	lsr
+le451:	lsr
+le452:	clc
+le453:	adc #$01
+le455:	sta ($09),y
+le457:	inx
+le458:	dey
+le459:	bpl le442
+le45b:	lda $04
+le45d:	cmp #$02
+le45f:	bcc le473
+le461:	lda $76
+le463:	bne le473
+le465:	inc $76
+le467:	inc $28
+le469:	ldx $28
+le46b:	stx $07de
+le46e:	lda #$07
+le470:	jsr led31
+le473:	rts
+le474:	lda #$00
+le476:	sta $d015
+le479:	lda #$06
+le47b:	sta $14
+le47d:	jsr le187
+le480:	lda #$01
+le482:	sta $d021
+le485:	sta $d020
+le488:	ldy #$f3
+le48a:	ldx #$c2
+le48c:	jsr le1c0
+le48f:	ldx #$04
+le491:	txa
+le492:	asl
+le493:	tay
+le494:	lda #$d7
+le496:	sta $1f,x
+le498:	sta $d002,y
+le49b:	lda le51a,x
+le49e:	sta $d003,y
+le4a1:	lda le51f,x
+le4a4:	sta $07f9,x
+le4a7:	lda lea0d,x
+le4aa:	sta $d028,x
+le4ad:	dex
+le4ae:	bpl le491
+le4b0:	lda #$00
+le4b2:	sta $d010
+le4b5:	lda #$3e
+le4b7:	sta $d015
+le4ba:	lda $13
+le4bc:	bne le4ba
+le4be:	lda $13
+le4c0:	bne le4be
+le4c2:	inc $2b
+le4c4:	lda $2b
+le4c6:	and #$1f
+le4c8:	bne le508
+le4ca:	ldy #$04
+le4cc:	tya
+le4cd:	asl
+le4ce:	tax
+le4cf:	lda $001f,y
+le4d2:	beq le4ef
+le4d4:	inc $d002,x
+le4d7:	lda $d002,x
+le4da:	cmp le524,y
+le4dd:	bcc le505
+le4df:	lda #$00
+le4e1:	sta $001f,y
+le4e4:	cpy #$03
+le4e6:	beq le505
+le4e8:	tya
+le4e9:	tax
+le4ea:	inc $07f9,x
+le4ed:	bne le505
+le4ef:	dec $d002,x
+le4f2:	lda $d002,x
+le4f5:	cmp #$d7
+le4f7:	bcs le505
+le4f9:	sta $001f,y
+le4fc:	cpy #$03
+le4fe:	beq le505
+le500:	tya
+le501:	tax
+le502:	dec $07f9,x
+le505:	dey
+le506:	bpl le4cc
+le508:	jsr le0c5
+le50b:	cpy #$00
+le50d:	beq le4ba
+le50f:	lda #$00
+le511:	sta $d021
+le514:	lda #$06
+le516:	sta $d020
+le519:	rts
+le51a:	!byte $52
+le51b:	ror
+le51c:	!byte $82
+le51d:	txs
+le51e:	!byte $b2
+le51f:	sbc #$ed
+le521:	sbc ($f5),y
+le523:	sbc $dcdb,y
+le526:	!byte $db
+le527:	!byte $dc
+le528:	!byte $db
+le529:	pha
+le52a:	lda $dc0d
+le52d:	and #$02
+le52f:	beq le533
+le531:	inc $13
+le533:	pla
+le534:	rti
+le535:	lda $2a
+le537:	and #$01
+le539:	beq le53c
+le53b:	rts
+le53c:	lda $1e
+le53e:	bpl le541
+le540:	rts
+le541:	jsr le0db
+le544:	lda #$00
+le546:	sta $30
+le548:	lda #$01
+le54a:	sta $31
+le54c:	lda $46
+le54e:	sta $32
+le550:	lda $2e
+le552:	sta $35
+le554:	jsr le56f
+le557:	lda $35
+le559:	sta $2e
+le55b:	ldx $32
+le55d:	lda le56a,x
+le560:	bne le567
+le562:	ldx $2e
+le564:	lda le56a,x
+le567:	sta $4d
+le569:	rts
+le56a:	brk
+le56b:	inx
+le56c:	!byte $e7
+le56d:	inc $e5
+le56f:	ldx $30
+le571:	lda #$00
+le573:	sta $09
+le575:	jsr le65d
+le578:	lda $31
+le57a:	sta $41
+le57c:	lda $d000,x
+le57f:	sta $3f
+le581:	lda $d001,x
+le584:	sta $40
+le586:	jsr le709
+le589:	lda $32
+le58b:	bne le590
+le58d:	jmp le6b3
+le590:	lda $35
+le592:	cmp #$03
+le594:	bcs le5ca
+le596:	lda $32
+le598:	cmp #$03
+le59a:	bcc le601
+le59c:	dec $40
+le59e:	lda $40
+le5a0:	beq le5b6
+le5a2:	cmp #$01
+le5a4:	beq le5b6
+le5a6:	cmp #$ff
+le5a8:	beq le5b6
+le5aa:	cmp #$00
+le5ac:	bcc le5c3
+le5ae:	inc $09
+le5b0:	sec
+le5b1:	sbc #$03
+le5b3:	jmp le5a0
+le5b6:	ldx $09
+le5b8:	lda le702,x
+le5bb:	ldx $30
+le5bd:	sta $d001,x
+le5c0:	jmp le601
+le5c3:	lda #$00
+le5c5:	sta $32
+le5c7:	jmp le6b3
+le5ca:	lda $32
+le5cc:	cmp #$03
+le5ce:	bcs le601
+le5d0:	lda $3f
+le5d2:	sec
+le5d3:	sbc #$01
+le5d5:	beq le5eb
+le5d7:	cmp #$01
+le5d9:	beq le5eb
+le5db:	cmp #$ff
+le5dd:	beq le5eb
+le5df:	cmp #$00
+le5e1:	bcc le5c3
+le5e3:	inc $09
+le5e5:	sec
+le5e6:	sbc #$03
+le5e8:	jmp le5d5
+le5eb:	ldx $09
+le5ed:	cpx #$0a
+le5ef:	bne le5f9
+le5f1:	lda $31
+le5f3:	ora $d010
+le5f6:	sta $d010
+le5f9:	lda le6f5,x
+le5fc:	ldx $30
+le5fe:	sta $d000,x
+le601:	lda $32
+le603:	sta $35
+le605:	ldx $30
+le607:	lda $32
+le609:	cmp #$01
+le60b:	bne le616
+le60d:	dec $d001,x
+le610:	dec $d001,x
+le613:	jmp le6b3
+le616:	cmp #$02
+le618:	bne le623
+le61a:	inc $d001,x
+le61d:	inc $d001,x
+le620:	jmp le6b3
+le623:	cmp #$03
+le625:	bne le641
+le627:	dec $d000,x
+le62a:	dec $d000,x
+le62d:	lda $d000,x
+le630:	cmp #$fe
+le632:	bcc le63e
+le634:	lda $31
+le636:	eor #$ff
+le638:	and $d010
+le63b:	sta $d010
+le63e:	jmp le6b3
+le641:	cmp #$04
+le643:	bne le6b3
+le645:	inc $d000,x
+le648:	inc $d000,x
+le64b:	lda $d000,x
+le64e:	cmp #$02
+le650:	bcs le6b3
+le652:	lda $31
+le654:	ora $d010
+le657:	sta $d010
+le65a:	jmp le6b3
+le65d:	lda $d000,x
+le660:	sta $3f
+le662:	lda $d001,x
+le665:	clc
+le666:	sbc #$06
+le668:	sta $40
+le66a:	lda $31
+le66c:	sta $41
+le66e:	jsr le709
+le671:	lda $32
+le673:	beq le6b2
+le675:	cmp #$03
+le677:	bcc le685
+le679:	beq le680
+le67b:	inc $3f
+le67d:	jmp le690
+le680:	dec $3f
+le682:	jmp le690
+le685:	cmp #$01
+le687:	bne le68e
+le689:	dec $40
+le68b:	jmp le690
+le68e:	inc $40
+le690:	lda #$04
+le692:	sta $3a
+le694:	lda $3f
+le696:	ldy $40
+le698:	beq le6a6
+le69a:	dec $40
+le69c:	clc
+le69d:	adc #$28
+le69f:	bcc le696
+le6a1:	inc $3a
+le6a3:	jmp le696
+le6a6:	sta $39
+le6a8:	ldy #$00
+le6aa:	lda ($39),y
+le6ac:	beq le6b2
+le6ae:	lda #$00
+le6b0:	sta $32
+le6b2:	rts
+le6b3:	lda $31
+le6b5:	and $d010
+le6b8:	bne le6cf
+le6ba:	lda $d000,x
+le6bd:	cmp #$16
+le6bf:	bcs le6e7
+le6c1:	lda $31
+le6c3:	ora $d010
+le6c6:	sta $d010
+le6c9:	lda #$40
+le6cb:	sta $d000,x
+le6ce:	rts
+le6cf:	beq le6e7
+le6d1:	lda $d000,x
+le6d4:	cmp #$42
+le6d6:	bcc le6e7
+le6d8:	lda $31
+le6da:	eor #$ff
+le6dc:	and $d010
+le6df:	sta $d010
+le6e2:	lda #$18
+le6e4:	sta $d000,x
+le6e7:	lda $d001,x
+le6ea:	cmp #$31
+le6ec:	bcs le6f4
+le6ee:	inc $d001,x
+le6f1:	inc $d001,x
+le6f4:	rts
+le6f5:	ora $4931,y
+le6f8:	adc ($79,x)
+le6fa:	sta ($a9),y
+le6fc:	cmp ($d9,x)
+le6fe:	sbc ($0a),y
+le700:	!byte $22
+le701:	and $4b33,y
+le704:	!byte $63
+le705:	!byte $7b
+le706:	!byte $93
+le707:	!byte $ab
+le708:	!byte $c3
+le709:	lda $40
+le70b:	sec
+le70c:	sbc #$26
+le70e:	lsr
+le70f:	lsr
+le710:	lsr
+le711:	sta $40
+le713:	lda $3f
+le715:	sec
+le716:	sbc #$0b
+le718:	bcs le71d
+le71a:	clc
+le71b:	bcc le728
+le71d:	pha
+le71e:	lda $41
+le720:	and $d010
+le723:	clc
+le724:	beq le727
+le726:	sec
+le727:	pla
+le728:	ror
+le729:	lsr
+le72a:	lsr
+le72b:	sta $3f
+le72d:	rts
+le72e:	lda #$00
+le730:	sta $3a
+le732:	lda $36
+le734:	ldy $37
+le736:	beq le744
+le738:	dec $37
+le73a:	clc
+le73b:	adc #$28
+le73d:	bcc le734
+le73f:	inc $3a
+le741:	jmp le734
+le744:	sta $39
+le746:	lda $3a
+le748:	clc
+le749:	adc #$04
+le74b:	sta $3a
+le74d:	ldy #$00
+le74f:	lda $38
+le751:	sta ($39),y
+le753:	rts
+le754:	lda $25
+le756:	bpl le75b
+le758:	jmp le7fc
+le75b:	lda $56
+le75d:	and #$80
+le75f:	beq le776
+le761:	lda #$ff
+le763:	sta $25
+le765:	lda #$7f
+le767:	and $d015
+le76a:	sta $d015
+le76d:	lda #$7f
+le76f:	and $d010
+le772:	sta $d010
+le775:	rts
+le776:	lda $d010
+le779:	and #$80
+le77b:	bne le786
+le77d:	lda $d00e
+le780:	cmp #$14
+le782:	bcc le761
+le784:	bcs le78d
+le786:	lda $d00e
+le789:	cmp #$42
+le78b:	bcs le761
+le78d:	lda $2d
+le78f:	cmp #$03
+le791:	bcc le7cd
+le793:	bne le7b1
+le795:	dec $d00e
+le798:	dec $d00e
+le79b:	dec $d00e
+le79e:	dec $d00e
+le7a1:	lda $d00e
+le7a4:	cmp #$fc
+le7a6:	bcc le7b0
+le7a8:	lda #$7f
+le7aa:	and $d010
+le7ad:	sta $d010
+le7b0:	rts
+le7b1:	inc $d00e
+le7b4:	inc $d00e
+le7b7:	inc $d00e
+le7ba:	inc $d00e
+le7bd:	lda $d00e
+le7c0:	cmp #$04
+le7c2:	bcs le7b0
+le7c4:	lda #$80
+le7c6:	ora $d010
+le7c9:	sta $d010
+le7cc:	rts
+le7cd:	cmp #$01
+le7cf:	bne le7e5
+le7d1:	dec $d00f
+le7d4:	dec $d00f
+le7d7:	dec $d00f
+le7da:	dec $d00f
+le7dd:	lda $d00f
+le7e0:	cmp #$2a
+le7e2:	bcc le7f8
+le7e4:	rts
+le7e5:	inc $d00f
+le7e8:	inc $d00f
+le7eb:	inc $d00f
+le7ee:	inc $d00f
+le7f1:	lda $d00f
+le7f4:	cmp #$ca
+le7f6:	bcc le7fb
+le7f8:	jmp le761
+le7fb:	rts
+le7fc:	cmp #$ff
+le7fe:	bne le804
+le800:	lda $1e
+le802:	bpl le805
+le804:	rts
+le805:	lda $2c
+le807:	bmi le80a
+le809:	rts
+le80a:	lda #$04
+le80c:	jsr led31
+le80f:	lda $d000
+le812:	sta $d00e
+le815:	lda $d001
+le818:	sta $d00f
+le81b:	lda $d010
+le81e:	and #$01
+le820:	beq le82d
+le822:	lda #$80
+le824:	ora $d010
+le827:	sta $d010
+le82a:	jmp le835
+le82d:	lda #$7f
+le82f:	and $d010
+le832:	sta $d010
+le835:	lda $2e
+le837:	sta $2d
+le839:	cmp #$03
+le83b:	bcc le844
+le83d:	lda #$fd
+le83f:	sta $54
+le841:	jmp le848
+le844:	lda #$fe
+le846:	sta $54
+le848:	lda #$80
+le84a:	ora $d015
+le84d:	sta $d015
+le850:	lda #$00
+le852:	sta $25
+le854:	rts
+le855:	lda $29
+le857:	bne le860
+le859:	lda $2a
+le85b:	and #$01
+le85d:	bne le860
+le85f:	rts
+le860:	lda $1e
+le862:	bpl le865
+le864:	rts
+le865:	ldx #$01
+le867:	stx $10
+le869:	lda $1e,x
+le86b:	bpl le876
+le86d:	inc $10
+le86f:	ldx $10
+le871:	cpx #$06
+le873:	bne le869
+le875:	rts
+le876:	lda le923,x
+le879:	sta $30
+le87b:	lda leb70,x
+le87e:	sta $31
+le880:	dec $5f,x
+le882:	dec $5f,x
+le884:	bmi le88b
+le886:	lda $67,x
+le888:	jmp le8e8
+le88b:	lda #$17
+le88d:	sta $5f,x
+le88f:	ldx $30
+le891:	lda $d41b
+le894:	and #$01
+le896:	beq le8cb
+le898:	lda leb70,x
+le89b:	ora #$01
+le89d:	and $d010
+le8a0:	beq le8ab
+le8a2:	cmp #$01
+le8a4:	beq le8b3
+le8a6:	cmp leb70,x
+le8a9:	beq le8bf
+le8ab:	lda $d000
+le8ae:	cmp $d000,x
+le8b1:	bcc le8bf
+le8b3:	lda $d41b
+le8b6:	and #$03
+le8b8:	beq le8c6
+le8ba:	lda #$04
+le8bc:	jmp le8e8
+le8bf:	lda $d41b
+le8c2:	and #$03
+le8c4:	beq le8ba
+le8c6:	lda #$03
+le8c8:	jmp le8e8
+le8cb:	lda $d001
+le8ce:	cmp $d001,x
+le8d1:	bcc le8df
+le8d3:	lda $d41b
+le8d6:	and #$03
+le8d8:	beq le8e6
+le8da:	lda #$02
+le8dc:	jmp le8e8
+le8df:	lda $d41b
+le8e2:	and #$03
+le8e4:	beq le8da
+le8e6:	lda #$01
+le8e8:	ldx $10
+le8ea:	sta $32
+le8ec:	lda $67,x
+le8ee:	sta $35
+le8f0:	jsr le56f
+le8f3:	lda $32
+le8f5:	bne le8fa
+le8f7:	jsr le912
+le8fa:	ldx $10
+le8fc:	lda $35
+le8fe:	sta $67,x
+le900:	clc
+le901:	adc $56,x
+le903:	tax
+le904:	lda le92b,x
+le907:	bne le90b
+le909:	beq le90f
+le90b:	ldx $10
+le90d:	sta $4d,x
+le90f:	jmp le86d
+le912:	lda $35
+le914:	clc
+le915:	adc #$01
+le917:	cmp #$04
+le919:	bcc le920
+le91b:	lda $d41b
+le91e:	and #$03
+le920:	sta $35
+le922:	rts
+le923:	brk
+le924:	!byte $02
+le925:	!byte $04
+le926:	asl $08
+le928:	asl
+le929:	!byte $0c
+le92a:	asl lecec
+le92d:	!byte $eb
+le92e:	nop
+le92f:	sbc #$f0
+le931:	beq le922
+le933:	inc $f4ed
+le936:	!byte $f4
+le937:	!byte $f3
+le938:	!byte $f2
+le939:	sbc ($f5),y
+le93b:	sbc $f5,x
+le93d:	sbc $f5,x
+le93f:	!byte $fc
+le940:	!byte $fc
+le941:	!byte $fb
+le942:	!byte $fa
+le943:	sbc $1ea5,y
+le946:	bmi le95b
+le948:	lda $2a
+le94a:	and #$1f
+le94c:	bne le95b
+le94e:	ldx #$01
+le950:	lda $1e,x
+le952:	cmp #$ff
+le954:	beq le95c
+le956:	inx
+le957:	cpx #$06
+le959:	bne le950
+le95b:	rts
+le95c:	ldy #$00
+le95e:	lda $27
+le960:	beq le967
+le962:	dec $27
+le964:	jmp le9ab
+le967:	iny
+le968:	lda $47
+le96a:	beq le971
+le96c:	dec $47
+le96e:	jmp le9ab
+le971:	iny
+le972:	lda $48
+le974:	beq le97b
+le976:	dec $48
+le978:	jmp le9ab
+le97b:	iny
+le97c:	ldx #$01
+le97e:	lda #$ff
+le980:	and $1e,x
+le982:	and $1f,x
+le984:	inx
+le985:	inx
+le986:	cpx #$07
+le988:	bne le980
+le98a:	cmp #$ff
+le98c:	bne le95b
+le98e:	ldx #$01
+le990:	lda $49
+le992:	beq le999
+le994:	dec $49
+le996:	jmp le9a7
+le999:	iny
+le99a:	lda $4a
+le99c:	beq le95b
+le99e:	lda #$03
+le9a0:	jsr led31
+le9a3:	dec $4a
+le9a5:	dec $4b
+le9a7:	lda #$01
+le9a9:	sta $29
+le9ab:	tya
+le9ac:	pha
+le9ad:	txa
+le9ae:	pha
+le9af:	asl
+le9b0:	tay
+le9b1:	lda $d41b
+le9b4:	and #$07
+le9b6:	tax
+le9b7:	lda le39f,x
+le9ba:	sta $d000,y
+le9bd:	lda $2a
+le9bf:	lsr
+le9c0:	lsr
+le9c1:	lsr
+le9c2:	lsr
+le9c3:	lsr
+le9c4:	and #$07
+le9c6:	tax
+le9c7:	lda le3a7,x
+le9ca:	sta $d001,y
+le9cd:	clc
+le9ce:	adc #$18
+le9d0:	cmp $d001
+le9d3:	bcs le9e5
+le9d5:	sec
+le9d6:	sbc #$30
+le9d8:	cmp $d001
+le9db:	bcc le9e5
+le9dd:	lda $d001
+le9e0:	sbc #$24
+le9e2:	sta $d001,y
+le9e5:	pla
+le9e6:	tax
+le9e7:	pla
+le9e8:	tay
+le9e9:	inc $1e,x
+le9eb:	lda lea08,y
+le9ee:	sta $56,x
+le9f0:	lda lea12,y
+le9f3:	sta $4d,x
+le9f5:	sta $07f8,x
+le9f8:	lda lea0d,y
+le9fb:	sta $d027,x
+le9fe:	lda leb70,x
+lea01:	ora $d015
+lea04:	sta $d015
+lea07:	rts
+lea08:	brk
+lea09:	ora $0a
+lea0b:	!byte $0f
+lea0c:	!byte $14
+lea0d:	asl $07
+lea0f:	!byte $03
+lea10:	ora lec04
+lea13:	beq lea09
+lea15:	sbc $fc,x
+lea17:	ldx #$07
+lea19:	lda $1e,x
+lea1b:	bmi lea21
+lea1d:	dex
+lea1e:	bpl lea19
+lea20:	rts
+lea21:	cmp #$ff
+lea23:	beq lea1d
+lea25:	inc $1e,x
+lea27:	txa
+lea28:	bne lea77
+lea2a:	lda $1e,x
+lea2c:	cmp #$81
+lea2e:	bne lea3c
+lea30:	lda #$f6
+lea32:	sta $4d
+lea34:	lda #$06
+lea36:	jsr led31
+lea39:	jmp lea1d
+lea3c:	cmp #$90
+lea3e:	bne lea47
+lea40:	lda #$f7
+lea42:	sta $4d
+lea44:	jmp lea1d
+lea47:	cmp #$a0
+lea49:	bne lea52
+lea4b:	lda #$f6
+lea4d:	sta $4d
+lea4f:	jmp lea1d
+lea52:	cmp #$b0
+lea54:	bne lea5d
+lea56:	lda #$f7
+lea58:	sta $4d
+lea5a:	jmp lea1d
+lea5d:	cmp #$c0
+lea5f:	bne lea68
+lea61:	lda #$f8
+lea63:	sta $4d
+lea65:	jmp lea1d
+lea68:	cmp #$d0
+lea6a:	bne lea74
+lea6c:	lda $d015
+lea6f:	and #$fe
+lea71:	sta $d015
+lea74:	jmp lea1d
+lea77:	lda $1e,x
+lea79:	cmp #$81
+lea7b:	bne leaa6
+lea7d:	lda #$f6
+lea7f:	sta $4d,x
+lea81:	cpx #$06
+lea83:	beq lea9e
+lea85:	lda $56,x
+lea87:	lsr
+lea88:	lsr
+lea89:	and #$07
+lea8b:	tay
+lea8c:	lda leae7,y
+lea8f:	cmp #$05
+lea91:	bne lea9b
+lea93:	lda $d41b
+lea96:	and #$30
+lea98:	clc
+lea99:	adc #$10
+lea9b:	jsr le429
+lea9e:	lda #$05
+leaa0:	jsr led31
+leaa3:	jmp lea1d
+leaa6:	cmp #$90
+leaa8:	bne leab1
+leaaa:	lda #$f7
+leaac:	sta $4d,x
+leaae:	jmp lea1d
+leab1:	cmp #$a0
+leab3:	bne leabc
+leab5:	lda #$f8
+leab7:	sta $4d,x
+leab9:	jmp lea1d
+leabc:	cmp #$b0
+leabe:	bne leace
+leac0:	lda leb70,x
+leac3:	eor #$ff
+leac5:	and $d015
+leac8:	sta $d015
+leacb:	jmp lea1d
+leace:	cpx #$06
+lead0:	beq leae4
+lead2:	cmp #$fe
+lead4:	bne leae4
+lead6:	lda $27
+lead8:	ora $47
+leada:	ora $48
+leadc:	ora $49
+leade:	ora $4a
+leae0:	bne leae4
+leae2:	sta $26
+leae4:	jmp lea1d
+leae7:	ora ($02,x)
+leae9:	!byte $03
+leaea:	!byte $04
+leaeb:	ora $05
+leaed:	ora $05
+leaef:	lda $1e
+leaf1:	bmi leb2b
+leaf3:	lda $55
+leaf5:	and #$01
+leaf7:	beq leb2b
+leaf9:	lda $55
+leafb:	and #$80
+leafd:	bne leb6f
+leaff:	ldx #$00
+leb01:	inx
+leb02:	cpx #$07
+leb04:	beq leb2b
+leb06:	lda $1e,x
+leb08:	bmi leb01
+leb0a:	lda $d000
+leb0d:	sta $09
+leb0f:	lda #$00
+leb11:	sta $0a
+leb13:	lda #$01
+leb15:	and $d010
+leb18:	beq leb1c
+leb1a:	inc $0a
+leb1c:	lda $d001
+leb1f:	sta $0b
+leb21:	jsr leb78
+leb24:	bcc leb01
+leb26:	lda #$80
+leb28:	sta $1e
+leb2a:	rts
+leb2b:	lda $25
+leb2d:	bmi leb6f
+leb2f:	lda #$00
+leb31:	sta $0a
+leb33:	lda #$80
+leb35:	and $d010
+leb38:	beq leb3c
+leb3a:	inc $0a
+leb3c:	lda $d00e
+leb3f:	sta $09
+leb41:	lda $d00f
+leb44:	sta $0b
+leb46:	lda $55
+leb48:	and #$80
+leb4a:	beq leb6f
+leb4c:	ldx #$01
+leb4e:	lda $1e,x
+leb50:	bmi leb6a
+leb52:	jsr leb78
+leb55:	bcc leb6a
+leb57:	lda #$ff
+leb59:	sta $25
+leb5b:	lda #$7f
+leb5d:	and $d015
+leb60:	sta $d015
+leb63:	lda #$80
+leb65:	sta $1e,x
+leb67:	jmp leb6f
+leb6a:	inx
+leb6b:	cpx #$07
+leb6d:	bne leb4e
+leb6f:	rts
+leb70:	ora ($02,x)
+leb72:	!byte $04
+leb73:	php
+leb74:	bpl leb96
+leb76:	rti
+leb77:	!byte $80
+leb78:	lda $55
+leb7a:	and leb70,x
+leb7d:	bne leb82
+leb7f:	jmp lebb8
+leb82:	txa
+leb83:	asl
+leb84:	tay
+leb85:	lda $d000,y
+leb88:	sta $0c
+leb8a:	lda $d001,y
+leb8d:	sta $0e
+leb8f:	lda #$00
+leb91:	sta $0d
+leb93:	lda $d010
+leb96:	and leb70,x
+leb99:	beq leb9d
+leb9b:	inc $0d
+leb9d:	lda #$0e
+leb9f:	sta $0f
+leba1:	lda #$0e
+leba3:	sta $10
+leba5:	lda #$0b
+leba7:	sta $11
+leba9:	lda #$17
+lebab:	sta $12
+lebad:	jsr lebba
+lebb0:	bcc lebb9
+lebb2:	lda #$80
+lebb4:	sta $1e,x
+lebb6:	bne lebb9
+lebb8:	clc
+lebb9:	rts
+lebba:	sec
+lebbb:	lda $0e
+lebbd:	sbc $0f
+lebbf:	cmp $0b
+lebc1:	bcs lebfc
+lebc3:	clc
+lebc4:	lda $0e
+lebc6:	adc $10
+lebc8:	cmp $0b
+lebca:	bcc lebfc
+lebcc:	sec
+lebcd:	lda $0c
+lebcf:	sbc $11
+lebd1:	sta $0c
+lebd3:	lda $0d
+lebd5:	sbc #$00
+lebd7:	sta $0d
+lebd9:	sec
+lebda:	lda $0c
+lebdc:	sbc $09
+lebde:	lda $0d
+lebe0:	sbc $0a
+lebe2:	bcs lebfc
+lebe4:	lda $0c
+lebe6:	adc $12
+lebe8:	sta $0c
+lebea:	lda $0d
+lebec:	adc #$00
+lebee:	sta $0d
+lebf0:	sec
+lebf1:	lda $0c
+lebf3:	sbc $09
+lebf5:	lda $0d
+lebf7:	sbc $0a
+lebf9:	bcc lebfc
+lebfb:	rts
+lebfc:	clc
+lebfd:	rts
+lebfe:	lda $1e
+lec00:	bpl lec03
+lec02:	rts
+lec03:	lda $24
+lec05:	bne lec08
+lec07:	rts
+lec08:	lda $4b
+lec0a:	bmi lec13
+lec0c:	lda $2a
+lec0e:	and #$0f
+lec10:	beq lec13
+lec12:	rts
+lec13:	ldx #$01
+lec15:	lda $1e,x
+lec17:	bpl lec1f
+lec19:	inx
+lec1a:	cpx #$06
+lec1c:	bne lec15
+lec1e:	rts
+lec1f:	txa
+lec20:	asl
+lec21:	tay
+lec22:	lda $d000
+lec25:	cmp $d000,y
+lec28:	beq lec65
+lec2a:	lda $d001
+lec2d:	cmp $d001,y
+lec30:	bne lec19
+lec32:	lda $d000
+lec35:	cmp $d000,y
+lec38:	lda $d010
+lec3b:	and #$01
+lec3d:	bne lec49
+lec3f:	lda $d010
+lec42:	and leb70,x
+lec45:	bne lec51
+lec47:	beq lec57
+lec49:	lda $d010
+lec4c:	and leb70,x
+lec4f:	bne lec57
+lec51:	bcc lec56
+lec53:	clc
+lec54:	bcc lec57
+lec56:	sec
+lec57:	lda #$04
+lec59:	bcs lec5d
+lec5b:	lda #$03
+lec5d:	sta $77
+lec5f:	lda #$fd
+lec61:	sta $53
+lec63:	bne lec77
+lec65:	lda $d001
+lec68:	cmp $d001,y
+lec6b:	lda #$02
+lec6d:	bcs lec71
+lec6f:	lda #$01
+lec71:	sta $77
+lec73:	lda #$fe
+lec75:	sta $53
+lec77:	lda #$00
+lec79:	sta $24
+lec7b:	lda $d000,y
+lec7e:	sta $d00c
+lec81:	lda $d001,y
+lec84:	sta $d00d
+lec87:	lda $d010
+lec8a:	and leb70,x
+lec8d:	beq lec96
+lec8f:	lda $d010
+lec92:	ora #$40
+lec94:	bne lec9b
+lec96:	lda $d010
+lec99:	and #$bf
+lec9b:	sta $d010
+lec9e:	lda $d015
+leca1:	ora #$40
+leca3:	sta $d015
+leca6:	lda $77
+leca8:	sta $67,x
+lecaa:	rts
+lecab:	lda $24
+lecad:	bpl lecb0
+lecaf:	rts
+lecb0:	lda $56
+lecb2:	and #$40
+lecb4:	beq lecc3
+lecb6:	lda #$ff
+lecb8:	sta $24
+lecba:	lda $d015
+lecbd:	and #$bf
+lecbf:	sta $d015
+lecc2:	rts
+lecc3:	lda $d010
+lecc6:	and #$40
+lecc8:	bne lecd3
+lecca:	lda $d00c
+leccd:	cmp #$14
+leccf:	bcc lecb6
+lecd1:	bcs lecda
+lecd3:	lda $d00c
+lecd6:	cmp #$42
+lecd8:	bcs lecb6
+lecda:	lda $77
+lecdc:	cmp #$03
+lecde:	bcc led0e
+lece0:	bne lecf8
+lece2:	dec $d00c
+lece5:	dec $d00c
+lece8:	lda $d00c
+leceb:	cmp #$fe
+leced:	bcc led2d
+lecef:	lda $d010
+lecf2:	and #$bf
+lecf4:	sta $d010
+lecf7:	rts
+lecf8:	inc $d00c
+lecfb:	inc $d00c
+lecfe:	lda $d00c
+led01:	cmp #$02
+led03:	bcs led2d
+led05:	lda $d010
+led08:	ora #$40
+led0a:	sta $d010
+led0d:	rts
+led0e:	cmp #$01
+led10:	bne led20
+led12:	dec $d00d
+led15:	dec $d00d
+led18:	lda $d00d
+led1b:	cmp #$2a
+led1d:	bcc led2e
+led1f:	rts
+led20:	inc $d00d
+led23:	inc $d00d
+led26:	lda $d00d
+led29:	cmp #$ca
+led2b:	bcs led2e
+led2d:	rts
+led2e:	jmp lecb6
+led31:	cmp #$01
+led33:	bne led49
+led35:	sta $6f
+led37:	lda #$43
+led39:	sta $70
+led3b:	lda #$ee
+led3d:	sta $71
+led3f:	lda #$21
+led41:	sta $d404
+led44:	lda #$01
+led46:	sta $72
+led48:	rts
+led49:	cmp #$02
+led4b:	bne led5c
+led4d:	sta $6f
+led4f:	lda #$4c
+led51:	sta $70
+led53:	lda #$ee
+led55:	sta $71
+led57:	lda #$01
+led59:	sta $72
+led5b:	rts
+led5c:	cmp #$03
+led5e:	bne led6f
+led60:	sta $6f
+led62:	lda #$55
+led64:	sta $70
+led66:	lda #$ee
+led68:	sta $71
+led6a:	lda #$01
+led6c:	sta $72
+led6e:	rts
+led6f:	cmp #$04
+led71:	bne led7d
+led73:	lda #$0f
+led75:	sta $74
+led77:	lda #$81
+led79:	sta $d40b
+led7c:	rts
+led7d:	cmp #$05
+led7f:	bne led8b
+led81:	lda #$0f
+led83:	sta $75
+led85:	lda #$81
+led87:	sta $d412
+led8a:	rts
+led8b:	cmp #$06
+led8d:	bne led9e
+led8f:	lda #$3f
+led91:	sta $75
+led93:	sta $74
+led95:	lda #$81
+led97:	sta $d40b
+led9a:	sta $d412
+led9d:	rts
+led9e:	cmp #$07
+leda0:	bne ledb4
+leda2:	lda #$3f
+leda4:	sta $73
+leda6:	asl
+leda7:	sta $d408
+ledaa:	lda #$21
+ledac:	sta $d40b
+ledaf:	lda #$00
+ledb1:	sta $74
+ledb3:	rts
+ledb4:	cmp #$08
+ledb6:	bne ledc2
+ledb8:	lda #$07
+ledba:	sta $73
+ledbc:	lda #$21
+ledbe:	sta $d40b
+ledc1:	rts
+ledc2:	rts
+ledc3:	lda $74
+ledc5:	beq ledd6
+ledc7:	asl
+ledc8:	asl
+ledc9:	asl
+ledca:	sta $d408
+ledcd:	dec $74
+ledcf:	bne ledd6
+ledd1:	lda #$80
+ledd3:	sta $d40b
+ledd6:	lda $75
+ledd8:	beq ledea
+ledda:	asl
+leddb:	asl
+leddc:	adc #$07
+ledde:	sta $d40f
+lede1:	dec $75
+lede3:	bne ledea
+lede5:	lda #$80
+lede7:	sta $d412
+ledea:	lda $73
+ledec:	beq lee04
+ledee:	lda $73
+ledf0:	lsr
+ledf1:	lsr
+ledf2:	and #$01
+ledf4:	tax
+ledf5:	lda lee43,x
+ledf8:	sta $d408
+ledfb:	dec $73
+ledfd:	bne lee04
+ledff:	lda #$20
+lee01:	sta $d40b
+lee04:	dec $72
+lee06:	bne lee42
+lee08:	clc
+lee09:	lda $70
+lee0b:	adc #$02
+lee0d:	sta $70
+lee0f:	lda $71
+lee11:	adc #$00
+lee13:	sta $71
+lee15:	ldy #$00
+lee17:	lda ($70),y
+lee19:	bne lee2e
+lee1b:	lda $6f
+lee1d:	cmp #$01
+lee1f:	bne lee24
+lee21:	jmp led31
+lee24:	cmp #$02
+lee26:	bne lee2b
+lee28:	jmp led49
+lee2b:	jmp led5c
+lee2e:	sta $72
+lee30:	ldy #$01
+lee32:	lda ($70),y
+lee34:	asl
+lee35:	tax
+lee36:	lda lee60,x
+lee39:	sta $d400
+lee3c:	lda lee61,x
+lee3f:	sta $d401
+lee42:	rts
+lee43:	bmi lee85
+lee45:	clc
+lee46:	!byte $04
+lee47:	clc
+lee48:	!byte $03
+lee49:	clc
+lee4a:	!byte $02
+lee4b:	clc
+lee4c:	ora ($00,x)
+lee4e:	php
+lee4f:	!byte $04
+lee50:	php
+lee51:	ora $0308,y
+lee54:	php
+lee55:	ora ($00,x)
+lee57:	!byte $04
+lee58:	!byte $04
+lee59:	!byte $04
+lee5a:	ora $0304,y
+lee5d:	!byte $04
+lee5e:	ora ($00,x)
+lee60:	brk
+lee61:	brk
+lee62:	ora $720a
+lee65:	!byte $0b
+lee66:	jsr $d60c
+lee69:	!byte $0c
+lee6a:	!byte $9c
+lee6b:	ora $0e65
+lee6e:	lsr $0f
+lee70:	!byte $2f
+lee71:	bpl lee98
+lee73:	ora ($2a),y
+lee75:	!byte $12
+lee76:	!byte $3f
+lee77:	!byte $13
+lee78:	!byte $64
+lee79:	!byte $14
+lee7a:	txs
+lee7b:	ora $e3,x
+lee7d:	asl $3f,x
+lee7f:	clc
+lee80:	lda ($19),y
+lee82:	sec
+lee83:	!byte $1b
+lee84:	dec $1c,x
+lee86:	sta $5e1e
+lee89:	jsr $224b
+lee8c:	eor $24,x
+lee8e:	ror $c826,x
+lee91:	plp
+lee92:	!byte $34
+lee93:	!byte $2b
+lee94:	dec $2d
+lee96:	!byte $7f
+lee97:	bmi leefa
+lee99:	!byte $33
+lee9a:	!byte $6f
+lee9b:	rol $ac,x
+lee9d:	and $3d1a,y
+leea0:	ldy $9540,x
+leea3:	!byte $44
+leea4:	lda #$48
+leea6:	!byte $fc
+leea7:	jmp $51a1
+leeaa:	adc #$56
+leeac:	sty $fe5b
+leeaf:	rts
+leeb0:	!byte $c2
+leeb1:	ror $df
+leeb3:	jmp ($7358)
+leeb6:	!byte $34
+leeb7:	!byte $7a
+leeb8:	sei
+leeb9:	sta ($2b,x)
+leebb:	!byte $89
+leebc:	!byte $53
+leebd:	sta ($f7),y
+leebf:	sta $a31f,y
+leec2:	tax
+leec3:	tax
+leec4:	tax
+leec5:	tax
+leec6:	tax
+leec7:	tax
+leec8:	tax
+leec9:	tax
+leeca:	tax
+leecb:	tax
+leecc:	tax
+leecd:	tax
+leece:	tax
+leecf:	tax
+leed0:	tax
+leed1:	tax
+leed2:	tax
+leed3:	tax
+leed4:	tax
+leed5:	tax
+leed6:	tax
+leed7:	tax
+leed8:	tax
+leed9:	tax
+leeda:	tax
+leedb:	tax
+leedc:	tax
+leedd:	tax
+leede:	tax
+leedf:	tax
+leee0:	tax
+leee1:	tax
+leee2:	tax
+leee3:	tax
+leee4:	tax
+leee5:	tax
+leee6:	tax
+leee7:	tax
+leee8:	tax
+leee9:	tax
+leeea:	tax
+leeeb:	tax
+leeec:	tax
+leeed:	tax
+leeee:	tax
+leeef:	tax
+leef0:	tax
+leef1:	tax
+leef2:	tax
+leef3:	tax
+leef4:	tax
+leef5:	tax
+leef6:	tax
+leef7:	tax
+leef8:	tax
+leef9:	tax
+leefa:	tax
+leefb:	tax
+leefc:	tax
+leefd:	tax
+leefe:	tax
+leeff:	tax
+lef00:	tax
+lef01:	tax
+lef02:	tax
+lef03:	tax
+lef04:	tax
+lef05:	tax
+lef06:	tax
+lef07:	tax
+lef08:	tax
+lef09:	tax
+lef0a:	tax
+lef0b:	tax
+lef0c:	tax
+lef0d:	tax
+lef0e:	tax
+lef0f:	tax
+lef10:	tax
+lef11:	tax
+lef12:	tax
+lef13:	tax
+lef14:	tax
+lef15:	tax
+lef16:	tax
+lef17:	tax
+lef18:	tax
+lef19:	tax
+lef1a:	tax
+lef1b:	tax
+lef1c:	tax
+lef1d:	tax
+lef1e:	tax
+lef1f:	tax
+lef20:	tax
+lef21:	tax
+lef22:	tax
+lef23:	tax
+lef24:	tax
+lef25:	tax
+lef26:	tax
+lef27:	tax
+lef28:	tax
+lef29:	tax
+lef2a:	tax
+lef2b:	tax
+lef2c:	tax
+lef2d:	tax
+lef2e:	tax
+lef2f:	tax
+lef30:	tax
+lef31:	tax
+lef32:	tax
+lef33:	tax
+lef34:	tax
+lef35:	tax
+lef36:	tax
+lef37:	tax
+lef38:	tax
+lef39:	tax
+lef3a:	tax
+lef3b:	tax
+lef3c:	tax
+lef3d:	tax
+lef3e:	tax
+lef3f:	tax
+lef40:	tax
+lef41:	tax
+lef42:	tax
+lef43:	tax
+lef44:	tax
+lef45:	tax
+lef46:	tax
+lef47:	tax
+lef48:	tax
+lef49:	tax
+lef4a:	tax
+lef4b:	tax
+lef4c:	tax
+lef4d:	tax
+lef4e:	tax
+lef4f:	tax
+lef50:	tax
+lef51:	tax
+lef52:	tax
+lef53:	tax
+lef54:	tax
+lef55:	tax
+lef56:	tax
+lef57:	tax
+lef58:	tax
+lef59:	tax
+lef5a:	tax
+lef5b:	tax
+lef5c:	tax
+lef5d:	tax
+lef5e:	tax
+lef5f:	tax
+lef60:	tax
+lef61:	tax
+lef62:	tax
+lef63:	tax
+lef64:	tax
+lef65:	tax
+lef66:	tax
+lef67:	tax
+lef68:	tax
+lef69:	tax
+lef6a:	tax
+lef6b:	tax
+lef6c:	tax
+lef6d:	tax
+lef6e:	tax
+lef6f:	tax
+lef70:	tax
+lef71:	tax
+lef72:	tax
+lef73:	tax
+lef74:	tax
+lef75:	tax
+lef76:	tax
+lef77:	tax
+lef78:	tax
+lef79:	tax
+lef7a:	tax
+lef7b:	tax
+lef7c:	tax
+lef7d:	tax
+lef7e:	tax
+lef7f:	tax
+lef80:	tax
+lef81:	tax
+lef82:	tax
+lef83:	tax
+lef84:	tax
+lef85:	tax
+lef86:	tax
+lef87:	tax
+lef88:	tax
+lef89:	tax
+lef8a:	tax
+lef8b:	tax
+lef8c:	tax
+lef8d:	tax
+lef8e:	tax
+lef8f:	tax
+lef90:	tax
+lef91:	tax
+lef92:	tax
+lef93:	tax
+lef94:	tax
+lef95:	tax
+lef96:	tax
+lef97:	tax
+lef98:	tax
+lef99:	tax
+lef9a:	tax
+lef9b:	tax
+lef9c:	tax
+lef9d:	tax
+lef9e:	tax
+lef9f:	tax
+lefa0:	tax
+lefa1:	tax
+lefa2:	tax
+lefa3:	tax
+lefa4:	tax
+lefa5:	tax
+lefa6:	tax
+lefa7:	tax
+lefa8:	tax
+lefa9:	tax
+lefaa:	tax
+lefab:	tax
+lefac:	tax
+lefad:	tax
+lefae:	tax
+lefaf:	tax
+lefb0:	tax
+lefb1:	tax
+lefb2:	tax
+lefb3:	tax
+lefb4:	tax
+lefb5:	tax
+lefb6:	tax
+lefb7:	tax
+lefb8:	tax
+lefb9:	tax
+lefba:	tax
+lefbb:	tax
+lefbc:	tax
+lefbd:	tax
+lefbe:	tax
+lefbf:	tax
+lefc0:	tax
+lefc1:	tax
+lefc2:	tax
+lefc3:	tax
+lefc4:	tax
+lefc5:	tax
+lefc6:	tax
+lefc7:	tax
+lefc8:	tax
+lefc9:	tax
+lefca:	tax
+lefcb:	tax
+lefcc:	tax
+lefcd:	tax
+lefce:	tax
+lefcf:	tax
+lefd0:	tax
+lefd1:	tax
+lefd2:	tax
+lefd3:	tax
+lefd4:	tax
+lefd5:	tax
+lefd6:	tax
+lefd7:	tax
+lefd8:	tax
+lefd9:	tax
+lefda:	tax
+lefdb:	tax
+lefdc:	tax
+lefdd:	tax
+lefde:	tax
+lefdf:	tax
+lefe0:	tax
+lefe1:	tax
+lefe2:	tax
+lefe3:	tax
+lefe4:	tax
+lefe5:	tax
+lefe6:	tax
+lefe7:	tax
+lefe8:	tax
+lefe9:	tax
+lefea:	tax
+lefeb:	tax
+lefec:	tax
+lefed:	tax
+lefee:	tax
+lefef:	tax
+leff0:	tax
+leff1:	tax
+leff2:	tax
+leff3:	tax
+leff4:	tax
+leff5:	tax
+leff6:	tax
+leff7:	tax
+leff8:	tax
+leff9:	tax
+leffa:	tax
+leffb:	tax
+leffc:	tax
+leffd:	tax
+leffe:	tax
+lefff:	tax
+lf000:	brk
+lf001:	brk
+lf002:	brk
+lf003:	brk
+lf004:	brk
+lf005:	brk
+lf006:	brk
+lf007:	brk
+lf008:	!byte $3c
+lf009:	ror $6e
+lf00b:	ror $66,x
+lf00d:	ror $3c
+lf00f:	brk
+lf010:	clc
+lf011:	clc
+lf012:	sec
+lf013:	clc
+lf014:	clc
+lf015:	clc
+lf016:	ror $3c00,x
+lf019:	ror $06
+lf01b:	!byte $0c
+lf01c:	bmi lf07e
+lf01e:	ror $3c00,x
+lf021:	ror $06
+lf023:	!byte $1c
+lf024:	asl $66
+lf026:	!byte $3c
+lf027:	brk
+lf028:	asl $0e
+lf02a:	asl $7f66,x
+lf02d:	asl $06
+lf02f:	brk
+lf030:	ror $7c60,x
+lf033:	asl $06
+lf035:	ror $3c
+lf037:	brk
+lf038:	!byte $3c
+lf039:	ror $60
+lf03b:	!byte $7c
+lf03c:	ror $66
+lf03e:	!byte $3c
+lf03f:	brk
+lf040:	ror $0c66,x
+lf043:	clc
+lf044:	clc
+lf045:	clc
+lf046:	clc
+lf047:	brk
+lf048:	!byte $3c
+lf049:	ror $66
+lf04b:	!byte $3c
+lf04c:	ror $66
+lf04e:	!byte $3c
+lf04f:	brk
+lf050:	!byte $3c
+lf051:	ror $66
+lf053:	!byte $3c
+lf054:	asl $66
+lf056:	!byte $3c
+lf057:	brk
+lf058:	clc
+lf059:	!byte $3c
+lf05a:	ror $7e
+lf05c:	ror $66
+lf05e:	ror $00
+lf060:	!byte $7c
+lf061:	ror $66
+lf063:	!byte $7c
+lf064:	ror $66
+lf066:	!byte $7c
+lf067:	brk
+lf068:	!byte $3c
+lf069:	ror $60
+lf06b:	rts
+lf06c:	rts
+lf06d:	ror $3c
+lf06f:	brk
+lf070:	sei
+lf071:	jmp ($6666)
+lf074:	ror $6c
+lf076:	sei
+lf077:	brk
+lf078:	ror $6060,x
+lf07b:	sei
+lf07c:	rts
+lf07d:	rts
+lf07e:	ror $7e00,x
+lf081:	rts
+lf082:	rts
+lf083:	sei
+lf084:	rts
+lf085:	rts
+lf086:	rts
+lf087:	brk
+lf088:	!byte $3c
+lf089:	ror $60
+lf08b:	ror $6666
+lf08e:	!byte $3c
+lf08f:	brk
+lf090:	ror $66
+lf092:	ror $7e
+lf094:	ror $66
+lf096:	ror $00
+lf098:	!byte $3c
+lf099:	clc
+lf09a:	clc
+lf09b:	clc
+lf09c:	clc
+lf09d:	clc
+lf09e:	!byte $3c
+lf09f:	brk
+lf0a0:	asl $0c0c,x
+lf0a3:	!byte $0c
+lf0a4:	!byte $0c
+lf0a5:	jmp ($0038)
+lf0a8:	ror $6c
+lf0aa:	sei
+lf0ab:	bvs lf125
+lf0ad:	jmp ($0066)
+lf0b0:	rts
+lf0b1:	rts
+lf0b2:	rts
+lf0b3:	rts
+lf0b4:	rts
+lf0b5:	rts
+lf0b6:	ror $6300,x
+lf0b9:	!byte $77
+lf0ba:	!byte $7f
+lf0bb:	!byte $6b
+lf0bc:	!byte $63
+lf0bd:	!byte $63
+lf0be:	!byte $63
+lf0bf:	brk
+lf0c0:	ror $76
+lf0c2:	ror $6e7e,x
+lf0c5:	ror $66
+lf0c7:	brk
+lf0c8:	!byte $3c
+lf0c9:	ror $66
+lf0cb:	ror $66
+lf0cd:	ror $3c
+lf0cf:	brk
+lf0d0:	!byte $7c
+lf0d1:	ror $66
+lf0d3:	sei
+lf0d4:	rts
+lf0d5:	rts
+lf0d6:	rts
+lf0d7:	brk
+lf0d8:	!byte $7c
+lf0d9:	ror $66
+lf0db:	!byte $7c
+lf0dc:	sei
+lf0dd:	jmp ($0066)
+lf0e0:	!byte $3c
+lf0e1:	ror $60
+lf0e3:	!byte $3c
+lf0e4:	asl $66
+lf0e6:	!byte $3c
+lf0e7:	brk
+lf0e8:	ror $1818,x
+lf0eb:	clc
+lf0ec:	clc
+lf0ed:	clc
+lf0ee:	clc
+lf0ef:	brk
+lf0f0:	ror $66
+lf0f2:	ror $66
+lf0f4:	ror $66
+lf0f6:	!byte $3c
+lf0f7:	brk
+lf0f8:	ror $66
+lf0fa:	ror $66
+lf0fc:	ror $3c
+lf0fe:	clc
+lf0ff:	brk
+lf100:	!byte $63
+lf101:	!byte $63
+lf102:	!byte $63
+lf103:	!byte $6b
+lf104:	!byte $7f
+lf105:	!byte $77
+lf106:	!byte $63
+lf107:	brk
+lf108:	ror $66
+lf10a:	!byte $3c
+lf10b:	clc
+lf10c:	!byte $3c
+lf10d:	ror $66
+lf10f:	brk
+lf110:	ror $66
+lf112:	ror $3c
+lf114:	clc
+lf115:	clc
+lf116:	clc
+lf117:	brk
+lf118:	!byte $03
+lf119:	asl $0c
+lf11b:	clc
+lf11c:	bmi lf17e
+lf11e:	cpy #$00
+lf120:	!byte $0c
+lf121:	clc
+lf122:	bmi lf154
+lf124:	bmi lf13e
+lf126:	!byte $0c
+lf127:	brk
+lf128:	bmi lf142
+lf12a:	!byte $0c
+lf12b:	!byte $0c
+lf12c:	!byte $0c
+lf12d:	clc
+lf12e:	bmi lf130
+lf130:	brk
+lf131:	brk
+lf132:	brk
+lf133:	ror $0000,x
+lf136:	brk
+lf137:	brk
+lf138:	brk
+lf139:	brk
+lf13a:	clc
+lf13b:	brk
+lf13c:	brk
+lf13d:	clc
+lf13e:	clc
+lf13f:	bmi lf141
+lf141:	brk
+lf142:	brk
+lf143:	brk
+lf144:	brk
+lf145:	clc
+lf146:	clc
+lf147:	brk
+lf148:	tax
+lf149:	tax
+lf14a:	tax
+lf14b:	tax
+lf14c:	tax
+lf14d:	tax
+lf14e:	tax
+lf14f:	tax
+lf150:	cpy #$c0
+lf152:	cpy #$c0
+lf154:	cpy #$c0
+lf156:	cpy #$c0
+lf158:	brk
+lf159:	brk
+lf15a:	brk
+lf15b:	brk
+lf15c:	brk
+lf15d:	brk
+lf15e:	brk
+lf15f:	!byte $ff
+lf160:	cpy #$c0
+lf162:	cpy #$c0
+lf164:	cpy #$c0
+lf166:	cpy #$ff
+lf168:	!byte $ff
+lf169:	brk
+lf16a:	brk
+lf16b:	brk
+lf16c:	brk
+lf16d:	brk
+lf16e:	brk
+lf16f:	brk
+lf170:	brk
+lf171:	brk
+lf172:	brk
+lf173:	brk
+lf174:	brk
+lf175:	brk
+lf176:	brk
+lf177:	brk
+lf178:	brk
+lf179:	brk
+lf17a:	brk
+lf17b:	brk
+lf17c:	brk
+lf17d:	brk
+lf17e:	brk
+lf17f:	brk
+lf180:	brk
+lf181:	!byte $1b
+lf182:	brk
+lf183:	brk
+lf184:	brk
+lf185:	brk
+lf186:	!byte $0b
+lf187:	brk
+lf188:	ora $00ff,x
+lf18b:	brk
+lf18c:	!byte $ff
+lf18d:	brk
+lf18e:	brk
+lf18f:	brk
+lf190:	asl $00
+lf192:	brk
+lf193:	brk
+lf194:	brk
+lf195:	!byte $02
+lf196:	!byte $07
+lf197:	asl $06
+lf199:	asl $06
+lf19b:	asl $06
+lf19d:	asl $06
+lf19f:	brk
+lf1a0:	jsr $0000
+lf1a3:	jsr $f900
+lf1a6:	brk
+lf1a7:	rts
+lf1a8:	brk
+lf1a9:	brk
+lf1aa:	!byte $80
+lf1ab:	brk
+lf1ac:	!byte $fa
+lf1ad:	!byte $ff
+lf1ae:	!byte $ff
+lf1af:	brk
+lf1b0:	brk
+lf1b1:	!byte $80
+lf1b2:	brk
+lf1b3:	!byte $fa
+lf1b4:	!byte $ff
+lf1b5:	!byte $ff
+lf1b6:	!byte $07
+lf1b7:	!byte $1f
+lf1b8:	!byte $1a
+lf1b9:	!byte $1c
+lf1ba:	ora $191c,y
+lf1bd:	ora $191c,y
+lf1c0:	ora $191c,y
+lf1c3:	!byte $1c
+lf1c4:	clc
+lf1c5:	!byte $1c
+lf1c6:	!byte $1c
+lf1c7:	!byte $1c
+lf1c8:	clc
+lf1c9:	!byte $1c
+lf1ca:	ora $1919,y
+lf1cd:	!byte $1c
+lf1ce:	!byte $1c
+lf1cf:	ora $1c1c,y
+lf1d2:	ora $181c,y
+lf1d5:	!byte $1c
+lf1d6:	!byte $1a
+lf1d7:	!byte $1c
+lf1d8:	!byte $1c
+lf1d9:	!byte $1c
+lf1da:	ora $1918,y
+lf1dd:	!byte $1c
+lf1de:	!byte $1a
+lf1df:	!byte $1c
+lf1e0:	!byte $1c
+lf1e1:	!byte $1c
+lf1e2:	clc
+lf1e3:	ora $1819,y
+lf1e6:	!byte $1a
+lf1e7:	ora $191c,y
+lf1ea:	!byte $1c
+lf1eb:	!byte $1c
+lf1ec:	!byte $1a
+lf1ed:	!byte $1c
+lf1ee:	!byte $1a
+lf1ef:	!byte $1c
+lf1f0:	!byte $1c
+lf1f1:	clc
+lf1f2:	ora $181c,y
+lf1f5:	!byte $1c
+lf1f6:	!byte $1c
+lf1f7:	clc
+lf1f8:	!byte $1a
+lf1f9:	!byte $1c
+lf1fa:	ora $1c19,y
+lf1fd:	clc
+lf1fe:	!byte $1c
+lf1ff:	ora $1c19,y
+lf202:	clc
+lf203:	!byte $1a
+lf204:	!byte $1c
+lf205:	!byte $1c
+lf206:	!byte $1a
+lf207:	!byte $1c
+lf208:	!byte $1c
+lf209:	!byte $1c
+lf20a:	!byte $1a
+lf20b:	!byte $1c
+lf20c:	!byte $1c
+lf20d:	!byte $1c
+lf20e:	!byte $1c
+lf20f:	!byte $1a
+lf210:	!byte $1c
+lf211:	!byte $1c
+lf212:	!byte $1a
+lf213:	clc
+lf214:	!byte $1c
+lf215:	clc
+lf216:	ora $191c,y
+lf219:	!byte $1c
+lf21a:	ora $191c,y
+lf21d:	ora $1c1c,y
+lf220:	!byte $1a
+lf221:	!byte $1c
+lf222:	!byte $1c
+lf223:	!byte $1c
+lf224:	clc
+lf225:	!byte $1a
+lf226:	!byte $1c
+lf227:	ora $1818,y
+lf22a:	ora $1a1c,y
+lf22d:	!byte $1c
+lf22e:	ora $181c,y
+lf231:	!byte $1c
+lf232:	!byte $1c
+lf233:	ora $1c1c,y
+lf236:	!byte $1c
+lf237:	clc
+lf238:	ora $1a1c,y
+lf23b:	!byte $1c
+lf23c:	ora $1819,y
+lf23f:	clc
+lf240:	ora $181c,y
+lf243:	!byte $1a
+lf244:	ora $1a1c,y
+lf247:	!byte $1c
+lf248:	!byte $1c
+lf249:	ora $1c1c,y
+lf24c:	!byte $1c
+lf24d:	ora $1c1c,y
+lf250:	!byte $1c
+lf251:	ora $1c1c,y
+lf254:	!byte $1a
+lf255:	!byte $1c
+lf256:	!byte $1a
+lf257:	!byte $1c
+lf258:	!byte $1c
+lf259:	clc
+lf25a:	!byte $1c
+lf25b:	!byte $1c
+lf25c:	clc
+lf25d:	!byte $1c
+lf25e:	!byte $1a
+lf25f:	!byte $1c
+lf260:	clc
+lf261:	!byte $1c
+lf262:	!byte $1c
+lf263:	!byte $1c
+lf264:	!byte $1c
+lf265:	!byte $1c
+lf266:	!byte $1a
+lf267:	!byte $1c
+lf268:	!byte $1c
+lf269:	!byte $1c
+lf26a:	!byte $1a
+lf26b:	!byte $1c
+lf26c:	!byte $1c
+lf26d:	!byte $1c
+lf26e:	clc
+lf26f:	!byte $1c
+lf270:	clc
+lf271:	ora $191c,y
+lf274:	!byte $1c
+lf275:	ora $191c,y
+lf278:	ora $1c19,y
+lf27b:	clc
+lf27c:	!byte $1c
+lf27d:	ora $1c18,y
+lf280:	!byte $1c
+lf281:	!byte $1c
+lf282:	!byte $1c
+lf283:	!byte $1c
+lf284:	!byte $1c
+lf285:	!byte $1a
+lf286:	!byte $1c
+lf287:	ora $1c19,y
+lf28a:	ora $1c1c,y
+lf28d:	!byte $1c
+lf28e:	!byte $1c
+lf28f:	!byte $1c
+lf290:	!byte $1c
+lf291:	!byte $1c
+lf292:	ora $191c,y
+lf295:	clc
+lf296:	!byte $1c
+lf297:	!byte $1c
+lf298:	!byte $1a
+lf299:	ora $1c19,y
+lf29c:	ora $1919,y
+lf29f:	!byte $1a
+lf2a0:	!byte $1c
+lf2a1:	!byte $1c
+lf2a2:	!byte $1a
+lf2a3:	!byte $1c
+lf2a4:	!byte $1c
+lf2a5:	!byte $1c
+lf2a6:	!byte $1c
+lf2a7:	ora $191c,y
+lf2aa:	!byte $1c
+lf2ab:	!byte $1c
+lf2ac:	ora $191c,y
+lf2af:	clc
+lf2b0:	ora $1c1c,y
+lf2b3:	clc
+lf2b4:	!byte $1c
+lf2b5:	ora $1c1c,y
+lf2b8:	clc
+lf2b9:	ora $191c,y
+lf2bc:	!byte $1a
+lf2bd:	!byte $1c
+lf2be:	!byte $1c
+lf2bf:	!byte $1a
+lf2c0:	!byte $1c
+lf2c1:	!byte $1c
+lf2c2:	!byte $1c
+lf2c3:	!byte $1c
+lf2c4:	!byte $1c
+lf2c5:	!byte $1a
+lf2c6:	!byte $1c
+lf2c7:	!byte $1c
+lf2c8:	!byte $1c
+lf2c9:	!byte $1a
+lf2ca:	!byte $1c
+lf2cb:	ora $181c,y
+lf2ce:	ora $191c,y
+lf2d1:	!byte $1c
+lf2d2:	clc
+lf2d3:	ora $181c,y
+lf2d6:	!byte $1c
+lf2d7:	!byte $1c
+lf2d8:	ora $1c19,y
+lf2db:	clc
+lf2dc:	ora $181c,y
+lf2df:	ora $1c19,y
+lf2e2:	!byte $1c
+lf2e3:	!byte $1c
+lf2e4:	ora $1c1c,y
+lf2e7:	!byte $1c
+lf2e8:	!byte $1c
+lf2e9:	!byte $1c
+lf2ea:	!byte $1c
+lf2eb:	!byte $1c
+lf2ec:	!byte $1c
+lf2ed:	ora $1c19,y
+lf2f0:	!byte $1a
+lf2f1:	!byte $1c
+lf2f2:	ora $1818,y
+lf2f5:	clc
+lf2f6:	clc
+lf2f7:	clc
+lf2f8:	clc
+lf2f9:	clc
+lf2fa:	ora $181c,y
+lf2fd:	clc
+lf2fe:	!byte $1c
+lf2ff:	!byte $1c
+lf300:	!byte $1c
+lf301:	!byte $1c
+lf302:	!byte $1a
+lf303:	!byte $1c
+lf304:	ora $1c18,y
+lf307:	ora $181c,y
+lf30a:	!byte $1c
+lf30b:	!byte $1a
+lf30c:	!byte $1c
+lf30d:	!byte $1c
+lf30e:	clc
+lf30f:	!byte $1c
+lf310:	!byte $1c
+lf311:	!byte $1c
+lf312:	!byte $1c
+lf313:	clc
+lf314:	!byte $1c
+lf315:	!byte $1c
+lf316:	!byte $1c
+lf317:	!byte $1c
+lf318:	!byte $1c
+lf319:	!byte $1c
+lf31a:	!byte $1c
+lf31b:	!byte $1c
+lf31c:	!byte $1c
+lf31d:	!byte $1c
+lf31e:	!byte $1c
+lf31f:	!byte $1c
+lf320:	!byte $1a
+lf321:	!byte $1c
+lf322:	!byte $1c
+lf323:	!byte $1c
+lf324:	ora ($01,x)
+lf326:	!byte $03
+lf327:	!byte $02
+lf328:	!byte $02
+lf329:	ora ($01,x)
+lf32b:	ora ($01,x)
+lf32d:	brk
+lf32e:	!byte $04
+lf32f:	rol
+lf330:	sbc $fd2a,x
+lf333:	rol
+lf334:	sbc $fd2a,x
+lf337:	rol
+lf338:	sbc $fd2a,x
+lf33b:	sbc $fdfd,x
+lf33e:	rol
+lf33f:	sbc $fd2a,x
+lf342:	rol
+lf343:	sbc $fd2a,x
+lf346:	rol
+lf347:	sbc $fd2a,x
+lf34a:	rol
+lf34b:	sbc $fd2a,x
+lf34e:	rol
+lf34f:	sbc $fd2a,x
+lf352:	rol
+lf353:	sbc $2b2c,x
+lf356:	!byte $2b
+lf357:	!byte $2b
+lf358:	!byte $2b
+lf359:	!byte $2b
+lf35a:	!byte $2b
+lf35b:	!byte $2b
+lf35c:	!byte $2b
+lf35d:	!byte $2b
+lf35e:	!byte $2b
+lf35f:	!byte $2b
+lf360:	!byte $2b
+lf361:	!byte $2b
+lf362:	!byte $2b
+lf363:	!byte $2b
+lf364:	!byte $2b
+lf365:	!byte $2b
+lf366:	!byte $2b
+lf367:	!byte $2b
+lf368:	!byte $2b
+lf369:	!byte $2b
+lf36a:	!byte $2b
+lf36b:	!byte $2b
+lf36c:	!byte $2b
+lf36d:	!byte $2b
+lf36e:	!byte $2b
+lf36f:	!byte $2b
+lf370:	!byte $2b
+lf371:	!byte $2b
+lf372:	!byte $2b
+lf373:	!byte $2b
+lf374:	!byte $2b
+lf375:	!byte $2b
+lf376:	!byte $2b
+lf377:	!byte $2b
+lf378:	!byte $2b
+lf379:	!byte $2b
+lf37a:	!byte $2b
+lf37b:	inc $0427,x
+lf37e:	rol
+lf37f:	sbc $fd2a,x
+lf382:	rol
+lf383:	sbc $fd2a,x
+lf386:	rol
+lf387:	sbc $fd2a,x
+lf38a:	sbc $fdfd,x
+lf38d:	rol
+lf38e:	sbc $fd2a,x
+lf391:	rol
+lf392:	sbc $fd2a,x
+lf395:	rol
+lf396:	sbc $fd2a,x
+lf399:	rol
+lf39a:	sbc $fd2a,x
+lf39d:	rol
+lf39e:	sbc $fd2a,x
+lf3a1:	rol
+lf3a2:	sbc $fe2a,x
+lf3a5:	!byte $72
+lf3a6:	!byte $07
+lf3a7:	!byte $1c
+lf3a8:	ora $1b19
+lf3ab:	!byte $0f
+lf3ac:	brk
+lf3ad:	brk
+lf3ae:	brk
+lf3af:	brk
+lf3b0:	!byte $12
+lf3b1:	!byte $13
+lf3b2:	rol $1c
+lf3b4:	ora $1b19
+lf3b7:	!byte $0f
+lf3b8:	inc $078a,x
+lf3bb:	!byte $1a
+lf3bc:	asl $0b,x
+lf3be:	!byte $22
+lf3bf:	!byte $0f
+lf3c0:	!byte $1b
+lf3c1:	!byte $ff
+lf3c2:	!byte $52
+lf3c3:	!byte $04
+lf3c4:	!byte $1a
+lf3c5:	asl $121c,x
+lf3c8:	brk
+lf3c9:	bit $10
+lf3cb:	!byte $02
+lf3cc:	and $00
+lf3ce:	ora $fe1b,y
+lf3d1:	ldx #$04
+lf3d3:	!byte $0c
+lf3d4:	asl $1d1d,x
+lf3d7:	ora $0018,y
+lf3da:	ora $0018,y
+lf3dd:	!byte $14
+lf3de:	ora $1c22,y
+lf3e1:	ora $0d13,x
+lf3e4:	ora $fe,x
+lf3e6:	!byte $f2
+lf3e7:	!byte $04
+lf3e8:	ora $0019,x
+lf3eb:	!byte $1c
+lf3ec:	ora $1b0b,x
+lf3ef:	ora $fe28,x
+lf3f2:	ror
+lf3f3:	ora $24
+lf3f5:	!byte $0b
+lf3f6:	and $26
+lf3f8:	bpl lf40d
+lf3fa:	!byte $1b
+lf3fb:	!byte $0f
+lf3fc:	inc $05ba,x
+lf3ff:	bit $16
+lf401:	and $26
+lf403:	asl $0f,x
+lf405:	bpl lf424
+lf407:	inc $060a,x
+lf40a:	bit $27
+lf40c:	and $26
+lf40e:	!byte $1b
+lf40f:	!byte $13
+lf410:	ora ($12),y
+lf412:	ora $5afe,x
+lf415:	asl $24
+lf417:	!byte $1a
+lf418:	and $26
+lf41a:	asl $fe1a,x
+lf41d:	tax
+lf41e:	asl $24
+lf420:	plp
+lf421:	and $26
+lf423:	asl $2019
+lf426:	clc
+lf427:	inc $0469,x
+lf42a:	rol $00
+lf42c:	!byte $1c
+lf42d:	ora $1b19
+lf430:	!byte $0f
+lf431:	brk
+lf432:	rol $fe
+lf434:	!byte $e7
+lf435:	!byte $04
+lf436:	!byte $02
+lf437:	ora ($01,x)
+lf439:	brk
+lf43a:	!byte $1a
+lf43b:	ora $281c,x
+lf43e:	inc $055f,x
+lf441:	!byte $03
+lf442:	ora ($01,x)
+lf444:	brk
+lf445:	!byte $1a
+lf446:	ora $281c,x
+lf449:	inc $05d7,x
+lf44c:	!byte $04
+lf44d:	ora ($01,x)
+lf44f:	brk
+lf450:	!byte $1a
+lf451:	ora $281c,x
+lf454:	inc $064f,x
+lf457:	ora $01
+lf459:	ora ($00,x)
+lf45b:	!byte $1a
+lf45c:	ora $281c,x
+lf45f:	inc $06c3,x
+lf462:	!byte $17
+lf463:	!byte $22
+lf464:	!byte $1c
+lf465:	ora $1b0f,x
+lf468:	!byte $22
+lf469:	brk
+lf46a:	!byte $1a
+lf46b:	ora $281c,x
+lf46e:	inc $0737,x
+lf471:	!byte $0f
+lf472:	and ($1d,x)
+lf474:	!byte $1b
+lf475:	!byte $0b
+lf476:	brk
+lf477:	!byte $0c
+lf478:	ora $1e18,y
+lf47b:	!byte $1c
+lf47c:	inc $0761,x
+lf47f:	bpl lf49a
+lf481:	!byte $1b
+lf482:	brk
+lf483:	!byte $03
+lf484:	ora ($01,x)
+lf486:	ora ($01,x)
+lf488:	brk
+lf489:	!byte $1a
+lf48a:	ora $281c,x
+lf48d:	inc $0778,x
+lf490:	!byte $02
+lf491:	asl
+lf492:	ora #$03
+lf494:	brk
+lf495:	!byte $0c
+lf496:	!byte $22
+lf497:	brk
+lf498:	ora $1719
+lf49b:	!byte $17
+lf49c:	ora $190e,y
+lf49f:	!byte $1b
+lf4a0:	!byte $0f
+lf4a1:	brk
+lf4a2:	asl $1d,x
+lf4a4:	asl $a0fe
+lf4a7:	!byte $07
+lf4a8:	!byte $02
+lf4a9:	asl
+lf4aa:	ora #$02
+lf4ac:	brk
+lf4ad:	!byte $0c
+lf4ae:	!byte $22
+lf4af:	brk
+lf4b0:	!byte $0c
+lf4b1:	!byte $0b
+lf4b2:	asl $16,x
+lf4b4:	!byte $22
+lf4b5:	!byte $23
+lf4b6:	!byte $17
+lf4b7:	!byte $13
+lf4b8:	asl $0b20
+lf4bb:	!byte $22
+lf4bc:	!byte $ff
+lf4bd:	tax
+lf4be:	tax
+lf4bf:	tax
+lf4c0:	tax
+lf4c1:	tax
+lf4c2:	tax
+lf4c3:	tax
+lf4c4:	tax
+lf4c5:	tax
+lf4c6:	tax
+lf4c7:	tax
+lf4c8:	tax
+lf4c9:	tax
+lf4ca:	tax
+lf4cb:	tax
+lf4cc:	tax
+lf4cd:	tax
+lf4ce:	tax
+lf4cf:	tax
+lf4d0:	tax
+lf4d1:	tax
+lf4d2:	tax
+lf4d3:	tax
+lf4d4:	tax
+lf4d5:	tax
+lf4d6:	tax
+lf4d7:	tax
+lf4d8:	tax
+lf4d9:	tax
+lf4da:	tax
+lf4db:	tax
+lf4dc:	tax
+lf4dd:	tax
+lf4de:	tax
+lf4df:	tax
+lf4e0:	tax
+lf4e1:	tax
+lf4e2:	tax
+lf4e3:	tax
+lf4e4:	tax
+lf4e5:	tax
+lf4e6:	tax
+lf4e7:	tax
+lf4e8:	tax
+lf4e9:	tax
+lf4ea:	tax
+lf4eb:	tax
+lf4ec:	tax
+lf4ed:	tax
+lf4ee:	tax
+lf4ef:	tax
+lf4f0:	tax
+lf4f1:	tax
+lf4f2:	tax
+lf4f3:	tax
+lf4f4:	tax
+lf4f5:	tax
+lf4f6:	tax
+lf4f7:	tax
+lf4f8:	tax
+lf4f9:	tax
+lf4fa:	tax
+lf4fb:	tax
+lf4fc:	tax
+lf4fd:	tax
+lf4fe:	tax
+lf4ff:	tax
+lf500:	tax
+lf501:	tax
+lf502:	tax
+lf503:	tax
+lf504:	tax
+lf505:	tax
+lf506:	tax
+lf507:	tax
+lf508:	tax
+lf509:	tax
+lf50a:	tax
+lf50b:	tax
+lf50c:	tax
+lf50d:	tax
+lf50e:	tax
+lf50f:	tax
+lf510:	tax
+lf511:	tax
+lf512:	tax
+lf513:	tax
+lf514:	tax
+lf515:	tax
+lf516:	tax
+lf517:	tax
+lf518:	tax
+lf519:	tax
+lf51a:	tax
+lf51b:	tax
+lf51c:	tax
+lf51d:	tax
+lf51e:	tax
+lf51f:	tax
+lf520:	tax
+lf521:	tax
+lf522:	tax
+lf523:	tax
+lf524:	tax
+lf525:	tax
+lf526:	tax
+lf527:	tax
+lf528:	tax
+lf529:	tax
+lf52a:	tax
+lf52b:	tax
+lf52c:	tax
+lf52d:	tax
+lf52e:	tax
+lf52f:	tax
+lf530:	tax
+lf531:	tax
+lf532:	tax
+lf533:	tax
+lf534:	tax
+lf535:	tax
+lf536:	tax
+lf537:	tax
+lf538:	tax
+lf539:	tax
+lf53a:	tax
+lf53b:	tax
+lf53c:	tax
+lf53d:	tax
+lf53e:	tax
+lf53f:	tax
+lf540:	tax
+lf541:	tax
+lf542:	tax
+lf543:	tax
+lf544:	tax
+lf545:	tax
+lf546:	tax
+lf547:	tax
+lf548:	tax
+lf549:	tax
+lf54a:	tax
+lf54b:	tax
+lf54c:	tax
+lf54d:	tax
+lf54e:	tax
+lf54f:	tax
+lf550:	tax
+lf551:	tax
+lf552:	tax
+lf553:	tax
+lf554:	tax
+lf555:	tax
+lf556:	tax
+lf557:	tax
+lf558:	tax
+lf559:	tax
+lf55a:	tax
+lf55b:	tax
+lf55c:	tax
+lf55d:	tax
+lf55e:	tax
+lf55f:	tax
+lf560:	tax
+lf561:	tax
+lf562:	tax
+lf563:	tax
+lf564:	tax
+lf565:	tax
+lf566:	tax
+lf567:	tax
+lf568:	tax
+lf569:	tax
+lf56a:	tax
+lf56b:	tax
+lf56c:	tax
+lf56d:	tax
+lf56e:	tax
+lf56f:	tax
+lf570:	tax
+lf571:	tax
+lf572:	tax
+lf573:	tax
+lf574:	tax
+lf575:	tax
+lf576:	tax
+lf577:	tax
+lf578:	tax
+lf579:	tax
+lf57a:	tax
+lf57b:	tax
+lf57c:	tax
+lf57d:	tax
+lf57e:	tax
+lf57f:	tax
+lf580:	tax
+lf581:	tax
+lf582:	tax
+lf583:	tax
+lf584:	tax
+lf585:	tax
+lf586:	tax
+lf587:	tax
+lf588:	tax
+lf589:	tax
+lf58a:	tax
+lf58b:	tax
+lf58c:	tax
+lf58d:	tax
+lf58e:	tax
+lf58f:	tax
+lf590:	tax
+lf591:	tax
+lf592:	tax
+lf593:	tax
+lf594:	tax
+lf595:	tax
+lf596:	tax
+lf597:	tax
+lf598:	tax
+lf599:	tax
+lf59a:	tax
+lf59b:	tax
+lf59c:	tax
+lf59d:	tax
+lf59e:	tax
+lf59f:	tax
+lf5a0:	tax
+lf5a1:	tax
+lf5a2:	tax
+lf5a3:	tax
+lf5a4:	tax
+lf5a5:	tax
+lf5a6:	tax
+lf5a7:	tax
+lf5a8:	tax
+lf5a9:	tax
+lf5aa:	tax
+lf5ab:	tax
+lf5ac:	tax
+lf5ad:	tax
+lf5ae:	tax
+lf5af:	tax
+lf5b0:	tax
+lf5b1:	tax
+lf5b2:	tax
+lf5b3:	tax
+lf5b4:	tax
+lf5b5:	tax
+lf5b6:	tax
+lf5b7:	tax
+lf5b8:	tax
+lf5b9:	tax
+lf5ba:	tax
+lf5bb:	tax
+lf5bc:	tax
+lf5bd:	tax
+lf5be:	tax
+lf5bf:	tax
+lf5c0:	tax
+lf5c1:	tax
+lf5c2:	tax
+lf5c3:	tax
+lf5c4:	tax
+lf5c5:	tax
+lf5c6:	tax
+lf5c7:	tax
+lf5c8:	tax
+lf5c9:	tax
+lf5ca:	tax
+lf5cb:	tax
+lf5cc:	tax
+lf5cd:	tax
+lf5ce:	tax
+lf5cf:	tax
+lf5d0:	tax
+lf5d1:	tax
+lf5d2:	tax
+lf5d3:	tax
+lf5d4:	tax
+lf5d5:	tax
+lf5d6:	tax
+lf5d7:	tax
+lf5d8:	tax
+lf5d9:	tax
+lf5da:	tax
+lf5db:	tax
+lf5dc:	tax
+lf5dd:	tax
+lf5de:	tax
+lf5df:	tax
+lf5e0:	tax
+lf5e1:	tax
+lf5e2:	tax
+lf5e3:	tax
+lf5e4:	tax
+lf5e5:	tax
+lf5e6:	tax
+lf5e7:	tax
+lf5e8:	tax
+lf5e9:	tax
+lf5ea:	tax
+lf5eb:	tax
+lf5ec:	tax
+lf5ed:	tax
+lf5ee:	tax
+lf5ef:	tax
+lf5f0:	tax
+lf5f1:	tax
+lf5f2:	tax
+lf5f3:	tax
+lf5f4:	tax
+lf5f5:	tax
+lf5f6:	tax
+lf5f7:	tax
+lf5f8:	tax
+lf5f9:	tax
+lf5fa:	tax
+lf5fb:	tax
+lf5fc:	tax
+lf5fd:	tax
+lf5fe:	tax
+lf5ff:	tax
+lf600:	tax
+lf601:	tax
+lf602:	tax
+lf603:	tax
+lf604:	tax
+lf605:	tax
+lf606:	tax
+lf607:	tax
+lf608:	tax
+lf609:	tax
+lf60a:	tax
+lf60b:	tax
+lf60c:	tax
+lf60d:	tax
+lf60e:	tax
+lf60f:	tax
+lf610:	tax
+lf611:	tax
+lf612:	tax
+lf613:	tax
+lf614:	tax
+lf615:	tax
+lf616:	tax
+lf617:	tax
+lf618:	tax
+lf619:	tax
+lf61a:	tax
+lf61b:	tax
+lf61c:	tax
+lf61d:	tax
+lf61e:	tax
+lf61f:	tax
+lf620:	tax
+lf621:	tax
+lf622:	tax
+lf623:	tax
+lf624:	tax
+lf625:	tax
+lf626:	tax
+lf627:	tax
+lf628:	tax
+lf629:	tax
+lf62a:	tax
+lf62b:	tax
+lf62c:	tax
+lf62d:	tax
+lf62e:	tax
+lf62f:	tax
+lf630:	tax
+lf631:	tax
+lf632:	tax
+lf633:	tax
+lf634:	tax
+lf635:	tax
+lf636:	tax
+lf637:	tax
+lf638:	tax
+lf639:	tax
+lf63a:	tax
+lf63b:	tax
+lf63c:	tax
+lf63d:	tax
+lf63e:	tax
+lf63f:	tax
+lf640:	tax
+lf641:	tax
+lf642:	tax
+lf643:	tax
+lf644:	tax
+lf645:	tax
+lf646:	tax
+lf647:	tax
+lf648:	tax
+lf649:	tax
+lf64a:	tax
+lf64b:	tax
+lf64c:	tax
+lf64d:	tax
+lf64e:	tax
+lf64f:	tax
+lf650:	tax
+lf651:	tax
+lf652:	tax
+lf653:	tax
+lf654:	tax
+lf655:	tax
+lf656:	tax
+lf657:	tax
+lf658:	tax
+lf659:	tax
+lf65a:	tax
+lf65b:	tax
+lf65c:	tax
+lf65d:	tax
+lf65e:	tax
+lf65f:	tax
+lf660:	tax
+lf661:	tax
+lf662:	tax
+lf663:	tax
+lf664:	tax
+lf665:	tax
+lf666:	tax
+lf667:	tax
+lf668:	tax
+lf669:	tax
+lf66a:	tax
+lf66b:	tax
+lf66c:	tax
+lf66d:	tax
+lf66e:	tax
+lf66f:	tax
+lf670:	tax
+lf671:	tax
+lf672:	tax
+lf673:	tax
+lf674:	tax
+lf675:	tax
+lf676:	tax
+lf677:	tax
+lf678:	tax
+lf679:	tax
+lf67a:	tax
+lf67b:	tax
+lf67c:	tax
+lf67d:	tax
+lf67e:	tax
+lf67f:	tax
+lf680:	tax
+lf681:	tax
+lf682:	tax
+lf683:	tax
+lf684:	tax
+lf685:	tax
+lf686:	tax
+lf687:	tax
+lf688:	tax
+lf689:	tax
+lf68a:	tax
+lf68b:	tax
+lf68c:	tax
+lf68d:	tax
+lf68e:	tax
+lf68f:	tax
+lf690:	tax
+lf691:	tax
+lf692:	tax
+lf693:	tax
+lf694:	tax
+lf695:	tax
+lf696:	tax
+lf697:	tax
+lf698:	tax
+lf699:	tax
+lf69a:	tax
+lf69b:	tax
+lf69c:	tax
+lf69d:	tax
+lf69e:	tax
+lf69f:	tax
+lf6a0:	tax
+lf6a1:	tax
+lf6a2:	tax
+lf6a3:	tax
+lf6a4:	tax
+lf6a5:	tax
+lf6a6:	tax
+lf6a7:	tax
+lf6a8:	tax
+lf6a9:	tax
+lf6aa:	tax
+lf6ab:	tax
+lf6ac:	tax
+lf6ad:	tax
+lf6ae:	tax
+lf6af:	tax
+lf6b0:	tax
+lf6b1:	tax
+lf6b2:	tax
+lf6b3:	tax
+lf6b4:	tax
+lf6b5:	tax
+lf6b6:	tax
+lf6b7:	tax
+lf6b8:	tax
+lf6b9:	tax
+lf6ba:	tax
+lf6bb:	tax
+lf6bc:	tax
+lf6bd:	tax
+lf6be:	tax
+lf6bf:	tax
+lf6c0:	tax
+lf6c1:	tax
+lf6c2:	tax
+lf6c3:	tax
+lf6c4:	tax
+lf6c5:	tax
+lf6c6:	tax
+lf6c7:	tax
+lf6c8:	tax
+lf6c9:	tax
+lf6ca:	tax
+lf6cb:	tax
+lf6cc:	tax
+lf6cd:	tax
+lf6ce:	tax
+lf6cf:	tax
+lf6d0:	tax
+lf6d1:	tax
+lf6d2:	tax
+lf6d3:	tax
+lf6d4:	tax
+lf6d5:	tax
+lf6d6:	tax
+lf6d7:	tax
+lf6d8:	tax
+lf6d9:	tax
+lf6da:	tax
+lf6db:	tax
+lf6dc:	tax
+lf6dd:	tax
+lf6de:	tax
+lf6df:	tax
+lf6e0:	tax
+lf6e1:	tax
+lf6e2:	tax
+lf6e3:	tax
+lf6e4:	tax
+lf6e5:	tax
+lf6e6:	tax
+lf6e7:	tax
+lf6e8:	tax
+lf6e9:	tax
+lf6ea:	tax
+lf6eb:	tax
+lf6ec:	tax
+lf6ed:	tax
+lf6ee:	tax
+lf6ef:	tax
+lf6f0:	tax
+lf6f1:	tax
+lf6f2:	tax
+lf6f3:	tax
+lf6f4:	tax
+lf6f5:	tax
+lf6f6:	tax
+lf6f7:	tax
+lf6f8:	tax
+lf6f9:	tax
+lf6fa:	tax
+lf6fb:	tax
+lf6fc:	tax
+lf6fd:	tax
+lf6fe:	tax
+lf6ff:	tax
+lf700:	tax
+lf701:	tax
+lf702:	tax
+lf703:	tax
+lf704:	tax
+lf705:	tax
+lf706:	tax
+lf707:	tax
+lf708:	tax
+lf709:	tax
+lf70a:	tax
+lf70b:	tax
+lf70c:	tax
+lf70d:	tax
+lf70e:	tax
+lf70f:	tax
+lf710:	tax
+lf711:	tax
+lf712:	tax
+lf713:	tax
+lf714:	tax
+lf715:	tax
+lf716:	tax
+lf717:	tax
+lf718:	tax
+lf719:	tax
+lf71a:	tax
+lf71b:	tax
+lf71c:	tax
+lf71d:	tax
+lf71e:	tax
+lf71f:	tax
+lf720:	tax
+lf721:	tax
+lf722:	tax
+lf723:	tax
+lf724:	tax
+lf725:	tax
+lf726:	tax
+lf727:	tax
+lf728:	tax
+lf729:	tax
+lf72a:	tax
+lf72b:	tax
+lf72c:	tax
+lf72d:	tax
+lf72e:	tax
+lf72f:	tax
+lf730:	tax
+lf731:	tax
+lf732:	tax
+lf733:	tax
+lf734:	tax
+lf735:	tax
+lf736:	tax
+lf737:	tax
+lf738:	tax
+lf739:	tax
+lf73a:	tax
+lf73b:	tax
+lf73c:	tax
+lf73d:	tax
+lf73e:	tax
+lf73f:	tax
+lf740:	tax
+lf741:	tax
+lf742:	tax
+lf743:	tax
+lf744:	tax
+lf745:	tax
+lf746:	tax
+lf747:	tax
+lf748:	tax
+lf749:	tax
+lf74a:	tax
+lf74b:	tax
+lf74c:	tax
+lf74d:	tax
+lf74e:	tax
+lf74f:	tax
+lf750:	tax
+lf751:	tax
+lf752:	tax
+lf753:	tax
+lf754:	tax
+lf755:	tax
+lf756:	tax
+lf757:	tax
+lf758:	tax
+lf759:	tax
+lf75a:	tax
+lf75b:	tax
+lf75c:	tax
+lf75d:	tax
+lf75e:	tax
+lf75f:	tax
+lf760:	tax
+lf761:	tax
+lf762:	tax
+lf763:	tax
+lf764:	tax
+lf765:	tax
+lf766:	tax
+lf767:	tax
+lf768:	tax
+lf769:	tax
+lf76a:	tax
+lf76b:	tax
+lf76c:	tax
+lf76d:	tax
+lf76e:	tax
+lf76f:	tax
+lf770:	tax
+lf771:	tax
+lf772:	tax
+lf773:	tax
+lf774:	tax
+lf775:	tax
+lf776:	tax
+lf777:	tax
+lf778:	tax
+lf779:	tax
+lf77a:	tax
+lf77b:	tax
+lf77c:	tax
+lf77d:	tax
+lf77e:	tax
+lf77f:	tax
+lf780:	tax
+lf781:	tax
+lf782:	tax
+lf783:	tax
+lf784:	tax
+lf785:	tax
+lf786:	tax
+lf787:	tax
+lf788:	tax
+lf789:	tax
+lf78a:	tax
+lf78b:	tax
+lf78c:	tax
+lf78d:	tax
+lf78e:	tax
+lf78f:	tax
+lf790:	tax
+lf791:	tax
+lf792:	tax
+lf793:	tax
+lf794:	tax
+lf795:	tax
+lf796:	tax
+lf797:	tax
+lf798:	tax
+lf799:	tax
+lf79a:	tax
+lf79b:	tax
+lf79c:	tax
+lf79d:	tax
+lf79e:	tax
+lf79f:	tax
+lf7a0:	tax
+lf7a1:	tax
+lf7a2:	tax
+lf7a3:	tax
+lf7a4:	tax
+lf7a5:	tax
+lf7a6:	tax
+lf7a7:	tax
+lf7a8:	tax
+lf7a9:	tax
+lf7aa:	tax
+lf7ab:	tax
+lf7ac:	tax
+lf7ad:	tax
+lf7ae:	tax
+lf7af:	tax
+lf7b0:	tax
+lf7b1:	tax
+lf7b2:	tax
+lf7b3:	tax
+lf7b4:	tax
+lf7b5:	tax
+lf7b6:	tax
+lf7b7:	tax
+lf7b8:	tax
+lf7b9:	tax
+lf7ba:	tax
+lf7bb:	tax
+lf7bc:	tax
+lf7bd:	tax
+lf7be:	tax
+lf7bf:	tax
+lf7c0:	tax
+lf7c1:	tax
+lf7c2:	tax
+lf7c3:	tax
+lf7c4:	tax
+lf7c5:	tax
+lf7c6:	tax
+lf7c7:	tax
+lf7c8:	tax
+lf7c9:	tax
+lf7ca:	tax
+lf7cb:	tax
+lf7cc:	tax
+lf7cd:	tax
+lf7ce:	tax
+lf7cf:	tax
+lf7d0:	tax
+lf7d1:	tax
+lf7d2:	tax
+lf7d3:	tax
+lf7d4:	tax
+lf7d5:	tax
+lf7d6:	tax
+lf7d7:	tax
+lf7d8:	tax
+lf7d9:	tax
+lf7da:	tax
+lf7db:	tax
+lf7dc:	tax
+lf7dd:	tax
+lf7de:	tax
+lf7df:	tax
+lf7e0:	tax
+lf7e1:	tax
+lf7e2:	tax
+lf7e3:	tax
+lf7e4:	tax
+lf7e5:	tax
+lf7e6:	tax
+lf7e7:	tax
+lf7e8:	tax
+lf7e9:	tax
+lf7ea:	tax
+lf7eb:	tax
+lf7ec:	tax
+lf7ed:	tax
+lf7ee:	tax
+lf7ef:	tax
+lf7f0:	tax
+lf7f1:	tax
+lf7f2:	tax
+lf7f3:	tax
+lf7f4:	tax
+lf7f5:	tax
+lf7f6:	tax
+lf7f7:	tax
+lf7f8:	tax
+lf7f9:	tax
+lf7fa:	tax
+lf7fb:	tax
+lf7fc:	tax
+lf7fd:	tax
+lf7fe:	tax
+lf7ff:	tax
+lf800:	tax
+lf801:	tax
+lf802:	tax
+lf803:	tax
+lf804:	tax
+lf805:	tax
+lf806:	tax
+lf807:	tax
+lf808:	tax
+lf809:	tax
+lf80a:	tax
+lf80b:	tax
+lf80c:	tax
+lf80d:	tax
+lf80e:	tax
+lf80f:	tax
+lf810:	tax
+lf811:	tax
+lf812:	tax
+lf813:	tax
+lf814:	tax
+lf815:	tax
+lf816:	tax
+lf817:	tax
+lf818:	tax
+lf819:	tax
+lf81a:	tax
+lf81b:	tax
+lf81c:	tax
+lf81d:	tax
+lf81e:	tax
+lf81f:	tax
+lf820:	tax
+lf821:	tax
+lf822:	tax
+lf823:	tax
+lf824:	tax
+lf825:	tax
+lf826:	tax
+lf827:	tax
+lf828:	tax
+lf829:	tax
+lf82a:	tax
+lf82b:	tax
+lf82c:	tax
+lf82d:	tax
+lf82e:	tax
+lf82f:	tax
+lf830:	tax
+lf831:	tax
+lf832:	tax
+lf833:	tax
+lf834:	tax
+lf835:	tax
+lf836:	tax
+lf837:	tax
+lf838:	tax
+lf839:	tax
+lf83a:	tax
+lf83b:	tax
+lf83c:	tax
+lf83d:	tax
+lf83e:	tax
+lf83f:	tax
+lf840:	tax
+lf841:	tax
+lf842:	tax
+lf843:	tax
+lf844:	tax
+lf845:	tax
+lf846:	tax
+lf847:	tax
+lf848:	tax
+lf849:	tax
+lf84a:	tax
+lf84b:	tax
+lf84c:	tax
+lf84d:	tax
+lf84e:	tax
+lf84f:	tax
+lf850:	tax
+lf851:	tax
+lf852:	tax
+lf853:	tax
+lf854:	tax
+lf855:	tax
+lf856:	tax
+lf857:	tax
+lf858:	tax
+lf859:	tax
+lf85a:	tax
+lf85b:	tax
+lf85c:	tax
+lf85d:	tax
+lf85e:	tax
+lf85f:	tax
+lf860:	tax
+lf861:	tax
+lf862:	tax
+lf863:	tax
+lf864:	tax
+lf865:	tax
+lf866:	tax
+lf867:	tax
+lf868:	tax
+lf869:	tax
+lf86a:	tax
+lf86b:	tax
+lf86c:	tax
+lf86d:	tax
+lf86e:	tax
+lf86f:	tax
+lf870:	tax
+lf871:	tax
+lf872:	tax
+lf873:	tax
+lf874:	tax
+lf875:	tax
+lf876:	tax
+lf877:	tax
+lf878:	tax
+lf879:	tax
+lf87a:	tax
+lf87b:	tax
+lf87c:	tax
+lf87d:	tax
+lf87e:	tax
+lf87f:	tax
+lf880:	tax
+lf881:	tax
+lf882:	tax
+lf883:	tax
+lf884:	tax
+lf885:	tax
+lf886:	tax
+lf887:	tax
+lf888:	tax
+lf889:	tax
+lf88a:	tax
+lf88b:	tax
+lf88c:	tax
+lf88d:	tax
+lf88e:	tax
+lf88f:	tax
+lf890:	tax
+lf891:	tax
+lf892:	tax
+lf893:	tax
+lf894:	tax
+lf895:	tax
+lf896:	tax
+lf897:	tax
+lf898:	tax
+lf899:	tax
+lf89a:	tax
+lf89b:	tax
+lf89c:	tax
+lf89d:	tax
+lf89e:	tax
+lf89f:	tax
+lf8a0:	tax
+lf8a1:	tax
+lf8a2:	tax
+lf8a3:	tax
+lf8a4:	tax
+lf8a5:	tax
+lf8a6:	tax
+lf8a7:	tax
+lf8a8:	tax
+lf8a9:	tax
+lf8aa:	tax
+lf8ab:	tax
+lf8ac:	tax
+lf8ad:	tax
+lf8ae:	tax
+lf8af:	tax
+lf8b0:	tax
+lf8b1:	tax
+lf8b2:	tax
+lf8b3:	tax
+lf8b4:	tax
+lf8b5:	tax
+lf8b6:	tax
+lf8b7:	tax
+lf8b8:	tax
+lf8b9:	tax
+lf8ba:	tax
+lf8bb:	tax
+lf8bc:	tax
+lf8bd:	tax
+lf8be:	tax
+lf8bf:	tax
+lf8c0:	tax
+lf8c1:	tax
+lf8c2:	tax
+lf8c3:	tax
+lf8c4:	tax
+lf8c5:	tax
+lf8c6:	tax
+lf8c7:	tax
+lf8c8:	tax
+lf8c9:	tax
+lf8ca:	tax
+lf8cb:	tax
+lf8cc:	tax
+lf8cd:	tax
+lf8ce:	tax
+lf8cf:	tax
+lf8d0:	tax
+lf8d1:	tax
+lf8d2:	tax
+lf8d3:	tax
+lf8d4:	tax
+lf8d5:	tax
+lf8d6:	tax
+lf8d7:	tax
+lf8d8:	tax
+lf8d9:	tax
+lf8da:	tax
+lf8db:	tax
+lf8dc:	tax
+lf8dd:	tax
+lf8de:	tax
+lf8df:	tax
+lf8e0:	tax
+lf8e1:	tax
+lf8e2:	tax
+lf8e3:	tax
+lf8e4:	tax
+lf8e5:	tax
+lf8e6:	tax
+lf8e7:	tax
+lf8e8:	tax
+lf8e9:	tax
+lf8ea:	tax
+lf8eb:	tax
+lf8ec:	tax
+lf8ed:	tax
+lf8ee:	tax
+lf8ef:	tax
+lf8f0:	tax
+lf8f1:	tax
+lf8f2:	tax
+lf8f3:	tax
+lf8f4:	tax
+lf8f5:	tax
+lf8f6:	tax
+lf8f7:	tax
+lf8f8:	tax
+lf8f9:	tax
+lf8fa:	tax
+lf8fb:	tax
+lf8fc:	tax
+lf8fd:	tax
+lf8fe:	tax
+lf8ff:	tax
+lf900:	tax
+lf901:	tax
+lf902:	tax
+lf903:	tax
+lf904:	tax
+lf905:	tax
+lf906:	tax
+lf907:	tax
+lf908:	tax
+lf909:	tax
+lf90a:	tax
+lf90b:	tax
+lf90c:	tax
+lf90d:	tax
+lf90e:	tax
+lf90f:	tax
+lf910:	tax
+lf911:	tax
+lf912:	tax
+lf913:	tax
+lf914:	tax
+lf915:	tax
+lf916:	tax
+lf917:	tax
+lf918:	tax
+lf919:	tax
+lf91a:	tax
+lf91b:	tax
+lf91c:	tax
+lf91d:	tax
+lf91e:	tax
+lf91f:	tax
+lf920:	tax
+lf921:	tax
+lf922:	tax
+lf923:	tax
+lf924:	tax
+lf925:	tax
+lf926:	tax
+lf927:	tax
+lf928:	tax
+lf929:	tax
+lf92a:	tax
+lf92b:	tax
+lf92c:	tax
+lf92d:	tax
+lf92e:	tax
+lf92f:	tax
+lf930:	tax
+lf931:	tax
+lf932:	tax
+lf933:	tax
+lf934:	tax
+lf935:	tax
+lf936:	tax
+lf937:	tax
+lf938:	tax
+lf939:	tax
+lf93a:	tax
+lf93b:	tax
+lf93c:	tax
+lf93d:	tax
+lf93e:	tax
+lf93f:	tax
+lf940:	brk
+lf941:	rol
+lf942:	brk
+lf943:	brk
+lf944:	and #$00
+lf946:	brk
+lf947:	rol
+lf948:	brk
+lf949:	brk
+lf94a:	rol
+lf94b:	brk
+lf94c:	brk
+lf94d:	rol
+lf94e:	brk
+lf94f:	brk
+lf950:	php
+lf951:	brk
+lf952:	!byte $02
+lf953:	rol
+lf954:	brk
+lf955:	!byte $02
+lf956:	lda #$00
+lf958:	!byte $02
+lf959:	adc #$08
+lf95b:	!byte $02
+lf95c:	adc #$59
+lf95e:	!byte $02
+lf95f:	adc #$48
+lf961:	!byte $02
+lf962:	tay
+lf963:	brk
+lf964:	!byte $02
+lf965:	plp
+lf966:	brk
+lf967:	brk
+lf968:	rol
+lf969:	brk
+lf96a:	brk
+lf96b:	ldx #$00
+lf96d:	brk
+lf96e:	ldx #$80
+lf970:	!byte $02
+lf971:	!byte $80
+lf972:	!byte $80
+lf973:	!byte $02
+lf974:	!byte $80
+lf975:	ldy #$0a
+lf977:	brk
+lf978:	bmi lf984
+lf97a:	brk
+lf97b:	bmi lf97d
+lf97d:	brk
+lf97e:	brk
+lf97f:	brk
+lf980:	brk
+lf981:	asl
+lf982:	!byte $80
+lf983:	brk
+lf984:	asl $80
+lf986:	brk
+lf987:	asl
+lf988:	!byte $80
+lf989:	brk
+lf98a:	asl
+lf98b:	!byte $80
+lf98c:	brk
+lf98d:	asl
+lf98e:	!byte $80
+lf98f:	brk
+lf990:	!byte $02
+lf991:	brk
+lf992:	brk
+lf993:	asl
+lf994:	dey
+lf995:	brk
+lf996:	asl $a8
+lf998:	!byte $02
+lf999:	asl $98
+lf99b:	asl $56
+lf99d:	tya
+lf99e:	!byte $02
+lf99f:	asl $98,x
+lf9a1:	brk
+lf9a2:	!byte $02
+lf9a3:	tay
+lf9a4:	brk
+lf9a5:	!byte $02
+lf9a6:	dey
+lf9a7:	brk
+lf9a8:	asl
+lf9a9:	!byte $80
+lf9aa:	brk
+lf9ab:	php
+lf9ac:	ldy #$00
+lf9ae:	plp
+lf9af:	ldy #$00
+lf9b1:	jsr $0028
+lf9b4:	ldy #$28
+lf9b6:	brk
+lf9b7:	!byte $80
+lf9b8:	asl
+lf9b9:	!byte $02
+lf9ba:	brk
+lf9bb:	asl
+lf9bc:	brk
+lf9bd:	brk
+lf9be:	brk
+lf9bf:	brk
+lf9c0:	brk
+lf9c1:	brk
+lf9c2:	ora ($00,x)
+lf9c4:	brk
+lf9c5:	asl
+lf9c6:	brk
+lf9c7:	brk
+lf9c8:	asl
+lf9c9:	brk
+lf9ca:	asl
+lf9cb:	txa
+lf9cc:	brk
+lf9cd:	ora #$a8
+lf9cf:	brk
+lf9d0:	asl
+lf9d1:	tay
+lf9d2:	asl
+lf9d3:	txa
+lf9d4:	tay
+lf9d5:	asl
+lf9d6:	txa
+lf9d7:	ldy #$0a
+lf9d9:	tax
+lf9da:	ldy #$09
+lf9dc:	tax
+lf9dd:	!byte $80
+lf9de:	ora #$85
+lf9e0:	tay
+lf9e1:	brk
+lf9e2:	sta $aa
+lf9e4:	brk
+lf9e5:	ora ($0a,x)
+lf9e7:	brk
+lf9e8:	ora ($00,x)
+lf9ea:	brk
+lf9eb:	ora ($00,x)
+lf9ed:	brk
+lf9ee:	asl
+lf9ef:	brk
+lf9f0:	brk
+lf9f1:	asl
+lf9f2:	brk
+lf9f3:	brk
+lf9f4:	ora ($00,x)
+lf9f6:	brk
+lf9f7:	ora ($00,x)
+lf9f9:	brk
+lf9fa:	ora ($00,x)
+lf9fc:	brk
+lf9fd:	brk
+lf9fe:	brk
+lf9ff:	brk
+lfa00:	brk
+lfa01:	ora ($00,x)
+lfa03:	brk
+lfa04:	ora ($00,x)
+lfa06:	brk
+lfa07:	ora ($00,x)
+lfa09:	brk
+lfa0a:	asl
+lfa0b:	brk
+lfa0c:	brk
+lfa0d:	asl
+lfa0e:	brk
+lfa0f:	brk
+lfa10:	ora ($00,x)
+lfa12:	brk
+lfa13:	ora ($02,x)
+lfa15:	brk
+lfa16:	ora ($0a,x)
+lfa18:	ora #$85
+lfa1a:	tax
+lfa1b:	ora #$85
+lfa1d:	tay
+lfa1e:	ora #$aa
+lfa20:	!byte $80
+lfa21:	asl
+lfa22:	tax
+lfa23:	!byte $80
+lfa24:	asl
+lfa25:	txa
+lfa26:	ldy #$0a
+lfa28:	txa
+lfa29:	ldy #$00
+lfa2b:	ora #$a8
+lfa2d:	brk
+lfa2e:	php
+lfa2f:	tay
+lfa30:	brk
+lfa31:	asl
+lfa32:	txa
+lfa33:	brk
+lfa34:	brk
+lfa35:	asl
+lfa36:	brk
+lfa37:	brk
+lfa38:	asl
+lfa39:	brk
+lfa3a:	brk
+lfa3b:	!byte $02
+lfa3c:	brk
+lfa3d:	brk
+lfa3e:	brk
+lfa3f:	brk
+lfa40:	brk
+lfa41:	ldy #$00
+lfa43:	brk
+lfa44:	plp
+lfa45:	brk
+lfa46:	ldy #$2a
+lfa48:	brk
+lfa49:	ldy #$ad
+lfa4b:	!byte $80
+lfa4c:	ldy #$2d
+lfa4e:	!byte $80
+lfa4f:	ldy #$20
+lfa51:	brk
+lfa52:	jsr $00aa
+lfa55:	plp
+lfa56:	tay
+lfa57:	brk
+lfa58:	php
+lfa59:	tay
+lfa5a:	brk
+lfa5b:	php
+lfa5c:	tay
+lfa5d:	brk
+lfa5e:	php
+lfa5f:	tay
+lfa60:	brk
+lfa61:	php
+lfa62:	tay
+lfa63:	brk
+lfa64:	asl
+lfa65:	tay
+lfa66:	brk
+lfa67:	!byte $02
+lfa68:	tax
+lfa69:	!byte $80
+lfa6a:	asl
+lfa6b:	tax
+lfa6c:	!byte $80
+lfa6d:	asl
+lfa6e:	!byte $02
+lfa6f:	!byte $80
+lfa70:	php
+lfa71:	brk
+lfa72:	ldy #$28
+lfa74:	brk
+lfa75:	brk
+lfa76:	brk
+lfa77:	brk
+lfa78:	brk
+lfa79:	brk
+lfa7a:	brk
+lfa7b:	brk
+lfa7c:	brk
+lfa7d:	brk
+lfa7e:	brk
+lfa7f:	brk
+lfa80:	brk
+lfa81:	ldy #$00
+lfa83:	!byte $02
+lfa84:	!byte $80
+lfa85:	brk
+lfa86:	asl
+lfa87:	!byte $80
+lfa88:	ldy #$2b
+lfa8a:	ldy #$a0
+lfa8c:	!byte $2b
+lfa8d:	!byte $80
+lfa8e:	ldy #$00
+lfa90:	!byte $80
+lfa91:	ldy #$0a
+lfa93:	ldy #$80
+lfa95:	!byte $02
+lfa96:	ldx #$80
+lfa98:	!byte $02
+lfa99:	ldx #$00
+lfa9b:	!byte $02
+lfa9c:	ldx #$00
+lfa9e:	!byte $02
+lfa9f:	ldx #$00
+lfaa1:	!byte $02
+lfaa2:	ldx #$00
+lfaa4:	!byte $02
+lfaa5:	tax
+lfaa6:	brk
+lfaa7:	!byte $02
+lfaa8:	tay
+lfaa9:	brk
+lfaaa:	!byte $02
+lfaab:	tax
+lfaac:	brk
+lfaad:	plp
+lfaae:	asl
+lfaaf:	brk
+lfab0:	jsr $0002
+lfab3:	ldy #$02
+lfab5:	!byte $80
+lfab6:	brk
+lfab7:	brk
+lfab8:	brk
+lfab9:	brk
+lfaba:	brk
+lfabb:	brk
+lfabc:	brk
+lfabd:	brk
+lfabe:	brk
+lfabf:	brk
+lfac0:	asl
+lfac1:	brk
+lfac2:	brk
+lfac3:	asl
+lfac4:	brk
+lfac5:	brk
+lfac6:	asl
+lfac7:	ldy #$08
+lfac9:	asl
+lfaca:	ldy #$08
+lfacc:	brk
+lfacd:	rol
+lface:	plp
+lfacf:	brk
+lfad0:	rol
+lfad1:	ldx #$00
+lfad3:	!byte $02
+lfad4:	ldy #$00
+lfad6:	!byte $02
+lfad7:	ldy #$22
+lfad9:	rol
+lfada:	ldy #$22
+lfadc:	rol
+lfadd:	ldy #$22
+lfadf:	rol
+lfae0:	!byte $80
+lfae1:	!byte $22
+lfae2:	rol
+lfae3:	!byte $80
+lfae4:	rol
+lfae5:	tax
+lfae6:	ldy #$0c
+lfae8:	tax
+lfae9:	ldy #$0c
+lfaeb:	tax
+lfaec:	tay
+lfaed:	!byte $22
+lfaee:	!byte $80
+lfaef:	plp
+lfaf0:	php
+lfaf1:	!byte $80
+lfaf2:	php
+lfaf3:	php
+lfaf4:	!byte $80
+lfaf5:	php
+lfaf6:	brk
+lfaf7:	brk
+lfaf8:	brk
+lfaf9:	brk
+lfafa:	brk
+lfafb:	brk
+lfafc:	brk
+lfafd:	brk
+lfafe:	brk
+lfaff:	brk
+lfb00:	php
+lfb01:	!byte $80
+lfb02:	php
+lfb03:	php
+lfb04:	!byte $80
+lfb05:	php
+lfb06:	plp
+lfb07:	!byte $80
+lfb08:	plp
+lfb09:	sec
+lfb0a:	rol
+lfb0b:	tay
+lfb0c:	sec
+lfb0d:	rol
+lfb0e:	tay
+lfb0f:	rol
+lfb10:	tax
+lfb11:	ldy #$2a
+lfb13:	tax
+lfb14:	!byte $80
+lfb15:	!byte $22
+lfb16:	rol
+lfb17:	!byte $80
+lfb18:	!byte $22
+lfb19:	rol
+lfb1a:	ldy #$22
+lfb1c:	rol
+lfb1d:	ldy #$00
+lfb1f:	!byte $02
+lfb20:	jsr $0200
+lfb23:	jsr $2a00
+lfb26:	plp
+lfb27:	brk
+lfb28:	rol
+lfb29:	plp
+lfb2a:	asl
+lfb2b:	ldy #$08
+lfb2d:	asl
+lfb2e:	ldy #$08
+lfb30:	asl
+lfb31:	brk
+lfb32:	brk
+lfb33:	asl
+lfb34:	brk
+lfb35:	brk
+lfb36:	brk
+lfb37:	brk
+lfb38:	brk
+lfb39:	brk
+lfb3a:	brk
+lfb3b:	brk
+lfb3c:	brk
+lfb3d:	brk
+lfb3e:	brk
+lfb3f:	brk
+lfb40:	brk
+lfb41:	brk
+lfb42:	brk
+lfb43:	brk
+lfb44:	brk
+lfb45:	brk
+lfb46:	bmi lfb57
+lfb48:	cpy #$30
+lfb4a:	ora $30c0
+lfb4d:	and $30f0,x
+lfb50:	sbc $30fc,x
+lfb53:	!byte $ff
+lfb54:	!byte $fc
+lfb55:	bmi lfb56
+lfb57:	brk
+lfb58:	bmi lfb59
+lfb5a:	!byte $fc
+lfb5b:	bmi lfb5c
+lfb5d:	beq lfb92
+lfb5f:	!byte $ff
+lfb60:	cpy #$3f
+lfb62:	!byte $ff
+lfb63:	brk
+lfb64:	!byte $3f
+lfb65:	!byte $ff
+lfb66:	brk
+lfb67:	!byte $3f
+lfb68:	!byte $ff
+lfb69:	!byte $fc
+lfb6a:	!byte $0f
+lfb6b:	!byte $ff
+lfb6c:	!byte $fc
+lfb6d:	!byte $03
+lfb6e:	!byte $ff
+lfb6f:	cpy $ff03
+lfb72:	brk
+lfb73:	!byte $03
+lfb74:	!byte $0f
+lfb75:	brk
+lfb76:	!byte $0f
+lfb77:	!byte $03
+lfb78:	brk
+lfb79:	!byte $3f
+lfb7a:	!byte $03
+lfb7b:	cpy #$3f
+lfb7d:	!byte $03
+lfb7e:	cpy #$00
+lfb80:	brk
+lfb81:	brk
+lfb82:	brk
+lfb83:	brk
+lfb84:	brk
+lfb85:	brk
+lfb86:	!byte $03
+lfb87:	cpx #$0c
+lfb89:	!byte $03
+lfb8a:	cpx #$0c
+lfb8c:	ora $0cec
+lfb8f:	and $0cff,x
+lfb92:	!byte $3f
+lfb93:	!byte $ff
+lfb94:	!byte $0c
+lfb95:	brk
+lfb96:	!byte $ff
+lfb97:	!byte $0c
+lfb98:	!byte $3f
+lfb99:	!byte $ff
+lfb9a:	!byte $0c
+lfb9b:	!byte $0f
+lfb9c:	!byte $ff
+lfb9d:	!byte $0c
+lfb9e:	!byte $03
+lfb9f:	!byte $ff
+lfba0:	cpy $ff00
+lfba3:	!byte $fc
+lfba4:	brk
+lfba5:	!byte $ff
+lfba6:	!byte $fc
+lfba7:	!byte $3f
+lfba8:	!byte $ff
+lfba9:	!byte $fc
+lfbaa:	!byte $3f
+lfbab:	!byte $ff
+lfbac:	beq lfbe1
+lfbae:	!byte $ff
+lfbaf:	cpy #$00
+lfbb1:	!byte $ff
+lfbb2:	cpy #$00
+lfbb4:	beq lfb76
+lfbb6:	brk
+lfbb7:	cpy #$f0
+lfbb9:	!byte $03
+lfbba:	cpy #$fc
+lfbbc:	!byte $03
+lfbbd:	cpy #$fc
+lfbbf:	brk
+lfbc0:	brk
+lfbc1:	brk
+lfbc2:	brk
+lfbc3:	bmi lfbc5
+lfbc5:	brk
+lfbc6:	!byte $3c
+lfbc7:	!byte $3f
+lfbc8:	beq lfc06
+lfbca:	bmi lfbcc
+lfbcc:	!byte $0f
+lfbcd:	bmi lfbcf
+lfbcf:	!byte $0f
+lfbd0:	!byte $fc
+lfbd1:	brk
+lfbd2:	!byte $0f
+lfbd3:	!byte $ff
+lfbd4:	brk
+lfbd5:	!byte $03
+lfbd6:	!byte $ff
+lfbd7:	cpy #$03
+lfbd9:	!byte $ff
+lfbda:	cpy #$03
+lfbdc:	!byte $ff
+lfbdd:	cpy #$03
+lfbdf:	!byte $ff
+lfbe0:	beq lfbf1
+lfbe2:	!byte $ff
+lfbe3:	beq lfbf4
+lfbe5:	!byte $ff
+lfbe6:	bvs lfc27
+lfbe8:	!byte $ff
+lfbe9:	bvs lfc2a
+lfbeb:	!byte $3f
+lfbec:	beq lfc21
+lfbee:	!byte $33
+lfbef:	beq lfc21
+lfbf1:	!byte $33
+lfbf2:	beq lfbf4
+lfbf4:	!byte $03
+lfbf5:	cpy #$00
+lfbf7:	!byte $03
+lfbf8:	cpy #$00
+lfbfa:	!byte $03
+lfbfb:	cpy #$00
+lfbfd:	brk
+lfbfe:	brk
+lfbff:	brk
+lfc00:	brk
+lfc01:	brk
+lfc02:	brk
+lfc03:	!byte $0f
+lfc04:	brk
+lfc05:	brk
+lfc06:	!byte $0f
+lfc07:	brk
+lfc08:	brk
+lfc09:	!byte $0f
+lfc0a:	brk
+lfc0b:	brk
+lfc0c:	!byte $3f
+lfc0d:	bmi lfc3f
+lfc0f:	!byte $3f
+lfc10:	!byte $33
+lfc11:	bmi lfc52
+lfc13:	!byte $f3
+lfc14:	beq lfc4d
+lfc16:	!byte $ff
+lfc17:	beq lfc50
+lfc19:	!byte $ff
+lfc1a:	cpy #$3f
+lfc1c:	!byte $ff
+lfc1d:	cpy #$3f
+lfc1f:	!byte $ff
+lfc20:	brk
+lfc21:	!byte $3f
+lfc22:	!byte $ff
+lfc23:	brk
+lfc24:	!byte $0f
+lfc25:	!byte $ff
+lfc26:	brk
+lfc27:	!byte $0f
+lfc28:	!byte $ff
+lfc29:	brk
+lfc2a:	!byte $03
+lfc2b:	!byte $ff
+lfc2c:	cpy #$00
+lfc2e:	!byte $ff
+lfc2f:	cpy #$00
+lfc31:	!byte $ff
+lfc32:	cpy #$00
+lfc34:	!byte $33
+lfc35:	beq lfc36
+lfc37:	bmi lfc29
+lfc39:	brk
+lfc3a:	beq lfc5c
+lfc3c:	brk
+lfc3d:	brk
+lfc3e:	brk
+lfc3f:	brk
+lfc40:	brk
+lfc41:	brk
+lfc42:	brk
+lfc43:	asl
+lfc44:	!byte $80
+lfc45:	tay
+lfc46:	asl
+lfc47:	!byte $80
+lfc48:	tay
+lfc49:	php
+lfc4a:	!byte $02
+lfc4b:	!byte $80
+lfc4c:	php
+lfc4d:	!byte $02
+lfc4e:	!byte $80
+lfc4f:	php
+lfc50:	rol
+lfc51:	ldy #$08
+lfc53:	!byte $2b
+lfc54:	cpx #$2a
+lfc56:	!byte $ab
+lfc57:	inx
+lfc58:	rol
+lfc59:	tax
+lfc5a:	tay
+lfc5b:	rol
+lfc5c:	ldx #$a8
+lfc5e:	rol
+lfc5f:	ldy #$00
+lfc61:	rol
+lfc62:	ldy #$00
+lfc64:	rol
+lfc65:	tax
+lfc66:	tay
+lfc67:	rol
+lfc68:	tax
+lfc69:	tay
+lfc6a:	rol
+lfc6b:	tax
+lfc6c:	ldy #$2a
+lfc6e:	tax
+lfc6f:	ldy #$08
+lfc71:	jsr $0880
+lfc74:	jsr $0880
+lfc77:	jsr $0a80
+lfc7a:	plp
+lfc7b:	ldy #$0a
+lfc7d:	plp
+lfc7e:	ldy #$00
+lfc80:	brk
+lfc81:	brk
+lfc82:	brk
+lfc83:	rol
+lfc84:	!byte $02
+lfc85:	ldy #$2a
+lfc87:	!byte $02
+lfc88:	ldy #$02
+lfc8a:	!byte $80
+lfc8b:	jsr $8002
+lfc8e:	jsr $a80a
+lfc91:	jsr le80b
+lfc94:	jsr lea2b
+lfc97:	tay
+lfc98:	rol
+lfc99:	tax
+lfc9a:	tay
+lfc9b:	rol
+lfc9c:	txa
+lfc9d:	tay
+lfc9e:	brk
+lfc9f:	asl
+lfca0:	tay
+lfca1:	brk
+lfca2:	asl
+lfca3:	tay
+lfca4:	rol
+lfca5:	tax
+lfca6:	tay
+lfca7:	rol
+lfca8:	tax
+lfca9:	tay
+lfcaa:	asl
+lfcab:	tax
+lfcac:	tay
+lfcad:	asl
+lfcae:	tax
+lfcaf:	tay
+lfcb0:	!byte $02
+lfcb1:	php
+lfcb2:	jsr $0802
+lfcb5:	jsr $0802
+lfcb8:	jsr $280a
+lfcbb:	ldy #$0a
+lfcbd:	plp
+lfcbe:	ldy #$00
+lfcc0:	brk
+lfcc1:	plp
+lfcc2:	brk
+lfcc3:	brk
+lfcc4:	tax
+lfcc5:	brk
+lfcc6:	brk
+lfcc7:	tax
+lfcc8:	tay
+lfcc9:	rol
+lfcca:	tax
+lfccb:	tay
+lfccc:	rol
+lfccd:	tax
+lfcce:	php
+lfccf:	jsr $08aa
+lfcd2:	brk
+lfcd3:	tax
+lfcd4:	php
+lfcd5:	brk
+lfcd6:	tax
+lfcd7:	!byte $80
+lfcd8:	rol
+lfcd9:	tax
+lfcda:	!byte $80
+lfcdb:	rol
+lfcdc:	tax
+lfcdd:	ldy #$20
+lfcdf:	ldx #$a0
+lfce1:	jsr $a0a2
+lfce4:	jsr le0a2
+lfce7:	brk
+lfce8:	ldx #$e0
+lfcea:	brk
+lfceb:	ldx #$e8
+lfced:	rol
+lfcee:	ldx #$e8
+lfcf0:	rol
+lfcf1:	ldx #$a8
+lfcf3:	jsr $88a2
+lfcf6:	jsr $88a2
+lfcf9:	brk
+lfcfa:	!byte $22
+lfcfb:	php
+lfcfc:	brk
+lfcfd:	!byte $22
+lfcfe:	php
+lfcff:	brk
+lfd00:	jsr $0088
+lfd03:	jsr $0088
+lfd06:	!byte $22
+lfd07:	txa
+lfd08:	php
+lfd09:	!byte $22
+lfd0a:	txa
+lfd0b:	php
+lfd0c:	rol
+lfd0d:	txa
+lfd0e:	tay
+lfd0f:	!byte $2b
+lfd10:	txa
+lfd11:	tay
+lfd12:	!byte $2b
+lfd13:	txa
+lfd14:	brk
+lfd15:	!byte $0b
+lfd16:	txa
+lfd17:	brk
+lfd18:	!byte $0b
+lfd19:	txa
+lfd1a:	php
+lfd1b:	asl
+lfd1c:	txa
+lfd1d:	php
+lfd1e:	asl
+lfd1f:	tax
+lfd20:	tay
+lfd21:	asl
+lfd22:	tax
+lfd23:	tay
+lfd24:	asl
+lfd25:	tax
+lfd26:	brk
+lfd27:	jsr $00aa
+lfd2a:	jsr $08aa
+lfd2d:	jsr $08aa
+lfd30:	jsr $a8aa
+lfd33:	rol
+lfd34:	tax
+lfd35:	tay
+lfd36:	rol
+lfd37:	tax
+lfd38:	brk
+lfd39:	brk
+lfd3a:	tax
+lfd3b:	brk
+lfd3c:	brk
+lfd3d:	plp
+lfd3e:	brk
+lfd3f:	brk
+lfd40:	brk
+lfd41:	brk
+lfd42:	brk
+lfd43:	!byte $0c
+lfd44:	brk
+lfd45:	bmi lfd4a
+lfd47:	brk
+lfd48:	cpy #$00
+lfd4a:	!byte $c3
+lfd4b:	brk
+lfd4c:	brk
+lfd4d:	eor ($00,x)
+lfd4f:	ora ($55,x)
+lfd51:	rti
+lfd52:	!byte $33
+lfd53:	adc #$cc
+lfd55:	!byte $3f
+lfd56:	adc #$fc
+lfd58:	!byte $3f
+lfd59:	tax
+lfd5a:	!byte $fc
+lfd5b:	!byte $3f
+lfd5c:	sta $fc,x
+lfd5e:	!byte $3f
+lfd5f:	sta $fc,x
+lfd61:	!byte $3f
+lfd62:	sta $fc,x
+lfd64:	!byte $0f
+lfd65:	sta $f0,x
+lfd67:	!byte $03
+lfd68:	tax
+lfd69:	cpy #$03
+lfd6b:	tax
+lfd6c:	cpy #$00
+lfd6e:	tax
+lfd6f:	brk
+lfd70:	brk
+lfd71:	tax
+lfd72:	brk
+lfd73:	!byte $02
+lfd74:	tax
+lfd75:	!byte $80
+lfd76:	!byte $02
+lfd77:	tax
+lfd78:	!byte $80
+lfd79:	rol
+lfd7a:	brk
+lfd7b:	tay
+lfd7c:	rol
+lfd7d:	brk
+lfd7e:	tay
+lfd7f:	brk
+lfd80:	brk
+lfd81:	brk
+lfd82:	brk
+lfd83:	brk
+lfd84:	brk
+lfd85:	brk
+lfd86:	brk
+lfd87:	brk
+lfd88:	brk
+lfd89:	brk
+lfd8a:	brk
+lfd8b:	brk
+lfd8c:	brk
+lfd8d:	brk
+lfd8e:	brk
+lfd8f:	brk
+lfd90:	brk
+lfd91:	brk
+lfd92:	brk
+lfd93:	bmi lfd95
+lfd95:	brk
+lfd96:	!byte $3c
+lfd97:	brk
+lfd98:	!byte $03
+lfd99:	!byte $3c
+lfd9a:	brk
+lfd9b:	!byte $03
+lfd9c:	!byte $ff
+lfd9d:	cpy #$00
+lfd9f:	!byte $ff
+lfda0:	brk
+lfda1:	brk
+lfda2:	!byte $ff
+lfda3:	brk
+lfda4:	brk
+lfda5:	!byte $ff
+lfda6:	cpy #$03
+lfda8:	!byte $ff
+lfda9:	cpy #$0f
+lfdab:	!byte $ff
+lfdac:	cpy #$0f
+lfdae:	!byte $ff
+lfdaf:	beq lfdb4
+lfdb1:	!byte $0f
+lfdb2:	cpy #$00
+lfdb4:	brk
+lfdb5:	cpy #$00
+lfdb7:	brk
+lfdb8:	brk
+lfdb9:	brk
+lfdba:	brk
+lfdbb:	brk
+lfdbc:	brk
+lfdbd:	brk
+lfdbe:	brk
+lfdbf:	brk
+lfdc0:	brk
+lfdc1:	brk
+lfdc2:	brk
+lfdc3:	brk
+lfdc4:	plp
+lfdc5:	brk
+lfdc6:	jsr $2028
+lfdc9:	brk
+lfdca:	rol
+lfdcb:	brk
+lfdcc:	!byte $0c
+lfdcd:	tax
+lfdce:	!byte $80
+lfdcf:	brk
+lfdd0:	tax
+lfdd1:	tay
+lfdd2:	!byte $02
+lfdd3:	ldx $2aa8,y
+lfdd6:	!byte $bf
+lfdd7:	ldy #$2a
+lfdd9:	ldx $2f80,y
+lfddc:	inc $2b80,x
+lfddf:	!byte $ff
+lfde0:	sty $ff0b
+lfde3:	!byte $80
+lfde4:	asl
+lfde5:	!byte $ff
+lfde6:	ldy #$02
+lfde8:	!byte $ff
+lfde9:	cpx #$02
+lfdeb:	!byte $fa
+lfdec:	inx
+lfded:	!byte $32
+lfdee:	nop
+lfdef:	clv
+lfdf0:	!byte $02
+lfdf1:	ldy #$a8
+lfdf3:	asl
+lfdf4:	!byte $80
+lfdf5:	plp
+lfdf6:	asl
+lfdf7:	brk
+lfdf8:	php
+lfdf9:	plp
+lfdfa:	php
+lfdfb:	brk
+lfdfc:	jsr $0000
+lfdff:	brk
+lfe00:	brk
+lfe01:	brk
+lfe02:	brk
+lfe03:	brk
+lfe04:	brk
+lfe05:	brk
+lfe06:	brk
+lfe07:	brk
+lfe08:	brk
+lfe09:	!byte $0c
+lfe0a:	jsr $0300
+lfe0d:	brk
+lfe0e:	cpy #$00
+lfe10:	!byte $03
+lfe11:	brk
+lfe12:	brk
+lfe13:	!byte $0c
+lfe14:	!byte $0c
+lfe15:	!byte $02
+lfe16:	brk
+lfe17:	bmi lfe19
+lfe19:	!byte $80
+lfe1a:	cpy #$00
+lfe1c:	brk
+lfe1d:	brk
+lfe1e:	brk
+lfe1f:	php
+lfe20:	brk
+lfe21:	plp
+lfe22:	brk
+lfe23:	bmi lfe25
+lfe25:	jsr $0000
+lfe28:	!byte $c2
+lfe29:	brk
+lfe2a:	brk
+lfe2b:	brk
+lfe2c:	ldy #$08
+lfe2e:	brk
+lfe2f:	!byte $0c
+lfe30:	brk
+lfe31:	bmi lfe33
+lfe33:	brk
+lfe34:	!byte $c2
+lfe35:	brk
+lfe36:	!byte $03
+lfe37:	brk
+lfe38:	brk
+lfe39:	brk
+lfe3a:	brk
+lfe3b:	brk
+lfe3c:	brk
+lfe3d:	brk
+lfe3e:	brk
+lfe3f:	brk
+lfe40:	brk
+lfe41:	php
+lfe42:	brk
+lfe43:	brk
+lfe44:	plp
+lfe45:	brk
+lfe46:	brk
+lfe47:	bit $0000
+lfe4a:	bit $0000
+lfe4d:	bit $0000
+lfe50:	bit $0000
+lfe53:	plp
+lfe54:	brk
+lfe55:	brk
+lfe56:	tax
+lfe57:	bvc lfe59
+lfe59:	tax
+lfe5a:	rti
+lfe5b:	brk
+lfe5c:	tay
+lfe5d:	brk
+lfe5e:	brk
+lfe5f:	tay
+lfe60:	brk
+lfe61:	brk
+lfe62:	ldy #$00
+lfe64:	brk
+lfe65:	ldy #$00
+lfe67:	brk
+lfe68:	ldy #$00
+lfe6a:	brk
+lfe6b:	ldy #$00
+lfe6d:	brk
+lfe6e:	tay
+lfe6f:	brk
+lfe70:	brk
+lfe71:	tay
+lfe72:	brk
+lfe73:	brk
+lfe74:	tay
+lfe75:	brk
+lfe76:	brk
+lfe77:	tax
+lfe78:	brk
+lfe79:	!byte $02
+lfe7a:	tax
+lfe7b:	!byte $80
+lfe7c:	!byte $02
+lfe7d:	tax
+lfe7e:	!byte $80
+lfe7f:	brk
+lfe80:	brk
+lfe81:	jsr $0000
+lfe84:	plp
+lfe85:	brk
+lfe86:	brk
+lfe87:	sec
+lfe88:	brk
+lfe89:	brk
+lfe8a:	sec
+lfe8b:	brk
+lfe8c:	brk
+lfe8d:	sec
+lfe8e:	brk
+lfe8f:	brk
+lfe90:	sec
+lfe91:	brk
+lfe92:	brk
+lfe93:	plp
+lfe94:	brk
+lfe95:	ora $aa
+lfe97:	brk
+lfe98:	ora ($aa,x)
+lfe9a:	brk
+lfe9b:	brk
+lfe9c:	rol
+lfe9d:	brk
+lfe9e:	brk
+lfe9f:	rol
+lfea0:	brk
+lfea1:	brk
+lfea2:	asl
+lfea3:	brk
+lfea4:	brk
+lfea5:	asl
+lfea6:	brk
+lfea7:	brk
+lfea8:	asl
+lfea9:	brk
+lfeaa:	brk
+lfeab:	asl
+lfeac:	brk
+lfead:	brk
+lfeae:	rol
+lfeaf:	brk
+lfeb0:	brk
+lfeb1:	rol
+lfeb2:	brk
+lfeb3:	brk
+lfeb4:	rol
+lfeb5:	brk
+lfeb6:	brk
+lfeb7:	tax
+lfeb8:	brk
+lfeb9:	!byte $02
+lfeba:	tax
+lfebb:	!byte $80
+lfebc:	!byte $02
+lfebd:	tax
+lfebe:	!byte $80
+lfebf:	brk
+lfec0:	brk
+lfec1:	brk
+lfec2:	brk
+lfec3:	brk
+lfec4:	brk
+lfec5:	brk
+lfec6:	brk
+lfec7:	brk
+lfec8:	brk
+lfec9:	brk
+lfeca:	brk
+lfecb:	brk
+lfecc:	jsr $0000
+lfecf:	jsr $0000
+lfed2:	rol
+lfed3:	tay
+lfed4:	brk
+lfed5:	rol
+lfed6:	tax
+lfed7:	!byte $80
+lfed8:	rol
+lfed9:	tax
+lfeda:	ldy #$2a
+lfedc:	tax
+lfedd:	tay
+lfede:	rol
+lfedf:	rol
+lfee0:	tay
+lfee1:	plp
+lfee2:	asl
+lfee3:	sed
+lfee4:	plp
+lfee5:	!byte $02
+lfee6:	bmi lff08
+lfee8:	!byte $02
+lfee9:	brk
+lfeea:	jsr $0002
+lfeed:	jsr $0001
+lfef0:	brk
+lfef1:	ora ($00,x)
+lfef3:	brk
+lfef4:	ora ($00,x)
+lfef6:	brk
+lfef7:	brk
+lfef8:	brk
+lfef9:	brk
+lfefa:	brk
+lfefb:	brk
+lfefc:	brk
+lfefd:	brk
+lfefe:	brk
+lfeff:	brk
+lff00:	brk
+lff01:	brk
+lff02:	brk
+lff03:	brk
+lff04:	brk
+lff05:	brk
+lff06:	brk
+lff07:	brk
+lff08:	brk
+lff09:	brk
+lff0a:	rti
+lff0b:	brk
+lff0c:	brk
+lff0d:	rti
+lff0e:	brk
+lff0f:	brk
+lff10:	rti
+lff11:	php
+lff12:	brk
+lff13:	!byte $80
+lff14:	php
+lff15:	brk
+lff16:	!byte $80
+lff17:	php
+lff18:	!byte $0c
+lff19:	!byte $80
+lff1a:	plp
+lff1b:	!byte $2f
+lff1c:	ldy #$28
+lff1e:	rol
+lff1f:	tay
+lff20:	tay
+lff21:	rol
+lff22:	tax
+lff23:	tay
+lff24:	asl
+lff25:	tax
+lff26:	tay
+lff27:	!byte $02
+lff28:	tax
+lff29:	tay
+lff2a:	brk
+lff2b:	rol
+lff2c:	tay
+lff2d:	brk
+lff2e:	brk
+lff2f:	php
+lff30:	brk
+lff31:	brk
+lff32:	php
+lff33:	brk
+lff34:	brk
+lff35:	brk
+lff36:	brk
+lff37:	brk
+lff38:	brk
+lff39:	brk
+lff3a:	brk
+lff3b:	brk
+lff3c:	brk
+lff3d:	brk
+lff3e:	brk
+lff3f:	brk
+lff40:	brk
+lff41:	brk
+lff42:	brk
+lff43:	brk
+lff44:	brk
+lff45:	brk
+lff46:	brk
+lff47:	brk
+lff48:	brk
+lff49:	brk
+lff4a:	brk
+lff4b:	brk
+lff4c:	brk
+lff4d:	brk
+lff4e:	brk
+lff4f:	brk
+lff50:	brk
+lff51:	brk
+lff52:	brk
+lff53:	brk
+lff54:	brk
+lff55:	brk
+lff56:	brk
+lff57:	brk
+lff58:	brk
+lff59:	brk
+lff5a:	brk
+lff5b:	brk
+lff5c:	!byte $ff
+lff5d:	brk
+lff5e:	brk
+lff5f:	!byte $ff
+lff60:	brk
+lff61:	brk
+lff62:	brk
+lff63:	brk
+lff64:	brk
+lff65:	brk
+lff66:	brk
+lff67:	brk
+lff68:	brk
+lff69:	brk
+lff6a:	brk
+lff6b:	brk
+lff6c:	brk
+lff6d:	brk
+lff6e:	brk
+lff6f:	brk
+lff70:	brk
+lff71:	brk
+lff72:	brk
+lff73:	brk
+lff74:	brk
+lff75:	brk
+lff76:	brk
+lff77:	brk
+lff78:	brk
+lff79:	brk
+lff7a:	brk
+lff7b:	brk
+lff7c:	brk
+lff7d:	brk
+lff7e:	brk
+lff7f:	brk
+lff80:	brk
+lff81:	brk
+lff82:	brk
+lff83:	brk
+lff84:	brk
+lff85:	brk
+lff86:	brk
+lff87:	brk
+lff88:	brk
+lff89:	brk
+lff8a:	brk
+lff8b:	brk
+lff8c:	brk
+lff8d:	brk
+lff8e:	brk
+lff8f:	brk
+lff90:	brk
+lff91:	brk
+lff92:	brk
+lff93:	brk
+lff94:	brk
+lff95:	brk
+lff96:	brk
+lff97:	brk
+lff98:	brk
+lff99:	!byte $03
+lff9a:	brk
+lff9b:	brk
+lff9c:	!byte $03
+lff9d:	brk
+lff9e:	brk
+lff9f:	!byte $03
+lffa0:	brk
+lffa1:	brk
+lffa2:	!byte $03
+lffa3:	brk
+lffa4:	brk
+lffa5:	!byte $03
+lffa6:	brk
+lffa7:	brk
+lffa8:	!byte $03
+lffa9:	brk
+lffaa:	brk
+lffab:	!byte $03
+lffac:	brk
+lffad:	brk
+lffae:	!byte $03
+lffaf:	brk
+lffb0:	brk
+lffb1:	brk
+lffb2:	brk
+lffb3:	brk
+lffb4:	brk
+lffb5:	brk
+lffb6:	brk
+lffb7:	brk
+lffb8:	brk
+lffb9:	brk
+lffba:	brk
+lffbb:	brk
+lffbc:	brk
+lffbd:	brk
+lffbe:	brk
+lffbf:	brk
+lffc0:	tax
+lffc1:	tax
+lffc2:	tax
+lffc3:	tax
+lffc4:	tax
+lffc5:	tax
+lffc6:	tax
+lffc7:	tax
+lffc8:	tax
+lffc9:	tax
+lffca:	tax
+lffcb:	tax
+lffcc:	tax
+lffcd:	tax
+lffce:	tax
+lffcf:	tax
+lffd0:	tax
+lffd1:	tax
+lffd2:	tax
+lffd3:	tax
+lffd4:	tax
+lffd5:	tax
+lffd6:	tax
+lffd7:	tax
+lffd8:	tax
+lffd9:	tax
+lffda:	tax
+lffdb:	tax
+lffdc:	tax
+lffdd:	tax
+lffde:	tax
+lffdf:	tax
+lffe0:	tax
+lffe1:	tax
+lffe2:	tax
+lffe3:	tax
+lffe4:	tax
+lffe5:	tax
+lffe6:	tax
+lffe7:	tax
+lffe8:	tax
+lffe9:	tax
+lffea:	tax
+lffeb:	tax
+lffec:	tax
+lffed:	tax
+lffee:	tax
+lffef:	tax
+lfff0:	tax
+lfff1:	tax
+lfff2:	tax
+lfff3:	tax
+lfff4:	tax
+lfff5:	tax
+lfff6:	tax
+lfff7:	tax
+lfff8:	tax
+lfff9:	tax
+lfffa:	brk
+lfffb:	cpx #$00
+lfffd:	cpx #$29
+lffff:	sbc $00
