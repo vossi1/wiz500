@@ -109,17 +109,19 @@ ICR		= $D	; Interrupt control register
 CRA		= $E	; Control register A
 CRB		= $F	; Control register B
 ; ************************************** P500 ADDRESSES *******************************************
-!addr CodeBank          = $00       ; code bank register
-!addr IndirectBank      = $01       ; indirect bank register
-!addr CharROMbase       = $c000     ; Character ROM
-!addr ColorRAMbase      = $d400     ; Color RAM
-!addr VICbase           = $d800     ; VIC
-!addr SIDbase           = $da00     ; SID
-!addr CIAbase           = $dc00     ; CIA
-!addr TPI1base          = $de00     ; TPI1
-!addr TPI2base          = $df00     ; TPI2
-!addr HW_IRQ            = $fffe     ; System IRQ Vector
-!addr HW_NMI            = $fffa     ; System NMI Vector
+!addr CodeBank          = $00		; code bank register
+!addr IndirectBank      = $01		; indirect bank register
+!addr ScreenRAMbase	= $0400		; screen matrix
+!addr SpritePointer	= $07f8		; sprite data pointer
+!addr CharROMbase       = $c000		; Character ROM
+!addr ColorRAMbase      = $d400		; Color RAM
+!addr VICbase           = $d800		; VIC
+!addr SIDbase           = $da00		; SID
+!addr CIAbase           = $dc00		; CIA
+!addr TPI1base          = $de00		; TPI1
+!addr TPI2base          = $df00		; TPI2
+!addr HW_IRQ            = $fffe		; System IRQ Vector
+!addr HW_NMI            = $fffa		; System NMI Vector
 ; *************************************** C64 ADDRESSES *******************************************
 !addr CPUPort64         = $01		; 6510 CPU port
 !addr VIC64		= $d000		; VIC
@@ -129,7 +131,15 @@ CRB		= $F	; Control register B
 ; ************************************** USER ADDRESSES *******************************************
 
 ; ***************************************** ZERO PAGE *********************************************
-TIMER			= $13		; game timer - inc with every irq / CIA timer b
+ptr1			= $09		; 16bit pointer
+ptr2			= $0b		; 16bit pointer
+temp1			= $0d
+temp2			= $0e
+temp3			= $0f
+timer			= $13		; game timer - inc with every irq / CIA timer b
+color			= $14
+state			= $4c
+sprite_data		= $4d		; 8 bytes sprite data 
 ; ***************************************** VARIABLES *********************************************
 ; ************************************** P500 ZERO PAGE *******************************************
 !addr ColorRAM0         = $e6
@@ -165,21 +175,21 @@ TIMER			= $13		; game timer - inc with every irq / CIA timer b
 !zone code
 !initmem FILL
 *= $e000
-start:	sei			; disable interrupts
+start:	sei				; disable interrupts
 	cld
-	ldx #$ff		; init stack
+	ldx #$ff			; init stack
 	txs
-	ldx #$2e		; init vic regs
+	ldx #$2e			; init vic regs
 inviclp:lda vicregs,x
 	sta VIC64+MOBX,x
 	dex
 	bpl inviclp
-	ldx #$18		; init sid regs
+	ldx #$18			; init sid regs
 insidlp:lda sidregs,x
-	sta $d400,x
+	sta SID64,x
 	dex
 	bpl insidlp
-	ldx #$00		; clear RAM
+	ldx #$00			; clear RAM
 	txa
 clramlp:sta $02,x
 	sta $0200,x
@@ -187,30 +197,30 @@ clramlp:sta $02,x
 	inx
 	bne clramlp
 	lda #$1f
-	sta CIA64+ICR		; clear all irq
+	sta CIA64+ICR			; clear all irq
 	lda #$82
-	sta CIA64+ICR		; set irq timer b
+	sta CIA64+ICR			; set irq timer b
 	lda #$01
-	sta CIA64+CRB		; timer b phi2, cont, start
+	sta CIA64+CRB			; timer b phi2, cont, start
 	lda #$38
-	sta CIA64+TBLO		; timer b = 56
+	sta CIA64+TBLO			; timer b = 56
 	lda #$00
 	sta CIA64+TBHI
-	cli			; enable irq
-le043:  jsr le474
+	cli				; enable irq
+le043:  jsr InitStartScreen
 	jsr le2f5
 le049:  jsr le310
 le04c:  jsr le21e
 	jsr le36b
 	lda #$1f
-	sta SID64+MODVOL	; full volume, filter low pass
+	sta SID64+MODVOL		; full volume, filter low pass
 	ldx #$01
 	lda $29
 	bpl le05f
 	ldx #$02
 le05f:  txa
 	jsr led31
-le063:  lda TIMER
+le063:  lda timer
 	bne le063
 	jsr le1a9
 	lda VIC64+MOBMOB
@@ -239,7 +249,7 @@ le092:  jsr le754
 	jsr lecab
 	jsr leaef
 	jsr lea17
-	jsr ledc3
+	jsr GameCycle
 	lda $1e
 	cmp #$ff
 	beq le0be
@@ -252,9 +262,9 @@ le0be:  dec $28
 	bne le04c
 	jmp le3da
 le0c5:  ldx #$ff
-	stx CIA64+DDRA		; port a output
+	stx CIA64+DDRA			; port a output
 	inx
-	stx CIA64+DDRB		; port b input
+	stx CIA64+DDRB			; port b input
 	ldy #$00
 	ldx #$fe
 	jsr le120
@@ -265,9 +275,9 @@ le0da:  rts
 ; -------------------------------------------------------------------------------------------------
 ; $
 le0db:  ldx #$ff
-	stx CIA64+DDRA		; port a output
+	stx CIA64+DDRA			; port a output
 	inx
-	stx CIA64+DDRB		; port b input
+	stx CIA64+DDRB			; port b input
 	lda #$1f
 	ldx #$df
 	jsr le120
@@ -339,116 +349,120 @@ le166:  tya
 le16d:  stx $46
 	rts
 ; -------------------------------------------------------------------------------------------------
-; $
-le170:  lda TIMER
-	bne le170
+; $e170 Game Cycle
+GameUpdate:
+	lda timer
+	bne GameUpdate
 	tya
 	pha
 	txa
 	pha
-	jsr ledc3
+	jsr GameCycle
 	pla
 	tax
 	pla
 	tay
-le17f:  lda TIMER
-	bne le17f
+waitcyc:lda timer
+	bne waitcyc
 	dex
-	bne le170
+	bne GameUpdate
 	rts
 ; -------------------------------------------------------------------------------------------------
-; $
-le187:  ldx #$00
-le189:  lda $14
-	sta $d800,x
-	sta $d900,x
-	sta $da00,x
-	sta $dae8,x
-	lda #$00
-	sta $0400,x
-	sta $0500,x
-	sta $0600,x
-	sta $06e8,x
+; $e187 Clears screen with color
+ClearScreen:  
+	ldx #$00
+clscrlp:lda color			; color
+	sta ColorRAM64,x
+	sta ColorRAM64+$100,x
+	sta ColorRAM64+$200,x
+	sta ColorRAM64+$2e8,x
+	lda #$00			; space
+	sta ScreenRAMbase,x
+	sta ScreenRAMbase+$100,x
+	sta ScreenRAMbase+$200,x
+	sta ScreenRAMbase+$2e8,x
 	inx
-	bne le189
+	bne clscrlp
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $
 le1a9:  ldx #$08
-le1ab:  lda $4c,x
-	sta $07f7,x
+le1ab:  lda sprite_data-1,x
+	sta SpritePointer-1,x
 	dex
 	bne le1ab
 	ldx #$08
-le1b5:  lda $4c,x
-	cmp $07f7,x
+le1b5:  lda sprite_data-1,x
+	cmp SpritePointer-1,x
 	bne le1a9
 	dex
 	bne le1b5
 	rts
 ; -------------------------------------------------------------------------------------------------
-; $
-le1c0:  stx $09
-	sty $0a
-le1c4:  ldy #$00
-	sty $0e
-	lda ($09),y
-	sta $0b
+; $e1c0 Copies data from xy to address in first two bytes till $ff
+;   $fe = new target address
+DataCopyXY:				; copies from .x, .y
+	stx ptr1
+	sty ptr1+1
+
+datnewt:ldy #0				; set pointer1 to new target
+	sty temp2
+	lda (ptr1),y
+	sta ptr2
 	iny
-	lda ($09),y
-	sta $0c
-le1d1:  iny
-	lda ($09),y
+	lda (ptr1),y
+	sta ptr2+1
+
+datcplp:iny
+	lda (ptr1),y			; load data byte
 	cmp #$ff
-	beq le219
+	beq datcpx			; $ff = end
 	cmp #$fe
-	beq le1f6
+	beq dattarg			; $fe = new target address
 	cmp #$fd
-	beq le206
-	sty $0d
-	ldy $0e
-	sta ($0b),y
-	inc $0e
-	ldy $0d
-	lda $4c
-	beq le1d1
-	ldx #$0a
-	jsr le170
-	jmp le1d1
-; -------------------------------------------------------------------------------------------------
-; $
-le1f6:  iny
+	beq datline
+	sty temp1
+	ldy temp2
+	sta (ptr2),y
+	inc temp2
+	ldy temp1
+	lda state
+	beq datcplp			; next if state = 0
+	ldx #10
+	jsr GameUpdate			; 10 game updates
+	jmp datcplp
+; $e1f6	byte $fe = new target address
+dattarg:iny
 	clc
 	tya
-	adc $09
-	sta $09
-	lda $0a
+	adc ptr1			; add counter .y to pointer 1
+	sta ptr1
+	lda ptr1+1
 	adc #$00
-	sta $0a
-	jmp le1c4
-; -------------------------------------------------------------------------------------------------
-; $
-le206:  clc
-	lda $0b
-	adc #$28
-	sta $0b
-	lda $0c
+	sta ptr1+1
+	jmp datnewt			; copy to new target address
+; $e206	byte $fd = new line (target +40)
+datline:clc
+	lda ptr2
+	adc #40				; pointer2 +40 = new line
+	sta ptr2
+	lda ptr2+1
 	adc #$00
-	sta $0c
+	sta ptr2+1
 	lda #$00
-	sta $0e
-	beq le1d1
-le219:  lda #$00
-	sta $4c
+	sta temp2
+	beq datcplp			; always next
+datcpx:	lda #$00
+	sta state
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $
-le21e:  lda #$03
-	sta $14
-	jsr le187
+le21e:  lda #CYAN
+	sta color
+	jsr ClearScreen
 	ldx #<Table03
 	ldy #>Table03
-	jsr le1c0
+	jsr DataCopyXY
 	lda $3b
 	and #$03
 	asl
@@ -498,8 +512,8 @@ le25d:  inc $12
 	jsr le72e
 	ldx #$d0
 	ldy #$07
-	stx $09
-	sty $0a
+	stx ptr1
+	sty ptr1+1
 	ldx #$03
 	jsr le440
 	rts
@@ -621,8 +635,8 @@ Table06	= *-1
 ; -------------------------------------------------------------------------------------------------
 ; 
 le36b:  lda #$e6
-	sta $4d
-	sta $07f8
+	sta sprite_data
+	sta SpritePointer
 	lda #$03
 	sta $2e
 	lda #$01
@@ -656,13 +670,13 @@ le3af:  lda #$00
 	sta VIC64+MOBENA
 	ldx #<Table02
 	ldy #>Table02
-	jsr le1c0
+	jsr DataCopyXY
 	lda #$07
 	jsr led31
 	lda #$30
 	jsr le429
 	ldx #$00
-	jsr le170
+	jsr GameUpdate
 	jmp le049
 
 Table02:
@@ -684,18 +698,18 @@ le3e7:  lda $02
 	sta $07
 	ldx #$d0
 	ldy #$07
-	stx $09
-	sty $0a
+	stx ptr1
+	sty ptr1+1
 	ldx #$03
 	jsr le440
 le400:  lda #$00
 	sta SID64+MODVOL
-	inc $4c
+	inc state
 	ldx #<Table01
 	ldy #>Table01
-	jsr le1c0
+	jsr DataCopyXY
 	ldx #$50
-	jsr le170
+	jsr GameUpdate
 	jmp le043
 
 Table01:!byte $24, $05, $11, $00, $0b, $00, $17, $00
@@ -712,15 +726,15 @@ le429:  clc
 	cld
 	ldx #$c4
 	ldy #$07
-	stx $09
-	sty $0a
+	stx ptr1
+	sty ptr1+1
 	ldx #$00
 le440:  ldy #$05
 le442:  lda $02,x
 	and #$0f
 	clc
 	adc #$01
-	sta ($09),y
+	sta (ptr1),y
 	dey
 	lda $02,x
 	lsr
@@ -729,7 +743,7 @@ le442:  lda $02,x
 	lsr
 	clc
 	adc #$01
-	sta ($09),y
+	sta (ptr1),y
 	inx
 	dey
 	bpl le442
@@ -746,18 +760,19 @@ le442:  lda $02,x
 	jsr led31
 le473:  rts
 ; -------------------------------------------------------------------------------------------------
-; $
-le474:  lda #$00
-	sta VIC64+MOBENA
-	lda #$06
-	sta $14
-	jsr le187
-	lda #$01
-	sta VIC64+BGRCOL
+; $e474
+InitStartScreen:
+	lda #$00
+	sta VIC64+MOBENA		; disable all sprites
+	lda #BLUE
+	sta color
+	jsr ClearScreen			; clear screen with blue chars
+	lda #WHITE
+	sta VIC64+BGRCOL		; set bbg+ext white
 	sta VIC64+EXTCOL
 	ldy #>Table04
 	ldx #<Table04
-	jsr le1c0
+	jsr DataCopyXY
 	ldx #$04
 le491:  txa
 	asl
@@ -768,7 +783,7 @@ le491:  txa
 	lda Table10,x
 	sta VIC64+MOBY+2,y
 	lda Table11,x
-	sta $07f9,x
+	sta SpritePointer+1,x
 	lda SpriteColors,x
 	sta VIC64+MOBCOL+1,x
 	dex
@@ -777,9 +792,9 @@ le491:  txa
 	sta VIC64+MOBMSB
 	lda #$3e
 	sta VIC64+MOBENA
-le4ba:  lda TIMER
+le4ba:  lda timer
 	bne le4ba
-le4be:  lda TIMER
+le4be:  lda timer
 	bne le4be
 	inc $2b
 	lda $2b
@@ -801,7 +816,7 @@ le4cc:  tya
 	beq le505
 	tya
 	tax
-	inc $07f9,x
+	inc SpritePointer+1,x
 	bne le505
 le4ef:  dec VIC64+MOBX+2,x
 	lda VIC64+MOBX+2,x
@@ -812,7 +827,7 @@ le4ef:  dec VIC64+MOBX+2,x
 	beq le505
 	tya
 	tax
-	dec $07f9,x
+	dec SpritePointer+1,x
 le505:  dey
 	bpl le4cc
 le508:  jsr le0c5
@@ -838,7 +853,7 @@ Interrupt:
 	lda CIA64+ICR		; load irq-reg
 	and #$02
 	beq irqx		; skip if not timer b
-	inc TIMER		; inc timer
+	inc timer		; inc timer
 irqx:	pla
 	rti
 ; -------------------------------------------------------------------------------------------------
@@ -871,7 +886,7 @@ le541:  jsr le0db
 	bne le567
 	ldx $2e
 	lda Table13,x
-le567:  sta $4d
+le567:  sta sprite_data
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $e56a
@@ -881,7 +896,7 @@ Table13:
 ; $e56f
 le56f:  ldx $30
 	lda #$00
-	sta $09
+	sta ptr1
 	jsr le65d
 	lda $31
 	sta $41
@@ -908,11 +923,11 @@ le5a0:  beq le5b6
 	beq le5b6
 	cmp #$00
 	bcc le5c3
-	inc $09
+	inc ptr1
 	sec
 	sbc #$03
 	jmp le5a0
-le5b6:  ldx $09
+le5b6:  ldx ptr1
 	lda Table14+13,x
 	ldx $30
 	sta VIC64+MOBY,x
@@ -933,11 +948,11 @@ le5d5:  beq le5eb
 	beq le5eb
 	cmp #$00
 	bcc le5c3
-	inc $09
+	inc ptr1
 	sec
 	sbc #$03
 	jmp le5d5
-le5eb:  ldx $09
+le5eb:  ldx ptr1
 	cpx #$0a
 	bne le5f9
 	lda $31
@@ -1329,7 +1344,7 @@ le8fa:  ldx $10
 	bne le90b
 	beq le90f
 le90b:  ldx $10
-	sta $4d,x
+	sta sprite_data,x
 le90f:  jmp le86d
 le912:  lda $35
 	clc
@@ -1447,8 +1462,8 @@ le9e5:  pla
 	lda Table07,y
 	sta $56,x
 	lda Table09,y
-	sta $4d,x
-	sta $07f8,x
+	sta sprite_data,x
+	sta SpritePointer,x
 	lda SpriteColors,y
 	sta VIC64+MOBCOL,x
 	lda bits,x
@@ -1482,29 +1497,29 @@ lea21:  cmp #$ff
 	cmp #$81
 	bne lea3c
 	lda #$f6
-	sta $4d
+	sta sprite_data
 	lda #$06
 	jsr led31
 	jmp lea1d
 lea3c:  cmp #$90
 	bne lea47
 	lda #$f7
-	sta $4d
+	sta sprite_data
 	jmp lea1d
 lea47:  cmp #$a0
 	bne lea52
 	lda #$f6
-	sta $4d
+	sta sprite_data
 	jmp lea1d
 lea52:  cmp #$b0
 	bne lea5d
 	lda #$f7
-	sta $4d
+	sta sprite_data
 	jmp lea1d
 lea5d:  cmp #$c0
 	bne lea68
 	lda #$f8
-	sta $4d
+	sta sprite_data
 	jmp lea1d
 lea68:  cmp #$d0
 	bne lea74
@@ -1516,7 +1531,7 @@ lea77:  lda $1e,x
 	cmp #$81
 	bne leaa6
 	lda #$f6
-	sta $4d,x
+	sta sprite_data,x
 	cpx #$06
 	beq lea9e
 	lda $56,x
@@ -1538,12 +1553,12 @@ lea9e:  lda #$05
 leaa6:  cmp #$90
 	bne leab1
 	lda #$f7
-	sta $4d,x
+	sta sprite_data,x
 	jmp lea1d
 leab1:  cmp #$a0
 	bne leabc
 	lda #$f8
-	sta $4d,x
+	sta sprite_data,x
 	jmp lea1d
 leabc:  cmp #$b0
 	bne leace
@@ -1585,15 +1600,15 @@ leb01:  inx
 	lda $1e,x
 	bmi leb01
 	lda VIC64
-	sta $09
+	sta ptr1
 	lda #$00
-	sta $0a
+	sta ptr1+1
 	lda #$01
 	and VIC64+MOBMSB
 	beq leb1c
-	inc $0a
+	inc ptr1+1
 leb1c:  lda VIC64+MOBY
-	sta $0b
+	sta ptr2
 	jsr leb78
 	bcc leb01
 	lda #$80
@@ -1604,15 +1619,15 @@ leb1c:  lda VIC64+MOBY
 leb2b:  lda $25
 	bmi leb6f
 	lda #$00
-	sta $0a
+	sta ptr1+1
 	lda #$80
 	and VIC64+MOBMSB
 	beq leb3c
-	inc $0a
+	inc ptr1+1
 leb3c:  lda VIC64+MOBX+14
-	sta $09
+	sta ptr1
 	lda VIC64+MOBY+14
-	sta $0b
+	sta ptr2
 	lda $55
 	and #$80
 	beq leb6f
@@ -1647,17 +1662,17 @@ leb82:  txa
 	asl
 	tay
 	lda VIC64,y
-	sta $0c
+	sta ptr2+1
 	lda VIC64+MOBY,y
-	sta $0e
+	sta temp2
 	lda #$00
-	sta $0d
+	sta temp1
 	lda VIC64+MOBMSB
 leb96:  and bits,x
 	beq leb9d
-	inc $0d
+	inc temp1
 leb9d:  lda #$0e
-	sta $0f
+	sta temp3
 	lda #$0e
 	sta $10
 	lda #$0b
@@ -1674,39 +1689,39 @@ lebb9:  rts
 ; -------------------------------------------------------------------------------------------------
 ; $
 lebba:  sec
-	lda $0e
-	sbc $0f
-	cmp $0b
+	lda temp2
+	sbc temp3
+	cmp ptr2
 	bcs lebfc
 	clc
-	lda $0e
+	lda temp2
 	adc $10
-	cmp $0b
+	cmp ptr2
 	bcc lebfc
 	sec
-	lda $0c
+	lda ptr2+1
 	sbc $11
-	sta $0c
-	lda $0d
+	sta ptr2+1
+	lda temp1
 	sbc #$00
-	sta $0d
+	sta temp1
 	sec
-	lda $0c
-	sbc $09
-	lda $0d
-	sbc $0a
+	lda ptr2+1
+	sbc ptr1
+	lda temp1
+	sbc ptr1+1
 	bcs lebfc
-	lda $0c
+	lda ptr2+1
 	adc $12
-	sta $0c
-	lda $0d
+	sta ptr2+1
+	lda temp1
 	adc #$00
-	sta $0d
+	sta temp1
 	sec
-	lda $0c
-	sbc $09
-	lda $0d
-	sbc $0a
+	lda ptr2+1
+	sbc ptr1
+	lda temp1
+	sbc ptr1+1
 	bcc lebfc
 	rts
 ; -------------------------------------------------------------------------------------------------
@@ -1966,7 +1981,8 @@ ledb4:  cmp #$08
 ledc2:  rts
 ; -------------------------------------------------------------------------------------------------
 ; $
-ledc3:  lda $74
+GameCycle:
+	lda $74
 	beq ledd6
 	asl
 	asl
