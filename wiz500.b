@@ -207,7 +207,7 @@ clramlp:sta $02,x
 	lda #$00
 	sta CIA64+TBHI
 	cli				; enable irq
-le043:  jsr InitStartScreen
+le043:  jsr InitStartScreenData
 	jsr le2f5
 le049:  jsr le310
 le04c:  jsr le21e
@@ -460,8 +460,8 @@ datcpx:	lda #$00
 le21e:  lda #CYAN
 	sta color
 	jsr ClearScreen
-	ldx #<Table03
-	ldy #>Table03
+	ldx #<GameScreenData
+	ldy #>GameScreenData
 	jsr DataCopyXY
 	lda $3b
 	and #$03
@@ -761,7 +761,7 @@ le442:  lda $02,x
 le473:  rts
 ; -------------------------------------------------------------------------------------------------
 ; $e474
-InitStartScreen:
+InitStartScreenData:
 	lda #$00
 	sta VIC64+MOBENA		; disable all sprites
 	lda #BLUE
@@ -770,8 +770,8 @@ InitStartScreen:
 	lda #WHITE
 	sta VIC64+BGRCOL		; set bbg+ext white
 	sta VIC64+EXTCOL
-	ldy #>Table04
-	ldx #<Table04
+	ldy #>StartScreenData
+	ldx #<StartScreenData
 	jsr DataCopyXY
 	ldx #$04
 le491:  txa
@@ -2193,61 +2193,65 @@ Tablei4:
 	!byte $01, $01, $01
 ; $f32c
 	!byte $01
+SC	= >ScreenRAMbase
+ADR	= $fe
+LIN	= $fd
+END	= $ff
 ; $f32d
-Table03:
-	!byte $00, $04, $2a, $fd, $2a, $fd, $2a, $fd
-	!byte $2a, $fd, $2a, $fd, $2a, $fd, $fd, $fd
-	!byte $fd, $2a, $fd, $2a, $fd, $2a, $fd, $2a
-	!byte $fd, $2a, $fd, $2a, $fd, $2a, $fd, $2a
-	!byte $fd, $2a, $fd, $2a, $fd, $2a, $fd, $2c
+GameScreenData:
+	!byte $00, SC , $2a, LIN, $2a, LIN, $2a, LIN
+	!byte $2a, LIN, $2a, LIN, $2a, LIN, LIN, LIN
+	!byte LIN, $2a, LIN, $2a, LIN, $2a, LIN, $2a
+	!byte LIN, $2a, LIN, $2a, LIN, $2a, LIN, $2a
+	!byte LIN, $2a, LIN, $2a, LIN, $2a, LIN, $2c
 	!byte $2b, $2b, $2b, $2b, $2b, $2b, $2b, $2b
 	!byte $2b, $2b, $2b, $2b, $2b, $2b, $2b, $2b
 	!byte $2b, $2b, $2b, $2b, $2b, $2b, $2b, $2b
 	!byte $2b, $2b, $2b, $2b, $2b, $2b, $2b, $2b
-	!byte $2b, $2b, $2b, $2b, $2b, $2b, $fe, $27
-	!byte $04, $2a, $fd, $2a, $fd, $2a, $fd, $2a
-	!byte $fd, $2a, $fd, $2a, $fd, $fd, $fd, $fd
-	!byte $2a, $fd, $2a, $fd, $2a, $fd, $2a, $fd
-	!byte $2a, $fd, $2a, $fd, $2a, $fd, $2a, $fd
-	!byte $2a, $fd, $2a, $fd, $2a, $fd, $2a, $fe
+	!byte $2b, $2b, $2b, $2b, $2b, $2b, ADR, $27
+	!byte SC , $2a, LIN, $2a, LIN, $2a, LIN, $2a
+	!byte LIN, $2a, LIN, $2a, LIN, LIN, LIN, LIN
+	!byte $2a, LIN, $2a, LIN, $2a, LIN, $2a, LIN
+	!byte $2a, LIN, $2a, LIN, $2a, LIN, $2a, LIN
+	!byte $2a, LIN, $2a, LIN, $2a, LIN, $2a, ADR
 	!byte $72, $07, $1c, $0d, $19, $1b, $0f, $00
 	!byte $00, $00, $00, $12, $13, $26, $1c, $0d
-	!byte $19, $1b, $0f, $fe, $8a, $07, $1a, $16
-	!byte $0b, $22, $0f, $1b, $ff
+	!byte $19, $1b, $0f, ADR, $8a,SC+3, $1a, $16
+	!byte $0b, $22, $0f, $1b, END
 ; $f3c2
-Table04:
+StartScreenData:
 	!byte $52, $04, $1a, $1e, $1c, $12, $00, $24
-	!byte $10, $02, $25, $00, $19, $1b, $fe, $a2
-	!byte $04, $0c, $1e, $1d, $1d, $19, $18, $00
+	!byte $10, $02, $25, $00, $19, $1b, ADR, $a2
+	!byte SC , $0c, $1e, $1d, $1d, $19, $18, $00
 	!byte $19, $18, $00, $14, $19, $22, $1c, $1d
-	!byte $13, $0d, $15, $fe, $f2, $04, $1d, $19
-	!byte $00, $1c, $1d, $0b, $1b, $1d, $28, $fe
-	!byte $6a, $05, $24, $0b, $25, $26, $10, $13
-	!byte $1b, $0f, $fe, $ba, $05, $24, $16, $25
-	!byte $26, $16, $0f, $10, $1d, $fe, $0a, $06
+	!byte $13, $0d, $15, ADR, $f2, SC , $1d, $19
+	!byte $00, $1c, $1d, $0b, $1b, $1d, $28, ADR
+	!byte $6a,SC+1, $24, $0b, $25, $26, $10, $13
+	!byte $1b, $0f, ADR, $ba,SC+1, $24, $16, $25
+	!byte $26, $16, $0f, $10, $1d, ADR, $0a,SC+2
 	!byte $24, $27, $25, $26, $1b, $13, $11, $12
-	!byte $1d, $fe, $5a, $06, $24, $1a, $25, $26
-	!byte $1e, $1a, $fe, $aa, $06, $24, $28, $25
-	!byte $26, $0e, $19, $20, $18, $fe, $69, $04
+	!byte $1d, ADR, $5a,SC+2, $24, $1a, $25, $26
+	!byte $1e, $1a, ADR, $aa,SC+2, $24, $28, $25
+	!byte $26, $0e, $19, $20, $18, ADR, $69, SC
 	!byte $26, $00, $1c, $0d, $19, $1b, $0f, $00
-	!byte $26, $fe, $e7, $04, $02, $01, $01, $00
-	!byte $1a, $1d, $1c, $28, $fe, $5f, $05, $03
-	!byte $01, $01, $00, $1a, $1d, $1c, $28, $fe
-	!byte $d7, $05, $04, $01, $01, $00, $1a, $1d
-	!byte $1c, $28, $fe, $4f, $06, $05, $01, $01
-	!byte $00, $1a, $1d, $1c, $28, $fe, $c3, $06
+	!byte $26, ADR, $e7, SC , $02, $01, $01, $00
+	!byte $1a, $1d, $1c, $28, ADR, $5f,SC+1, $03
+	!byte $01, $01, $00, $1a, $1d, $1c, $28, ADR
+	!byte $d7, $05, SC , $01, $01, $00, $1a, $1d
+	!byte $1c, $28, ADR, $4f,SC+2, $05, $01, $01
+	!byte $00, $1a, $1d, $1c, $28, ADR, $c3,SC+2
 	!byte $17, $22, $1c, $1d, $0f, $1b, $22, $00
-	!byte $1a, $1d, $1c, $28, $fe, $37, $07, $0f
+	!byte $1a, $1d, $1c, $28, ADR, $37,SC+3, $0f
 	!byte $21, $1d, $1b, $0b, $00, $0c, $19, $18
-	!byte $1e, $1c, $fe, $61, $07, $10, $19, $1b
+	!byte $1e, $1c, ADR, $61,SC+3, $10, $19, $1b
 	!byte $00, $03, $01, $01, $01, $01, $00, $1a
-	!byte $1d, $1c, $28, $fe, $78, $07, $02, $0a
+	!byte $1d, $1c, $28, ADR, $78,SC+3, $02, $0a
 	!byte $09, $03, $00, $0c, $22, $00, $0d, $19
 	!byte $17, $17, $19, $0e, $19, $1b, $0f, $00
-	!byte $16, $1d, $0e, $fe, $a0, $07, $02, $0a
+	!byte $16, $1d, $0e, ADR, $a0,SC+3, $02, $0a
 	!byte $09, $02, $00, $0c, $22, $00, $0c, $0b
 	!byte $16, $16, $22, $23, $17, $13, $0e, $20
-	!byte $0b, $22, $ff
+	!byte $0b, $22, END
 ; $f4bd
 ; ***************************************** ZONE DATA3 ********************************************
 ; $f940 sprites?
