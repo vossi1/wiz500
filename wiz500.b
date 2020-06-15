@@ -20,26 +20,31 @@
 ; ******************************************* INFO ************************************************
 ; ******************************************* FONT ************************************************
 ; ***************************************** CONSTANTS *********************************************
-FILL                    = $aa       ; fills free memory areas with $aa
-NOPCODE                 = $ea       ; nop instruction for fill
-GAMEBANK                = $00       ; Game code bank
-SYSTEMBANK              = $0f       ; systembank
+FILL		= $aa       ; fills free memory areas with $aa
+NOPCODE		= $ea       ; nop instruction for fill
+GAMEBANK	= $00       ; Game code bank
+SYSTEMBANK	= $0f       ; systembank
 ; color codes
-BLACK                   = $00
-WHITE                   = $01
-RED                     = $02
-GREEN                   = $05
-BLUE                    = $06
-YELLOW                  = $07
-ORANGE                  = $08
-BROWN                   = $09
-LIGHTRED                = $0a
-LIGHTBLUE               = $0e
-GRAY3                   = $0f
-MCM                     = $08       ; bit#3 for multicolor character
+BLACK		= $00
+WHITE		= $01
+RED		= $02
+CYAN		= $03
+MAGENTA		= $04
+GREEN		= $05
+BLUE		= $06
+YELLOW		= $07
+ORANGE		= $08
+BROWN		= $09
+LIGHTRED	= $0a
+GRAY1		= $0b
+GRAY2		= $0c
+LIGHTGREEN	= $0d
+LIGHTBLUE	= $0e
+GRAY3		= $0f
+MCM		= $08       ; bit#3 for multicolor character
 ; game
 ; ************************************** P500 REGISTER ********************************************
-;vic
+; vic
 MOBX		= $00
 MOBY		= $01
 MOBMSB		= $10
@@ -64,7 +69,7 @@ BGRCO3		= $24
 MOBMC0		= $25
 MOBMC1		= $26
 MOBCOL		= $27
-;sid
+; sid
 V1LO		= $00
 V1HI		= $01
 V1CTRL		= $04
@@ -87,22 +92,22 @@ MODVOL		= $18
 RANDOM		= $1b
 ENV3		= $1c
 ; cia
-PRA	= $0	; Data reg A
-PRB	= $1	; Data reg B
-DDRA	= $2	; Direction reg a
-DDRB	= $3	; Direction reg b
-TALO	= $4	; Timer A low  byte
-TAHI	= $5	; Timer A high byte
-TBLO	= $6	; Timer B low  byte
-TBHI	= $7	; Timer B high byte
-TOD10	= $8	; 10ths of seconds
-TODSEC	= $9	; Seconds
-TODMIN	= $A	; Minutes
-TODHR	= $B	; Hours
-SDR	= $C	; Serial data register
-ICR	= $D	; Interrupt control register
-CRA	= $E	; Control register A
-CRB	= $F	; Control register B
+PRA		= $0	; Data reg A
+PRB		= $1	; Data reg B
+DDRA		= $2	; Direction reg a
+DDRB		= $3	; Direction reg b
+TALO		= $4	; Timer A low  byte
+TAHI		= $5	; Timer A high byte
+TBLO		= $6	; Timer B low  byte
+TBHI		= $7	; Timer B high byte
+TOD10		= $8	; 10ths of seconds
+TODSEC		= $9	; Seconds
+TODMIN		= $A	; Minutes
+TODHR		= $B	; Hours
+SDR		= $C	; Serial data register
+ICR		= $D	; Interrupt control register
+CRA		= $E	; Control register A
+CRB		= $F	; Control register B
 ; ************************************** P500 ADDRESSES *******************************************
 !addr CodeBank          = $00       ; code bank register
 !addr IndirectBank      = $01       ; indirect bank register
@@ -124,6 +129,7 @@ CRB	= $F	; Control register B
 ; ************************************** USER ADDRESSES *******************************************
 
 ; ***************************************** ZERO PAGE *********************************************
+TIMER			= $13		; game timer - inc with every irq / CIA timer b
 ; ***************************************** VARIABLES *********************************************
 ; ************************************** P500 ZERO PAGE *******************************************
 !addr ColorRAM0         = $e6
@@ -181,30 +187,30 @@ clramlp:sta $02,x
 	inx
 	bne clramlp
 	lda #$1f
-	sta CIA64+ICR
+	sta CIA64+ICR		; clear all irq
 	lda #$82
-	sta CIA64+ICR
+	sta CIA64+ICR		; set irq timer b
 	lda #$01
-	sta CIA64+CRB
+	sta CIA64+CRB		; timer b phi2, cont, start
 	lda #$38
-	sta CIA64+TBLO
+	sta CIA64+TBLO		; timer b = 56
 	lda #$00
 	sta CIA64+TBHI
-	cli
+	cli			; enable irq
 le043:  jsr le474
 	jsr le2f5
 le049:  jsr le310
 le04c:  jsr le21e
 	jsr le36b
 	lda #$1f
-	sta SID64+MODVOL
+	sta SID64+MODVOL	; full volume, filter low pass
 	ldx #$01
 	lda $29
 	bpl le05f
 	ldx #$02
 le05f:  txa
 	jsr led31
-le063:  lda $13
+le063:  lda TIMER
 	bne le063
 	jsr le1a9
 	lda VIC64+MOBMOB
@@ -246,9 +252,9 @@ le0be:  dec $28
 	bne le04c
 	jmp le3da
 le0c5:  ldx #$ff
-	stx CIA64+DDRA
+	stx CIA64+DDRA		; port a output
 	inx
-	stx CIA64+DDRB
+	stx CIA64+DDRB		; port b input
 	ldy #$00
 	ldx #$fe
 	jsr le120
@@ -259,9 +265,9 @@ le0da:  rts
 ; -------------------------------------------------------------------------------------------------
 ; $
 le0db:  ldx #$ff
-	stx CIA64+DDRA
+	stx CIA64+DDRA		; port a output
 	inx
-	stx CIA64+DDRB
+	stx CIA64+DDRB		; port b input
 	lda #$1f
 	ldx #$df
 	jsr le120
@@ -334,7 +340,7 @@ le16d:  stx $46
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $
-le170:  lda $13
+le170:  lda TIMER
 	bne le170
 	tya
 	pha
@@ -345,7 +351,7 @@ le170:  lda $13
 	tax
 	pla
 	tay
-le17f:  lda $13
+le17f:  lda TIMER
 	bne le17f
 	dex
 	bne le170
@@ -763,7 +769,7 @@ le491:  txa
 	sta VIC64+MOBY+2,y
 	lda Table11,x
 	sta $07f9,x
-	lda Table08,x
+	lda SpriteColors,x
 	sta VIC64+MOBCOL+1,x
 	dex
 	bpl le491
@@ -771,9 +777,9 @@ le491:  txa
 	sta VIC64+MOBMSB
 	lda #$3e
 	sta VIC64+MOBENA
-le4ba:  lda $13
+le4ba:  lda TIMER
 	bne le4ba
-le4be:  lda $13
+le4be:  lda TIMER
 	bne le4be
 	inc $2b
 	lda $2b
@@ -812,9 +818,9 @@ le505:  dey
 le508:  jsr le0c5
 	cpy #$00
 	beq le4ba
-	lda #$00
+	lda #BLACK
 	sta VIC64+BGRCOL
-	lda #$06
+	lda #BLUE
 	sta VIC64+EXTCOL
 	rts
 ; -------------------------------------------------------------------------------------------------
@@ -829,13 +835,14 @@ Table12:
 ; $e529 interrupt
 Interrupt:
 	pha
-	lda CIA64+ICR
+	lda CIA64+ICR		; load irq-reg
 	and #$02
-	beq le533
-	inc $13
-le533:  pla
+	beq irqx		; skip if not timer b
+	inc TIMER		; inc timer
+irqx:	pla
 	rti
-
+; -------------------------------------------------------------------------------------------------
+; $e535
 le535:  lda $2a
 	and #$01
 	beq le53c
@@ -1442,7 +1449,7 @@ le9e5:  pla
 	lda Table09,y
 	sta $4d,x
 	sta $07f8,x
-	lda Table08,y
+	lda SpriteColors,y
 	sta VIC64+MOBCOL,x
 	lda bits,x
 	ora VIC64+MOBENA
@@ -1452,8 +1459,8 @@ le9e5:  pla
 ; $ea08
 Table07:  
 	!byte $00, $05, $0a, $0f, $14
-Table08:
-	!byte $06, $07, $03, $0d, $04
+SpriteColors:
+	!byte BLUE, YELLOW, CYAN, LIGHTGREEN, MAGENTA
 Table09:
 	!byte $ec, $f0, $f4, $f5, $fc
 ; -------------------------------------------------------------------------------------------------
