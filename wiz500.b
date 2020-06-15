@@ -38,30 +38,71 @@ LIGHTBLUE               = $0e
 GRAY3                   = $0f
 MCM                     = $08       ; bit#3 for multicolor character
 ; game
-
 ; ************************************** P500 REGISTER ********************************************
-VR_MODEY                = $11
-VR_RASTER               = $12
-VR_MOBENA               = $15
-VR_MCMCSX               = $16
-VR_MEMPT                = $18
-VR_IRQ                  = $19
-VR_EIRQ                 = $1a
-VR_MOBXPA               = $1d
-VR_MOBMOB               = $1e
-VR_EXTCOL               = $20
-VR_BGRCOL               = $21
-VR_MOBCOL               = $27
-SR_V1FREQ               = $00
-SR_V1CTRL               = $04
-SR_V1SR                 = $06
-SR_V2FREQ               = $07
-SR_V2CTRL               = $0b
-SR_V2SR                 = $0d
-SR_V3FREQ               = $0e
-SR_V3CTRL               = $12
-SR_MODVOL               = $18
-SR_RANDOM               = $1b
+;vic
+MOBX		= $00
+MOBY		= $01
+MOBMSB		= $10
+MODEY		= $11
+RASTER		= $12
+MOBENA		= $15
+MCMCSX		= $16
+MOBYEX		= $17
+MEMPT		= $18
+IRQ		= $19
+EIRQ		= $1a
+MOBPRI		= $1b
+MOBMC		= $1c
+MOBXEX		= $1d
+MOBMOB		= $1e
+MOBBGR		= $1f
+EXTCOL		= $20
+BGRCOL		= $21
+BGRCO1		= $22
+BGRCO2		= $23
+BGRCO3		= $24
+MOBMC0		= $25
+MOBMC1		= $26
+MOBCOL		= $27
+;sid
+V1LO		= $00
+V1HI		= $01
+V1CTRL		= $04
+V1AD		= $05
+V1SR		= $06
+V2LO		= $07
+V2HI		= $08
+V2CTRL		= $0b
+V2AD		= $0c
+V2SR		= $0d
+V3LO		= $0e
+V3HI		= $0f
+V3CTRL		= $12
+V3AD		= $13
+V3SR		= $14
+FCLO		= $15
+FCHI		= $16
+RESFIL		= $17
+MODVOL		= $18
+RANDOM		= $1b
+ENV3		= $1c
+; cia
+PRA	= $0	; Data reg A
+PRB	= $1	; Data reg B
+DDRA	= $2	; Direction reg a
+DDRB	= $3	; Direction reg b
+TALO	= $4	; Timer A low  byte
+TAHI	= $5	; Timer A high byte
+TBLO	= $6	; Timer B low  byte
+TBHI	= $7	; Timer B high byte
+TOD10	= $8	; 10ths of seconds
+TODSEC	= $9	; Seconds
+TODMIN	= $A	; Minutes
+TODHR	= $B	; Hours
+SDR	= $C	; Serial data register
+ICR	= $D	; Interrupt control register
+CRA	= $E	; Control register A
+CRB	= $F	; Control register B
 ; ************************************** P500 ADDRESSES *******************************************
 !addr CodeBank          = $00       ; code bank register
 !addr IndirectBank      = $01       ; indirect bank register
@@ -75,9 +116,11 @@ SR_RANDOM               = $1b
 !addr HW_IRQ            = $fffe     ; System IRQ Vector
 !addr HW_NMI            = $fffa     ; System NMI Vector
 ; *************************************** C64 ADDRESSES *******************************************
-!addr CPUPort64         = $01       ; 6510 CPU port
-!addr CharROM64         = $d000     ; Character RAM
-!addr ColorRAM64        = $d800     ; Color RAM
+!addr CPUPort64         = $01		; 6510 CPU port
+!addr VIC64		= $d000		; VIC
+!addr SID64		= $d400		; SID
+!addr ColorRAM64        = $d800		; Color RAM
+!addr CIA64		= $dc00		; CIA
 ; ************************************** USER ADDRESSES *******************************************
 
 ; ***************************************** ZERO PAGE *********************************************
@@ -116,37 +159,37 @@ SR_RANDOM               = $1b
 !zone code
 !initmem FILL
 *= $e000
-start:	sei
+start:	sei			; disable interrupts
 	cld
-	ldx #$ff
+	ldx #$ff		; init stack
 	txs
-	ldx #$2e
-le007:  lda vicregs,x
-	sta $d000,x
+	ldx #$2e		; init vic regs
+inviclp:lda vicregs,x
+	sta VIC64+MOBX,x
 	dex
-	bpl le007
-	ldx #$18
-le012:  lda sidregs,x
+	bpl inviclp
+	ldx #$18		; init sid regs
+insidlp:lda sidregs,x
 	sta $d400,x
 	dex
-	bpl le012
-	ldx #$00
+	bpl insidlp
+	ldx #$00		; clear RAM
 	txa
-le01e:  sta $02,x
+clramlp:sta $02,x
 	sta $0200,x
 	sta $0300,x
 	inx
-	bne le01e
+	bne clramlp
 	lda #$1f
-	sta $dc0d
+	sta CIA64+ICR
 	lda #$82
-	sta $dc0d
+	sta CIA64+ICR
 	lda #$01
-	sta $dc0f
+	sta CIA64+CRB
 	lda #$38
-	sta $dc06
+	sta CIA64+TBLO
 	lda #$00
-	sta $dc07
+	sta CIA64+TBHI
 	cli
 le043:  jsr le474
 	jsr le2f5
@@ -154,7 +197,7 @@ le049:  jsr le310
 le04c:  jsr le21e
 	jsr le36b
 	lda #$1f
-	sta $d418
+	sta SID64+MODVOL
 	ldx #$01
 	lda $29
 	bpl le05f
@@ -164,9 +207,9 @@ le05f:  txa
 le063:  lda $13
 	bne le063
 	jsr le1a9
-	lda $d01e
+	lda VIC64+MOBMOB
 	sta $55
-	lda $d01f
+	lda VIC64+MOBBGR
 	sta $56
 	inc $2a
 	lda $2a
@@ -203,9 +246,9 @@ le0be:  dec $28
 	bne le04c
 	jmp le3da
 le0c5:  ldx #$ff
-	stx $dc02
+	stx CIA64+DDRA
 	inx
-	stx $dc03
+	stx CIA64+DDRB
 	ldy #$00
 	ldx #$fe
 	jsr le120
@@ -216,9 +259,9 @@ le0da:  rts
 ; -------------------------------------------------------------------------------------------------
 ; $
 le0db:  ldx #$ff
-	stx $dc02
+	stx CIA64+DDRA
 	inx
-	stx $dc03
+	stx CIA64+DDRB
 	lda #$1f
 	ldx #$df
 	jsr le120
@@ -247,19 +290,19 @@ le110:  ldx #$bf
 	and #$f7
 le11b:  sta $08
 	jmp le12c
-le120:  stx $dc00
-le123:  ldx $dc01
-	cpx $dc01
+le120:  stx CIA64+PRA
+le123:  ldx CIA64+PRB
+	cpx CIA64+PRB
 	bne le123
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $
 le12c:  ldx #$00
 	stx $2c
-	stx $dc02
-	stx $dc03
-le136:  lda $dc01
-	cmp $dc01
+	stx CIA64+DDRA
+	stx CIA64+DDRB
+le136:  lda CIA64+PRB
+	cmp CIA64+PRB
 	bne le136
 	and $08
 	tay
@@ -523,14 +566,14 @@ le2f5:  ldy #$00
 	sta $28
 	lda #$06
 	ldx #$07
-le309:  sta $d027,x
+le309:  sta VIC64+MOBCOL,x
 	dex
 	bpl le309
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $
 le310:  ldx #$00
-	stx $d015
+	stx VIC64+MOBENA
 le315:  lda #$ff
 	sta $1e,x
 	inx
@@ -577,11 +620,11 @@ le36b:  lda #$e6
 	lda #$03
 	sta $2e
 	lda #$01
-	sta $d010
+	sta VIC64+MOBMSB
 	lda #$37
-	sta $d000
+	sta VIC64+MOBX
 	lda #$ab
-	sta $d001
+	sta VIC64+MOBY
 	lda #$fd
 	sta $54
 	ldx #$ff
@@ -590,10 +633,10 @@ le36b:  lda #$e6
 	inx
 	stx $1e
 	stx $2d
-	lda $d015
+	lda VIC64+MOBENA
 	ora #$01
 	and #$7f
-	sta $d015
+	sta VIC64+MOBENA
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $e39f
@@ -604,7 +647,7 @@ TableY:
 	!byte $7b, $63, $7b, $93, $ab, $c3, $7b, $ab
 
 le3af:  lda #$00
-	sta $d015
+	sta VIC64+MOBENA
 	ldx #<Table02
 	ldy #>Table02
 	jsr le1c0
@@ -640,7 +683,7 @@ le3e7:  lda $02
 	ldx #$03
 	jsr le440
 le400:  lda #$00
-	sta $d418
+	sta SID64+MODVOL
 	inc $4c
 	ldx #<Table01
 	ldy #>Table01
@@ -699,13 +742,13 @@ le473:  rts
 ; -------------------------------------------------------------------------------------------------
 ; $
 le474:  lda #$00
-	sta $d015
+	sta VIC64+MOBENA
 	lda #$06
 	sta $14
 	jsr le187
 	lda #$01
-	sta $d021
-	sta $d020
+	sta VIC64+BGRCOL
+	sta VIC64+EXTCOL
 	ldy #>Table04
 	ldx #<Table04
 	jsr le1c0
@@ -715,19 +758,19 @@ le491:  txa
 	tay
 	lda #$d7
 	sta $1f,x
-	sta $d002,y
+	sta VIC64+MOBX+2,y
 	lda Table10,x
-	sta $d003,y
+	sta VIC64+MOBY+2,y
 	lda Table11,x
 	sta $07f9,x
 	lda Table08,x
-	sta $d028,x
+	sta VIC64+MOBCOL+1,x
 	dex
 	bpl le491
 	lda #$00
-	sta $d010
+	sta VIC64+MOBMSB
 	lda #$3e
-	sta $d015
+	sta VIC64+MOBENA
 le4ba:  lda $13
 	bne le4ba
 le4be:  lda $13
@@ -742,8 +785,8 @@ le4cc:  tya
 	tax
 	lda $001f,y
 	beq le4ef
-	inc $d002,x
-	lda $d002,x
+	inc VIC64+MOBX+2,x
+	lda VIC64+MOBX+2,x
 	cmp Table12,y
 	bcc le505
 	lda #$00
@@ -754,8 +797,8 @@ le4cc:  tya
 	tax
 	inc $07f9,x
 	bne le505
-le4ef:  dec $d002,x
-	lda $d002,x
+le4ef:  dec VIC64+MOBX+2,x
+	lda VIC64+MOBX+2,x
 	cmp #$d7
 	bcs le505
 	sta $001f,y
@@ -770,9 +813,9 @@ le508:  jsr le0c5
 	cpy #$00
 	beq le4ba
 	lda #$00
-	sta $d021
+	sta VIC64+BGRCOL
 	lda #$06
-	sta $d020
+	sta VIC64+EXTCOL
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $e51a
@@ -786,7 +829,7 @@ Table12:
 ; $e529 interrupt
 Interrupt:
 	pha
-	lda $dc0d
+	lda CIA64+ICR
 	and #$02
 	beq le533
 	inc $13
@@ -835,9 +878,9 @@ le56f:  ldx $30
 	jsr le65d
 	lda $31
 	sta $41
-	lda $d000,x
+	lda VIC64+MOBX,x
 	sta $3f
-	lda $d001,x
+	lda VIC64+MOBY,x
 	sta $40
 	jsr le709
 	lda $32
@@ -865,7 +908,7 @@ le5a0:  beq le5b6
 le5b6:  ldx $09
 	lda Table14+13,x
 	ldx $30
-	sta $d001,x
+	sta VIC64+MOBY,x
 	jmp le601
 le5c3:  lda #$00
 	sta $32
@@ -891,51 +934,51 @@ le5eb:  ldx $09
 	cpx #$0a
 	bne le5f9
 	lda $31
-	ora $d010
-	sta $d010
+	ora VIC64+MOBMSB
+	sta VIC64+MOBMSB
 le5f9:  lda Table14,x
 	ldx $30
-	sta $d000,x
+	sta VIC64+MOBX,x
 le601:  lda $32
 	sta $35
 	ldx $30
 	lda $32
 	cmp #$01
 	bne le616
-	dec $d001,x
-	dec $d001,x
+	dec VIC64+MOBY,x
+	dec VIC64+MOBY,x
 	jmp le6b3
 le616:  cmp #$02
 	bne le623
-	inc $d001,x
-	inc $d001,x
+	inc VIC64+MOBY,x
+	inc VIC64+MOBY,x
 	jmp le6b3
 le623:  cmp #$03
 	bne le641
-	dec $d000,x
-	dec $d000,x
-	lda $d000,x
+	dec VIC64+MOBX,x
+	dec VIC64+MOBX,x
+	lda VIC64+MOBX,x
 	cmp #$fe
 	bcc le63e
 	lda $31
 	eor #$ff
-	and $d010
-	sta $d010
+	and VIC64+MOBMSB
+	sta VIC64+MOBMSB
 le63e:  jmp le6b3
 le641:  cmp #$04
 	bne le6b3
-	inc $d000,x
-	inc $d000,x
-	lda $d000,x
+	inc VIC64+MOBX,x
+	inc VIC64+MOBX,x
+	lda VIC64+MOBX,x
 	cmp #$02
 	bcs le6b3
 	lda $31
-	ora $d010
-	sta $d010
+	ora VIC64+MOBMSB
+	sta VIC64+MOBMSB
 	jmp le6b3
-le65d:  lda $d000,x
+le65d:  lda VIC64+MOBX,x
 	sta $3f
-	lda $d001,x
+	lda VIC64+MOBY,x
 	clc
 	sbc #$06
 	sta $40
@@ -977,34 +1020,34 @@ le6b2:  rts
 ; -------------------------------------------------------------------------------------------------
 ; $
 le6b3:  lda $31
-	and $d010
+	and VIC64+MOBMSB
 	bne le6cf
-	lda $d000,x
+	lda VIC64+MOBX,x
 	cmp #$16
 	bcs le6e7
 	lda $31
-	ora $d010
-	sta $d010
+	ora VIC64+MOBMSB
+	sta VIC64+MOBMSB
 	lda #$40
-	sta $d000,x
+	sta VIC64+MOBX,x
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $
 le6cf:  beq le6e7
-	lda $d000,x
+	lda VIC64+MOBX,x
 	cmp #$42
 	bcc le6e7
 	lda $31
 	eor #$ff
-	and $d010
-	sta $d010
+	and VIC64+MOBMSB
+	sta VIC64+MOBMSB
 	lda #$18
-	sta $d000,x
-le6e7:  lda $d001,x
+	sta VIC64+MOBX,x
+le6e7:  lda VIC64+MOBY,x
 	cmp #$31
 	bcs le6f4
-	inc $d001,x
-	inc $d001,x
+	inc VIC64+MOBY,x
+	inc VIC64+MOBY,x
 le6f4:  rts
 ; -------------------------------------------------------------------------------------------------
 ; $e6f5
@@ -1030,7 +1073,7 @@ le709:  lda $40
 	bcc le728
 le71d:  pha
 	lda $41
-	and $d010
+	and VIC64+MOBMSB
 	clc
 	beq le727
 	sec
@@ -1073,71 +1116,71 @@ le75b:  lda $56
 le761:  lda #$ff
 	sta $25
 	lda #$7f
-	and $d015
-	sta $d015
+	and VIC64+MOBENA
+	sta VIC64+MOBENA
 	lda #$7f
-	and $d010
-	sta $d010
+	and VIC64+MOBMSB
+	sta VIC64+MOBMSB
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $
-le776:  lda $d010
+le776:  lda VIC64+MOBMSB
 	and #$80
 	bne le786
-	lda $d00e
+	lda VIC64+MOBX+14
 	cmp #$14
 	bcc le761
 	bcs le78d
-le786:  lda $d00e
+le786:  lda VIC64+MOBX+14
 	cmp #$42
 	bcs le761
 le78d:  lda $2d
 	cmp #$03
 	bcc le7cd
 	bne le7b1
-	dec $d00e
-	dec $d00e
-	dec $d00e
-	dec $d00e
-	lda $d00e
+	dec VIC64+MOBX+14
+	dec VIC64+MOBX+14
+	dec VIC64+MOBX+14
+	dec VIC64+MOBX+14
+	lda VIC64+MOBX+14
 	cmp #$fc
 	bcc le7b0
 	lda #$7f
-	and $d010
-	sta $d010
+	and VIC64+MOBMSB
+	sta VIC64+MOBMSB
 le7b0:  rts
 ; -------------------------------------------------------------------------------------------------
 ; $
-le7b1:  inc $d00e
-	inc $d00e
-	inc $d00e
-	inc $d00e
-	lda $d00e
+le7b1:  inc VIC64+MOBX+14
+	inc VIC64+MOBX+14
+	inc VIC64+MOBX+14
+	inc VIC64+MOBX+14
+	lda VIC64+MOBX+14
 	cmp #$04
 	bcs le7b0
 	lda #$80
-	ora $d010
-	sta $d010
+	ora VIC64+MOBMSB
+	sta VIC64+MOBMSB
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $
 le7cd:  cmp #$01
 	bne le7e5
-	dec $d00f
-	dec $d00f
-	dec $d00f
-	dec $d00f
-	lda $d00f
+	dec VIC64+MOBY+14
+	dec VIC64+MOBY+14
+	dec VIC64+MOBY+14
+	dec VIC64+MOBY+14
+	lda VIC64+MOBY+14
 	cmp #$2a
 	bcc le7f8
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $
-le7e5:  inc $d00f
-	inc $d00f
-	inc $d00f
-	inc $d00f
-	lda $d00f
+le7e5:  inc VIC64+MOBY+14
+	inc VIC64+MOBY+14
+	inc VIC64+MOBY+14
+	inc VIC64+MOBY+14
+	lda VIC64+MOBY+14
 	cmp #$ca
 	bcc le7fb
 le7f8:  jmp le761
@@ -1158,20 +1201,20 @@ le805:  lda $2c
 ; $
 le80a:  lda #$04
 	jsr led31
-	lda $d000
-	sta $d00e
-	lda $d001
-	sta $d00f
-	lda $d010
+	lda VIC64
+	sta VIC64+MOBX+14
+	lda VIC64+MOBY
+	sta VIC64+MOBY+14
+	lda VIC64+MOBMSB
 	and #$01
 	beq le82d
 	lda #$80
-	ora $d010
-	sta $d010
+	ora VIC64+MOBMSB
+	sta VIC64+MOBMSB
 	jmp le835
 le82d:  lda #$7f
-	and $d010
-	sta $d010
+	and VIC64+MOBMSB
+	sta VIC64+MOBMSB
 le835:  lda $2e
 	sta $2d
 	cmp #$03
@@ -1182,8 +1225,8 @@ le835:  lda $2e
 le844:  lda #$fe
 	sta $54
 le848:  lda #$80
-	ora $d015
-	sta $d015
+	ora VIC64+MOBENA
+	sta VIC64+MOBENA
 	lda #$00
 	sta $25
 	rts
@@ -1225,39 +1268,39 @@ le876:  lda Table16,x
 le88b:  lda #$17
 	sta $5f,x
 	ldx $30
-	lda $d41b
+	lda SID64+RANDOM
 	and #$01
 	beq le8cb
 	lda bits,x
 	ora #$01
-	and $d010
+	and VIC64+MOBMSB
 	beq le8ab
 	cmp #$01
 	beq le8b3
 	cmp bits,x
 	beq le8bf
-le8ab:  lda $d000
-	cmp $d000,x
+le8ab:  lda VIC64
+	cmp VIC64+MOBX,x
 	bcc le8bf
-le8b3:  lda $d41b
+le8b3:  lda SID64+RANDOM
 	and #$03
 	beq le8c6
 le8ba:  lda #$04
 	jmp le8e8
-le8bf:  lda $d41b
+le8bf:  lda SID64+RANDOM
 	and #$03
 	beq le8ba
 le8c6:  lda #$03
 	jmp le8e8
-le8cb:  lda $d001
-	cmp $d001,x
+le8cb:  lda VIC64+MOBY
+	cmp VIC64+MOBY,x
 	bcc le8df
-	lda $d41b
+	lda SID64+RANDOM
 	and #$03
 	beq le8e6
 le8da:  lda #$02
 	jmp le8e8
-le8df:  lda $d41b
+le8df:  lda SID64+RANDOM
 	and #$03
 	beq le8da
 le8e6:  lda #$01
@@ -1286,7 +1329,7 @@ le912:  lda $35
 	adc #$01
 	cmp #$04
 	bcc le920
-	lda $d41b
+	lda SID64+RANDOM
 	and #$03
 le920:  sta $35
 le922:  rts
@@ -1363,11 +1406,11 @@ le9ab:  tya
 	pha
 	asl
 	tay
-	lda $d41b
+	lda SID64+RANDOM
 	and #$07
 	tax
 	lda TableX,x
-	sta $d000,y
+	sta VIC64,y
 	lda $2a
 	lsr
 	lsr
@@ -1377,18 +1420,18 @@ le9ab:  tya
 	and #$07
 	tax
 	lda TableY,x
-	sta $d001,y
+	sta VIC64+MOBY,y
 	clc
 	adc #$18
-	cmp $d001
+	cmp VIC64+MOBY
 	bcs le9e5
 	sec
 	sbc #$30
-	cmp $d001
+	cmp VIC64+MOBY
 	bcc le9e5
-	lda $d001
+	lda VIC64+MOBY
 	sbc #$24
-	sta $d001,y
+	sta VIC64+MOBY,y
 le9e5:  pla
 	tax
 	pla
@@ -1400,10 +1443,10 @@ le9e5:  pla
 	sta $4d,x
 	sta $07f8,x
 	lda Table08,y
-	sta $d027,x
+	sta VIC64+MOBCOL,x
 	lda bits,x
-	ora $d015
-	sta $d015
+	ora VIC64+MOBENA
+	sta VIC64+MOBENA
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $ea08
@@ -1458,9 +1501,9 @@ lea5d:  cmp #$c0
 	jmp lea1d
 lea68:  cmp #$d0
 	bne lea74
-	lda $d015
+	lda VIC64+MOBENA
 	and #$fe
-	sta $d015
+	sta VIC64+MOBENA
 lea74:  jmp lea1d
 lea77:  lda $1e,x
 	cmp #$81
@@ -1477,7 +1520,7 @@ lea77:  lda $1e,x
 	lda Table18,y
 	cmp #$05
 	bne lea9b
-	lda $d41b
+	lda SID64+RANDOM
 	and #$30
 	clc
 	adc #$10
@@ -1499,8 +1542,8 @@ leabc:  cmp #$b0
 	bne leace
 	lda bits,x
 	eor #$ff
-	and $d015
-	sta $d015
+	and VIC64+MOBENA
+	sta VIC64+MOBENA
 	jmp lea1d
 leace:  cpx #$06
 	beq leae4
@@ -1534,15 +1577,15 @@ leb01:  inx
 	beq leb2b
 	lda $1e,x
 	bmi leb01
-	lda $d000
+	lda VIC64
 	sta $09
 	lda #$00
 	sta $0a
 	lda #$01
-	and $d010
+	and VIC64+MOBMSB
 	beq leb1c
 	inc $0a
-leb1c:  lda $d001
+leb1c:  lda VIC64+MOBY
 	sta $0b
 	jsr leb78
 	bcc leb01
@@ -1556,12 +1599,12 @@ leb2b:  lda $25
 	lda #$00
 	sta $0a
 	lda #$80
-	and $d010
+	and VIC64+MOBMSB
 	beq leb3c
 	inc $0a
-leb3c:  lda $d00e
+leb3c:  lda VIC64+MOBX+14
 	sta $09
-	lda $d00f
+	lda VIC64+MOBY+14
 	sta $0b
 	lda $55
 	and #$80
@@ -1574,8 +1617,8 @@ leb4e:  lda $1e,x
 	lda #$ff
 	sta $25
 	lda #$7f
-	and $d015
-	sta $d015
+	and VIC64+MOBENA
+	sta VIC64+MOBENA
 	lda #$80
 	sta $1e,x
 	jmp leb6f
@@ -1596,13 +1639,13 @@ leb78:  lda $55
 leb82:  txa
 	asl
 	tay
-	lda $d000,y
+	lda VIC64,y
 	sta $0c
-	lda $d001,y
+	lda VIC64+MOBY,y
 	sta $0e
 	lda #$00
 	sta $0d
-	lda $d010
+	lda VIC64+MOBMSB
 leb96:  and bits,x
 	beq leb9d
 	inc $0d
@@ -1695,22 +1738,22 @@ lec19:  inx
 lec1f:  txa
 	asl
 	tay
-	lda $d000
-	cmp $d000,y
+	lda VIC64
+	cmp VIC64,y
 	beq lec65
-	lda $d001
-	cmp $d001,y
+	lda VIC64+MOBY
+	cmp VIC64+MOBY,y
 	bne lec19
-	lda $d000
-	cmp $d000,y
-	lda $d010
+	lda VIC64
+	cmp VIC64,y
+	lda VIC64+MOBMSB
 	and #$01
 	bne lec49
-	lda $d010
+	lda VIC64+MOBMSB
 	and bits,x
 	bne lec51
 	beq lec57
-lec49:  lda $d010
+lec49:  lda VIC64+MOBMSB
 	and bits,x
 	bne lec57
 lec51:  bcc lec56
@@ -1724,8 +1767,8 @@ lec5d:  sta $77
 	lda #$fd
 	sta $53
 	bne lec77
-lec65:  lda $d001
-	cmp $d001,y
+lec65:  lda VIC64+MOBY
+	cmp VIC64+MOBY,y
 	lda #$02
 	bcs lec71
 	lda #$01
@@ -1734,22 +1777,22 @@ lec71:  sta $77
 	sta $53
 lec77:  lda #$00
 	sta $24
-	lda $d000,y
-	sta $d00c
-	lda $d001,y
-	sta $d00d
-	lda $d010
+	lda VIC64,y
+	sta VIC64+MOBX+12
+	lda VIC64+MOBY,y
+	sta VIC64+MOBY+12
+	lda VIC64+MOBMSB
 	and bits,x
 	beq lec96
-	lda $d010
+	lda VIC64+MOBMSB
 	ora #$40
 	bne lec9b
-lec96:  lda $d010
+lec96:  lda VIC64+MOBMSB
 	and #$bf
-lec9b:  sta $d010
-	lda $d015
+lec9b:  sta VIC64+MOBMSB
+	lda VIC64+MOBENA
 	ora #$40
-	sta $d015
+	sta VIC64+MOBENA
 	lda $77
 	sta $67,x
 	rts
@@ -1765,61 +1808,61 @@ lecb0:  lda $56
 	beq lecc3
 lecb6:  lda #$ff
 	sta $24
-	lda $d015
+	lda VIC64+MOBENA
 	and #$bf
-	sta $d015
+	sta VIC64+MOBENA
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $
-lecc3:  lda $d010
+lecc3:  lda VIC64+MOBMSB
 	and #$40
 	bne lecd3
-	lda $d00c
+	lda VIC64+MOBX+12
 	cmp #$14
 	bcc lecb6
 	bcs lecda
-lecd3:  lda $d00c
+lecd3:  lda VIC64+MOBX+12
 	cmp #$42
 	bcs lecb6
 lecda:  lda $77
 	cmp #$03
 	bcc led0e
 	bne lecf8
-	dec $d00c
-	dec $d00c
-	lda $d00c
+	dec VIC64+MOBX+12
+	dec VIC64+MOBX+12
+	lda VIC64+MOBX+12
 	cmp #$fe
 	bcc led2d
-	lda $d010
+	lda VIC64+MOBMSB
 	and #$bf
-	sta $d010
+	sta VIC64+MOBMSB
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $
-lecf8:  inc $d00c
-	inc $d00c
-	lda $d00c
+lecf8:  inc VIC64+MOBX+12
+	inc VIC64+MOBX+12
+	lda VIC64+MOBX+12
 	cmp #$02
 	bcs led2d
-	lda $d010
+	lda VIC64+MOBMSB
 	ora #$40
-	sta $d010
+	sta VIC64+MOBMSB
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $
 led0e:  cmp #$01
 	bne led20
-	dec $d00d
-	dec $d00d
-	lda $d00d
+	dec VIC64+MOBY+12
+	dec VIC64+MOBY+12
+	lda VIC64+MOBY+12
 	cmp #$2a
 	bcc led2e
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $
-led20:  inc $d00d
-	inc $d00d
-	lda $d00d
+led20:  inc VIC64+MOBY+12
+	inc VIC64+MOBY+12
+	lda VIC64+MOBY+12
 	cmp #$ca
 	bcs led2e
 led2d:  rts
@@ -1834,7 +1877,7 @@ led31:  cmp #$01
 	lda #$ee
 	sta $71
 	lda #$21
-	sta $d404
+	sta SID64+V1CTRL
 	lda #$01
 	sta $72
 	rts
@@ -1869,7 +1912,7 @@ led6f:  cmp #$04
 	lda #$0f
 	sta $74
 	lda #$81
-	sta $d40b
+	sta SID64+V2CTRL
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $
@@ -1878,7 +1921,7 @@ led7d:  cmp #$05
 	lda #$0f
 	sta $75
 	lda #$81
-	sta $d412
+	sta SID64+V3CTRL
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $
@@ -1888,8 +1931,8 @@ led8b:  cmp #$06
 	sta $75
 	sta $74
 	lda #$81
-	sta $d40b
-	sta $d412
+	sta SID64+V2CTRL
+	sta SID64+V3CTRL
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $
@@ -1898,9 +1941,9 @@ led9e:  cmp #$07
 	lda #$3f
 	sta $73
 	asl
-	sta $d408
+	sta SID64+V2HI
 	lda #$21
-	sta $d40b
+	sta SID64+V2CTRL
 	lda #$00
 	sta $74
 	rts
@@ -1911,10 +1954,8 @@ ledb4:  cmp #$08
 	lda #$07
 	sta $73
 	lda #$21
-	sta $d40b
+	sta SID64+V2CTRL
 	rts
-; -------------------------------------------------------------------------------------------------
-; $
 ledc2:  rts
 ; -------------------------------------------------------------------------------------------------
 ; $
@@ -1923,21 +1964,21 @@ ledc3:  lda $74
 	asl
 	asl
 	asl
-	sta $d408
+	sta SID64+V2HI
 	dec $74
 	bne ledd6
 	lda #$80
-	sta $d40b
+	sta SID64+V2CTRL
 ledd6:  lda $75
 	beq ledea
 	asl
 	asl
 	adc #$07
-	sta $d40f
+	sta SID64+V3HI
 	dec $75
 	bne ledea
 	lda #$80
-	sta $d412
+	sta SID64+V3CTRL
 ledea:  lda $73
 	beq lee04
 	lda $73
@@ -1946,11 +1987,11 @@ ledea:  lda $73
 	and #$01
 	tax
 	lda Notes1,x
-	sta $d408
+	sta SID64+V2HI
 	dec $73
 	bne lee04
 	lda #$20
-	sta $d40b
+	sta SID64+V2CTRL
 lee04:  dec $72
 	bne lee42
 	clc
@@ -1971,17 +2012,15 @@ lee24:  cmp #$02
 	bne lee2b
 	jmp led49
 lee2b:  jmp led5c
-; -------------------------------------------------------------------------------------------------
-; $
 lee2e:  sta $72
 	ldy #$01
 	lda ($70),y
 	asl
 	tax
 	lda Notes2,x
-	sta $d400
+	sta SID64+V1LO
 	lda Notes2+1,x
-	sta $d401
+	sta SID64+V1HI
 lee42:  rts
 ; ***************************************** ZONE NOTES ********************************************
 !zone notes
