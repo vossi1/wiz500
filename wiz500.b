@@ -138,6 +138,8 @@ temp2			= $0e
 temp3			= $0f
 timer			= $13		; game timer - inc with every irq / CIA timer b
 color			= $14
+monster_dir		= $1f		; 5 bytes start screen monster x pos
+monster_delay		= $2b		; delay for monster movment on satrt screen
 state			= $4c
 sprite_data		= $4d		; 8 bytes sprite data 
 ; ***************************************** VARIABLES *********************************************
@@ -207,10 +209,10 @@ clramlp:sta $02,x
 	lda #$00
 	sta CIA64+TBHI
 	cli				; enable irq
-le043:  jsr InitStartScreenData
+le043:  jsr StartScreen
 	jsr le2f5
 le049:  jsr le310
-le04c:  jsr le21e
+le04c:  jsr InitGameScreen
 	jsr le36b
 	lda #$1f
 	sta SID64+MODVOL		; full volume, filter low pass
@@ -230,14 +232,14 @@ le063:  lda timer
 	inc $2a
 	lda $2a
 	bne le089
-	inc $2b
+	inc monster_delay
 	lda #$05
-	cmp $2b
+	cmp monster_delay
 	bne le089
 	lda #$02
 	jsr led31
 	dec $29
-le089:  lda $2b
+le089:  lda monster_delay
 	cmp #$10
 	bcc le092
 	jsr le855
@@ -261,17 +263,21 @@ le092:  jsr le754
 le0be:  dec $28
 	bne le04c
 	jmp le3da
-le0c5:  ldx #$ff
+; -------------------------------------------------------------------------------------------------
+; $e0c5 Checks F1 key for game start
+;   returns .y = 1 if F1 pressed
+CheckF1Key:
+	ldx #$ff
 	stx CIA64+DDRA			; port a output
 	inx
 	stx CIA64+DDRB			; port b input
-	ldy #$00
+	ldy #$00			; clear .y
 	ldx #$fe
-	jsr le120
+	jsr chkkey
 	cpx #$ef
-	bne le0da
-	iny
-le0da:  rts
+	bne chkf1x
+	iny				; returns 1 if F1 pressed
+chkf1x:	rts
 ; -------------------------------------------------------------------------------------------------
 ; $
 le0db:  ldx #$ff
@@ -280,7 +286,7 @@ le0db:  ldx #$ff
 	stx CIA64+DDRB			; port b input
 	lda #$1f
 	ldx #$df
-	jsr le120
+	jsr chkkey
 	cpx #$fb
 	bne le0f3
 	and #$fb
@@ -294,22 +300,23 @@ le0fb:  cpx #$ef
 	and #$fd
 	bne le11b
 le103:  ldx #$fd
-	jsr le120
+	jsr chkkey
 	cpx #$fb
 	bne le110
 	and #$ef
 	bne le11b
 le110:  ldx #$bf
-	jsr le120
+	jsr chkkey
 	cpx #$fb
 	bne le11b
 	and #$f7
 le11b:  sta $08
 	jmp le12c
-le120:  stx CIA64+PRA
-le123:  ldx CIA64+PRB
+; $e120
+chkkey:	stx CIA64+PRA
+debounc:ldx CIA64+PRB
 	cpx CIA64+PRB
-	bne le123
+	bne debounc
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $
@@ -401,11 +408,11 @@ le1b5:  lda sprite_data-1,x
 ; -------------------------------------------------------------------------------------------------
 ; $e1c0 Copies data from xy to address in first two bytes till $ff
 ;   $fe = new target address
-DataCopyXY:				; copies from .x, .y
+ScreenCopy:				; copies from .x, .y
 	stx ptr1
 	sty ptr1+1
 
-datnewt:ldy #0				; set pointer1 to new target
+scrnewt: ldy #0				; set pointer1 to new target
 	sty temp2
 	lda (ptr1),y
 	sta ptr2
@@ -413,26 +420,26 @@ datnewt:ldy #0				; set pointer1 to new target
 	lda (ptr1),y
 	sta ptr2+1
 
-datcplp:iny
+scrcplp:iny
 	lda (ptr1),y			; load data byte
 	cmp #$ff
-	beq datcpx			; $ff = end
+	beq scrcpyx			; $ff = end
 	cmp #$fe
-	beq dattarg			; $fe = new target address
+	beq scrtarg			; $fe = new target address
 	cmp #$fd
-	beq datline
+	beq scrline
 	sty temp1
 	ldy temp2
 	sta (ptr2),y
 	inc temp2
 	ldy temp1
 	lda state
-	beq datcplp			; next if state = 0
+	beq scrcplp			; next if state = 0
 	ldx #10
 	jsr GameUpdate			; 10 game updates
-	jmp datcplp
+	jmp scrcplp
 ; $e1f6	byte $fe = new target address
-dattarg:iny
+scrtarg:iny
 	clc
 	tya
 	adc ptr1			; add counter .y to pointer 1
@@ -440,9 +447,9 @@ dattarg:iny
 	lda ptr1+1
 	adc #$00
 	sta ptr1+1
-	jmp datnewt			; copy to new target address
+	jmp scrnewt			; copy to new target address
 ; $e206	byte $fd = new line (target +40)
-datline:clc
+scrline:clc
 	lda ptr2
 	adc #40				; pointer2 +40 = new line
 	sta ptr2
@@ -451,18 +458,19 @@ datline:clc
 	sta ptr2+1
 	lda #$00
 	sta temp2
-	beq datcplp			; always next
-datcpx:	lda #$00
+	beq scrcplp			; always next
+scrcpyx:lda #$00
 	sta state
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $
-le21e:  lda #CYAN
+InitGameScreen:
+	lda #CYAN
 	sta color
 	jsr ClearScreen
 	ldx #<GameScreenData
 	ldy #>GameScreenData
-	jsr DataCopyXY
+	jsr ScreenCopy
 	lda $3b
 	and #$03
 	asl
@@ -600,7 +608,7 @@ le315:  lda #$ff
 	cpx #$08
 	bne le315
 	ldy #$00
-	sty $2b
+	sty monster_delay
 	sty $2a
 	sty $29
 	inc $3b
@@ -668,9 +676,9 @@ TableY:
 
 le3af:  lda #$00
 	sta VIC64+MOBENA
-	ldx #<Table02
-	ldy #>Table02
-	jsr DataCopyXY
+	ldx #<Bonus300
+	ldy #>Bonus300
+	jsr ScreenCopy
 	lda #$07
 	jsr led31
 	lda #$30
@@ -679,8 +687,8 @@ le3af:  lda #$00
 	jsr GameUpdate
 	jmp le049
 
-Table02:
-!byte $24, $05, $0c, $19, $18, $1e, $1c, $00
+Bonus300:
+!byte $24, $05, $0c, $19, $18, $1e, $1c, $00	; 'BONUS 300'
 !byte $04, $01, $01, $01, $ff
 
 le3da:  ldx #$02
@@ -707,7 +715,7 @@ le400:  lda #$00
 	inc state
 	ldx #<Table01
 	ldy #>Table01
-	jsr DataCopyXY
+	jsr ScreenCopy
 	ldx #$50
 	jsr GameUpdate
 	jmp le043
@@ -761,90 +769,95 @@ le442:  lda $02,x
 le473:  rts
 ; -------------------------------------------------------------------------------------------------
 ; $e474
-InitStartScreenData:
+StartScreen:
 	lda #$00
 	sta VIC64+MOBENA		; disable all sprites
 	lda #BLUE
 	sta color
 	jsr ClearScreen			; clear screen with blue chars
 	lda #WHITE
-	sta VIC64+BGRCOL		; set bbg+ext white
+	sta VIC64+BGRCOL		; set bgr+ext white
 	sta VIC64+EXTCOL
 	ldy #>StartScreenData
 	ldx #<StartScreenData
-	jsr DataCopyXY
+	jsr ScreenCopy			; Copies start screen
+
 	ldx #$04
-le491:  txa
+ssinspr:txa
 	asl
 	tay
-	lda #$d7
-	sta $1f,x
-	sta VIC64+MOBX+2,y
-	lda Table10,x
+	lda #$d7			; sprite start h pos
+	sta monster_dir,x		; set right direction = $d7
+	sta VIC64+MOBX+2,y		; setup monsters sprites 1-5
+	lda StartScreenMonsterVpos,x
 	sta VIC64+MOBY+2,y
-	lda Table11,x
+	lda StartScreenMonsterData,x
 	sta SpritePointer+1,x
-	lda SpriteColors,x
+	lda StartScreenMonsterColors,x
 	sta VIC64+MOBCOL+1,x
 	dex
-	bpl le491
+	bpl ssinspr			; setup next sprite
+
 	lda #$00
-	sta VIC64+MOBMSB
+	sta VIC64+MOBMSB		; clear sprite x-msb
 	lda #$3e
-	sta VIC64+MOBENA
-le4ba:  lda timer
-	bne le4ba
-le4be:  lda timer
-	bne le4be
-	inc $2b
-	lda $2b
-	and #$1f
-	bne le508
-	ldy #$04
-le4cc:  tya
+	sta VIC64+MOBENA		; enable monsters
+
+sssprlp:lda timer			; wait
+	bne sssprlp
+sswait	lda timer
+	bne sswait
+	inc monster_delay
+	lda monster_delay
+	and #$1f			; delay next movement
+	bne sschkf1
+
+	ldy #$04			; move 5 monsters
+ssright:tya			
 	asl
 	tax
-	lda $001f,y
-	beq le4ef
-	inc VIC64+MOBX+2,x
+	lda monster_dir,y
+	beq ssleft
+	inc VIC64+MOBX+2,x		; move monsters right
 	lda VIC64+MOBX+2,x
-	cmp Table12,y
-	bcc le505
+	cmp StartScreenMonsterRLimit,y	; check if right limit
+	bcc ssnxspr
 	lda #$00
-	sta $001f,y
+	sta monster_dir,y		; set left direction
 	cpy #$03
-	beq le505
+	beq ssnxspr			; skip if monster #3 (unidir monster)
 	tya
 	tax
-	inc SpritePointer+1,x
-	bne le505
-le4ef:  dec VIC64+MOBX+2,x
+	inc SpritePointer+1,x		; turn monster sprite left
+	bne ssnxspr
+ssleft:	dec VIC64+MOBX+2,x		; move monster left
 	lda VIC64+MOBX+2,x
 	cmp #$d7
-	bcs le505
-	sta $001f,y
+	bcs ssnxspr			; skip if left limit not reached
+	sta monster_dir,y		; set right dir
 	cpy #$03
-	beq le505
+	beq ssnxspr			; skip if monster #3 (unidir monster)
 	tya
 	tax
-	dec SpritePointer+1,x
-le505:  dey
-	bpl le4cc
-le508:  jsr le0c5
+	dec SpritePointer+1,x		; turn monster sprite right
+ssnxspr:dey
+	bpl ssright
+sschkf1:jsr CheckF1Key			; check f1 key pressed
 	cpy #$00
-	beq le4ba
-	lda #BLACK
+	beq sssprlp			; continue movement, if not F1 pressed
+
+	lda #BLACK			; set game bgr+ext colors
 	sta VIC64+BGRCOL
 	lda #BLUE
 	sta VIC64+EXTCOL
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $e51a
-Table10:
+StartScreenMonsterVpos:
 	!byte $52, $6a, $82, $9a, $b2
-Table11:
+StartScreenMonsterData:
 	!byte $e9, $ed, $f1, $f5, $f9
-Table12:
+StartScreenMonsterRLimit:
 	!byte $db, $dc, $db, $dc, $db
 ; -------------------------------------------------------------------------------------------------
 ; $e529 interrupt
@@ -1401,7 +1414,7 @@ le97b:  iny
 	ldx #$01
 	lda #$ff
 le980:  and $1e,x
-	and $1f,x
+	and monster_dir,x
 	inx
 	inx
 	cpx #$07
@@ -1464,7 +1477,7 @@ le9e5:  pla
 	lda Table09,y
 	sta sprite_data,x
 	sta SpritePointer,x
-	lda SpriteColors,y
+	lda StartScreenMonsterColors,y
 	sta VIC64+MOBCOL,x
 	lda bits,x
 	ora VIC64+MOBENA
@@ -1474,7 +1487,7 @@ le9e5:  pla
 ; $ea08
 Table07:  
 	!byte $00, $05, $0a, $0f, $14
-SpriteColors:
+StartScreenMonsterColors:
 	!byte BLUE, YELLOW, CYAN, LIGHTGREEN, MAGENTA
 Table09:
 	!byte $ec, $f0, $f4, $f5, $fc
