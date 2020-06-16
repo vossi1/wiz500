@@ -20,10 +20,12 @@
 ; ******************************************* INFO ************************************************
 ; ******************************************* FONT ************************************************
 ; ***************************************** CONSTANTS *********************************************
-FILL		= $aa       ; fills free memory areas with $aa
-NOPCODE		= $ea       ; nop instruction for fill
-GAMEBANK	= $00       ; Game code bank
-SYSTEMBANK	= $0f       ; systembank
+FILL		= $aa	; fills free memory areas with $aa
+NOPCODE		= $ea	; nop instruction for fill
+GAMEBANK	= 0	; Game code bank
+SYSTEMBANK	= $f	; systembank
+
+LIVES		= 3	; start lives
 ; color codes
 BLACK		= $00
 WHITE		= $01
@@ -139,6 +141,7 @@ temp3			= $0f
 timer			= $13		; game timer - inc with every irq / CIA timer b
 color			= $14
 monster_dir		= $1f		; 5 bytes start screen monster x pos
+lives			= $28		; lives
 monster_delay		= $2b		; delay for monster movment on satrt screen
 state			= $4c
 sprite_data		= $4d		; 8 bytes sprite data 
@@ -209,10 +212,13 @@ clramlp:sta $02,x
 	lda #$00
 	sta CIA64+TBHI
 	cli				; enable irq
-le043:  jsr StartScreen
-	jsr le2f5
-le049:  jsr le310
-le04c:  jsr InitGameScreen
+StartNew:
+	jsr StartNewreen
+	jsr InitSprites			; inits some vars and sprite colors
+NextLevel:
+	jsr InitGame
+TryAgain:
+	jsr InitGameScreen
 	jsr le36b
 	lda #$1f
 	sta SID64+MODVOL		; full volume, filter low pass
@@ -222,8 +228,9 @@ le04c:  jsr InitGameScreen
 	ldx #$02
 le05f:  txa
 	jsr led31
-le063:  lda timer
-	bne le063
+GameLoop:
+	lda timer
+	bne GameLoop
 	jsr le1a9
 	lda VIC64+MOBMOB
 	sta $55
@@ -254,15 +261,18 @@ le092:  jsr le754
 	jsr GameCycle
 	lda $1e
 	cmp #$ff
-	beq le0be
+	beq declive
 	lda $26
-	bne le063
+	bne GameLoop
+
 	lda $1e
-	bmi le0be
-	jmp le3af
-le0be:  dec $28
-	bne le04c
-	jmp le3da
+	bmi declive
+	jmp LevelFinished
+
+declive:dec lives			; decrease lives
+	bne TryAgain
+
+	jmp GameOver			; game over
 ; -------------------------------------------------------------------------------------------------
 ; $e0c5 Checks F1 key for game start
 ;   returns .y = 1 if F1 pressed
@@ -511,7 +521,7 @@ le25d:  inc $12
 	bne le244
 	lda #$00
 	jsr le429
-	ldx $28
+	ldx lives
 	stx $38
 	lda #$1e
 	sta $36
@@ -583,57 +593,59 @@ le2dc:  jsr le2a3
 	jsr le72e
 	rts
 ; -------------------------------------------------------------------------------------------------
-; $
-le2f5:  ldy #$00
+; $e2f5 inits some vars and sprite colors
+InitSprites:
+	ldy #0
 	sty $02
 	sty $03
 	sty $04
 	sty $3b
 	sty $76
-	lda #$03
-	sta $28
-	lda #$06
-	ldx #$07
-le309:  sta VIC64+MOBCOL,x
+	lda #LIVES			; 3 lives
+	sta lives
+	lda #BLUE
+	ldx #7
+incollp:sta VIC64+MOBCOL,x
 	dex
-	bpl le309
+	bpl incollp
 	rts
 ; -------------------------------------------------------------------------------------------------
-; $
-le310:  ldx #$00
-	stx VIC64+MOBENA
-le315:  lda #$ff
-	sta $1e,x
+; $e310
+InitGame:
+	ldx #$00
+	stx VIC64+MOBENA		; disable sprites
+-	lda #$ff
+	sta $1e,x			; set $1e- 8 vars to $ff 
 	inx
 	cpx #$08
-	bne le315
-	ldy #$00
+	bne -
+	ldy #$00			; clear some vars
 	sty monster_delay
 	sty $2a
 	sty $29
-	inc $3b
+	inc $3b				; raise level ? (1-4)
 	ldx $3b
-	cpx #$04
-	bcc le330
+	cpx #$04			; maximum 4
+	bcc +
 	ldx #$04
-le330:  lda Table06,x
++	lda MonsterSpeedTable,x			; setup monster speeds?
 	sta $27
-	lda Table06+4,x
+	lda MonsterSpeedTable+4,x
 	sta $47
-	lda Table06+8,x
+	lda MonsterSpeedTable+8,x
 	sta $48
-	lda Table06+12,x
+	lda MonsterSpeedTable+12,x
 	sta $49
-	lda Table06+16,x
+	lda MonsterSpeedTable+16,x
 	sta $4a
-	lda Table06+20,x
+	lda MonsterSpeedTable+20,x
 	sta $26
 	lda #$00
 	sta $4b
 	rts
 ; -------------------------------------------------------------------------------------------------
-; 
-Table06	= *-1
+; spees 1-4
+MonsterSpeedTable = *-1
 	!byte $04, $05, $06, $06
 	!byte $03, $04, $05, $06
 	!byte $02, $04, $06, $06
@@ -673,25 +685,27 @@ TableX:
 ; $e3a7
 TableY:
 	!byte $7b, $63, $7b, $93, $ab, $c3, $7b, $ab
-
-le3af:  lda #$00
-	sta VIC64+MOBENA
+; -------------------------------------------------------------------------------------------------
+; $e3af Level finished
+LevelFinished:
+	lda #$00
+	sta VIC64+MOBENA			; disable sprites
 	ldx #<Bonus300
 	ldy #>Bonus300
-	jsr ScreenCopy
+	jsr ScreenCopy				; print 'BONUS 300'
 	lda #$07
 	jsr led31
 	lda #$30
 	jsr le429
 	ldx #$00
 	jsr GameUpdate
-	jmp le049
+	jmp NextLevel
 
 Bonus300:
 !byte $24, $05, $0c, $19, $18, $1e, $1c, $00	; 'BONUS 300'
 !byte $04, $01, $01, $01, $ff
 
-le3da:  ldx #$02
+GameOver:  ldx #$02
 le3dc:  lda $05,x
 	cmp $02,x
 	bcc le3e7
@@ -718,7 +732,7 @@ le400:  lda #$00
 	jsr ScreenCopy
 	ldx #$50
 	jsr GameUpdate
-	jmp le043
+	jmp StartNew
 
 Table01:!byte $24, $05, $11, $00, $0b, $00, $17, $00
 	!byte $0f, $00, $00, $19, $00, $1f, $00, $0f
@@ -761,15 +775,15 @@ le442:  lda $02,x
 	lda $76
 	bne le473
 	inc $76
-	inc $28
-	ldx $28
+	inc lives
+	ldx lives
 	stx $07de
 	lda #$07
 	jsr led31
 le473:  rts
 ; -------------------------------------------------------------------------------------------------
 ; $e474
-StartScreen:
+StartNewreen:
 	lda #$00
 	sta VIC64+MOBENA		; disable all sprites
 	lda #BLUE
@@ -778,8 +792,8 @@ StartScreen:
 	lda #WHITE
 	sta VIC64+BGRCOL		; set bgr+ext white
 	sta VIC64+EXTCOL
-	ldy #>StartScreenData
-	ldx #<StartScreenData
+	ldy #>StartNewreenData
+	ldx #<StartNewreenData
 	jsr ScreenCopy			; Copies start screen
 
 	ldx #$04
@@ -789,11 +803,11 @@ ssinspr:txa
 	lda #$d7			; sprite start h pos
 	sta monster_dir,x		; set right direction = $d7
 	sta VIC64+MOBX+2,y		; setup monsters sprites 1-5
-	lda StartScreenMonsterVpos,x
+	lda StartNewreenMonsterVpos,x
 	sta VIC64+MOBY+2,y
-	lda StartScreenMonsterData,x
+	lda StartNewreenMonsterData,x
 	sta SpritePointer+1,x
-	lda StartScreenMonsterColors,x
+	lda StartNewreenMonsterColors,x
 	sta VIC64+MOBCOL+1,x
 	dex
 	bpl ssinspr			; setup next sprite
@@ -820,7 +834,7 @@ ssright:tya
 	beq ssleft
 	inc VIC64+MOBX+2,x		; move monsters right
 	lda VIC64+MOBX+2,x
-	cmp StartScreenMonsterRLimit,y	; check if right limit
+	cmp StartNewreenMonsterRLimit,y	; check if right limit
 	bcc ssnxspr
 	lda #$00
 	sta monster_dir,y		; set left direction
@@ -853,11 +867,11 @@ sschkf1:jsr CheckF1Key			; check f1 key pressed
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $e51a
-StartScreenMonsterVpos:
+StartNewreenMonsterVpos:
 	!byte $52, $6a, $82, $9a, $b2
-StartScreenMonsterData:
+StartNewreenMonsterData:
 	!byte $e9, $ed, $f1, $f5, $f9
-StartScreenMonsterRLimit:
+StartNewreenMonsterRLimit:
 	!byte $db, $dc, $db, $dc, $db
 ; -------------------------------------------------------------------------------------------------
 ; $e529 interrupt
@@ -1477,7 +1491,7 @@ le9e5:  pla
 	lda Table09,y
 	sta sprite_data,x
 	sta SpritePointer,x
-	lda StartScreenMonsterColors,y
+	lda StartNewreenMonsterColors,y
 	sta VIC64+MOBCOL,x
 	lda bits,x
 	ora VIC64+MOBENA
@@ -1487,7 +1501,7 @@ le9e5:  pla
 ; $ea08
 Table07:  
 	!byte $00, $05, $0a, $0f, $14
-StartScreenMonsterColors:
+StartNewreenMonsterColors:
 	!byte BLUE, YELLOW, CYAN, LIGHTGREEN, MAGENTA
 Table09:
 	!byte $ec, $f0, $f4, $f5, $fc
@@ -2232,7 +2246,7 @@ GameScreenData:
 	!byte $19, $1b, $0f, ADR, $8a,SC+3, $1a, $16
 	!byte $0b, $22, $0f, $1b, END
 ; $f3c2
-StartScreenData:
+StartNewreenData:
 	!byte $52, $04, $1a, $1e, $1c, $12, $00, $24
 	!byte $10, $02, $25, $00, $19, $1b, ADR, $a2
 	!byte SC , $0c, $1e, $1d, $1d, $19, $18, $00
