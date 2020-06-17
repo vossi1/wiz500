@@ -26,6 +26,10 @@ GAMEBANK	= 0	; Game code bank
 SYSTEMBANK	= $f	; systembank
 
 LIVES		= 3	; start lives
+; table codes
+ADR	= $fe
+LIN	= $fd
+END	= $ff
 ; color codes
 BLACK		= $00
 WHITE		= $01
@@ -148,6 +152,7 @@ SH = >ScreenRAMbase			; Highbyte Screen RAM base
 !addr worriors		= $28		; lives
 !addr monster_delay	= $2b		; delay for monster movment on satrt screen
 !addr fire		= $2c		; fire pressed bit#7=1
+!addr level		= $3b		; level 1-4
 !addr move		= $4c		; movement 0=none, 1=up, 2=down, 3=left, 4=right
 !addr sprite_data	= $4d		; 8 bytes sprite data
 !addr sound_ptr		= $70		; pointer to sound data
@@ -338,39 +343,39 @@ debounc:ldx CIA64+PRB
 ; $e12c check joystick
 chkjoy:	ldx #$00
 	stx fire
-	stx CIA64+DDRA				; all CIA ports input
+	stx CIA64+DDRA			; all CIA ports input
 	stx CIA64+DDRB
-debjoy:	lda CIA64+PRB				; load joystick port 2 (bit #0-4)
+debjoy:	lda CIA64+PRB			; load joystick port 2 (bit #0-4)
 	cmp CIA64+PRB
-	bne debjoy				; debounce joystick
-	and key					; and pressed key (bit# = 0)
+	bne debjoy			; debounce joystick
+	and key				; and pressed key (bit# = 0)
 ; store joystick/keyboard movement/fire
 	tay
-	and #$10				; check fire
+	and #$10			; check fire
 	bne jkdown
 	lda #$80
-	sta fire					; store fire
+	sta fire			; store fire
 	bne jkx
 jkdown:	tya
-	and #$02				; check down
+	and #$02			; check down
 	bne jkup
 	ldx #2
 	bne jkx
 jkup:	tya
-	and #$01				; check up
+	and #$01			; check up
 	bne jkleft
 	ldx #1
 	bne jkx
 jkleft:	tya
-	and #$04				; check left
+	and #$04			; check left
 	bne jkright
 	ldx #3
 	bne jkx
 jkright:tya
-	and #$08				; check right
+	and #$08			; check right
 	bne jkx
 	ldx #4
-jkx:	stx $46					; store move direction
+jkx:	stx $46				; store move direction
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $e170 Game Cycle
@@ -481,15 +486,15 @@ scrcpyx:lda #0
 	sta move			; store no movement
 	rts
 ; -------------------------------------------------------------------------------------------------
-; $
+; $e21e Draw game screen
 SetupGameScreen:
 	lda #CYAN
 	sta color
-	jsr ClearScreen
+	jsr ClearScreen			; clear screen with cyan
 	ldx #<GameScreenData
 	ldy #>GameScreenData
-	jsr ScreenCopy
-	lda $3b
+	jsr ScreenCopy			; copy game screen
+	lda level
 	and #$03
 	asl
 	tax
@@ -501,24 +506,25 @@ SetupGameScreen:
 	sta $12
 	sta $3d
 	sta $3c
-le244:  ldy $12
+sglp:	ldy $12
 	lda ($44),y
 	cmp #$19
-	bne le24f
+	bne +
 	jsr le2a3
-le24f:  cmp #$18
-	bne le256
++	cmp #$18
+	bne +
 	jsr le2c1
-le256:  cmp #$1a
-	bne le25d
++	cmp #$1a
+	bne +
 	jsr le2dc
-le25d:  inc $12
++	inc $12
 	lda #$03
 	clc
 	adc $3c
 	sta $3c
 	cmp #$27
-	bne le244
+	bne sglp
+
 	lda #$00
 	sta $3c
 	lda #$03
@@ -526,9 +532,10 @@ le25d:  inc $12
 	adc $3d
 	sta $3d
 	cmp #$15
-	bne le244
+	bne sglp
+
 	lda #$00
-	jsr le429
+	jsr AddScore
 	ldx worriors
 	stx $38
 	lda #$1e
@@ -541,7 +548,7 @@ le25d:  inc $12
 	stx ptr1
 	sty ptr1+1
 	ldx #$03
-	jsr le440
+	jsr PrintScore
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $e29b
@@ -551,9 +558,9 @@ Table05:
 	!word Tablei3
 	!word Tablei4
 ; -------------------------------------------------------------------------------------------------
-; $
+; $e2a3
 le2a3:  ldx #$00
-le2a5:  lda $3d
+-	lda $3d
 	clc
 	adc #$02
 	sta $37
@@ -566,13 +573,13 @@ le2a5:  lda $3d
 	jsr le72e
 	inx
 	cpx #$03
-	bne le2a5
+	bne -
 	lda #$05
 	rts
 ; -------------------------------------------------------------------------------------------------
-; $
+; $e2c1
 le2c1:  ldx #$00
-le2c3:  lda $3c
+-	lda $3c
 	sta $36
 	txa
 	clc
@@ -583,11 +590,11 @@ le2c3:  lda $3c
 	jsr le72e
 	inx
 	cpx #$03
-	bne le2c3
+	bne -
 	lda #$05
 	rts
 ; -------------------------------------------------------------------------------------------------
-; $
+; $e2dc
 le2dc:  jsr le2a3
 	jsr le2c1
 	lda #$02
@@ -607,7 +614,7 @@ InitGame:
 	sty score
 	sty score+1
 	sty score+2
-	sty $3b
+	sty level			; reset level
 	sty $76
 	lda #LIVES			; 3 lives
 	sta worriors
@@ -631,29 +638,29 @@ SetupGame:
 	sty monster_delay
 	sty $2a
 	sty $29
-	inc $3b				; raise level ? (1-4)
-	ldx $3b
+	inc level			; raise level (1-4)
+	ldx level
 	cpx #4				; maximum 4
 	bcc +
 	ldx #4
-+	lda MonsterSpeedTable,x			; setup monster speeds?
++	lda MonsterSpeedTable-1,x	; setup monster speeds?
 	sta $27
-	lda MonsterSpeedTable+4,x
+	lda MonsterSpeedTable-1+4,x
 	sta $47
-	lda MonsterSpeedTable+8,x
+	lda MonsterSpeedTable-1+8,x
 	sta $48
-	lda MonsterSpeedTable+12,x
+	lda MonsterSpeedTable-1+12,x
 	sta $49
-	lda MonsterSpeedTable+16,x
+	lda MonsterSpeedTable-1+16,x
 	sta $4a
-	lda MonsterSpeedTable+20,x
+	lda MonsterSpeedTable-1+20,x
 	sta $26
 	lda #$00
 	sta $4b
 	rts
 ; -------------------------------------------------------------------------------------------------
-; spees 1-4
-MonsterSpeedTable = *-1
+; speeds 1-4
+MonsterSpeedTable:
 	!byte $04, $05, $06, $06
 	!byte $03, $04, $05, $06
 	!byte $02, $04, $06, $06
@@ -698,62 +705,66 @@ TableY:
 ; $e3af Level finished
 LevelFinished:
 	lda #$00
-	sta VIC64+MOBENA			; disable sprites
-	ldx #<Bonus300
-	ldy #>Bonus300
-	jsr ScreenCopy				; print 'BONUS 300'
+	sta VIC64+MOBENA		; disable sprites
+	ldx #<TextBonus300
+	ldy #>TextBonus300
+	jsr ScreenCopy			; print 'BONUS 300'
 	lda #7
 	jsr PlaySound
 	lda #$30
-	jsr le429
+	jsr AddScore
 	ldx #$00
 	jsr GameUpdate
 	jmp NextLevel
 
-Bonus300:
+TextBonus300:
 !byte $24, $05, $0c, $19, $18, $1e, $1c, $00	; 'BONUS 300'
 !byte $04, $01, $01, $01, $ff
 
 GameOver:
 	ldx #2
-le3dc:  lda highscore,x
+chkhisc:lda highscore,x
 	cmp score,x			; check if new high score
 	bcc newhisc
 	bne nohisc
 	dex
-	bpl le3dc
-newhisc:lda score				; store new highscore
+	bpl chkhisc
+
+newhisc:lda score			; store new highscore
 	sta highscore
 	lda score+1
 	sta highscore+1
 	lda score+2
 	sta highscore+2
-	ldx #$d0
+	ldx #$d0			; set screen ptr fot highscore
 	ldy #SH+3
 	stx ptr1
 	sty ptr1+1
-	ldx #$03
-	jsr le440
+	ldx #3
+	jsr PrintScore
+
 nohisc:	lda #$00
-	sta SID64+MODVOL
+	sta SID64+MODVOL		; sound off
 	inc move
-	ldx #<Table01
-	ldy #>Table01
-	jsr ScreenCopy
+	ldx #<TextGameOver
+	ldy #>TextGameOver
+	jsr ScreenCopy			; print 'G A M E  O V E R'
 	ldx #$50
 	jsr GameUpdate
-	jmp StartNew
+	jmp StartNew			; start new
 
-Table01:!byte $24, $05, $11, $00, $0b, $00, $17, $00
+TextGameOver:
+	!byte $24,SH+1, $11, $00, $0b, $00, $17, $00
 	!byte $0f, $00, $00, $19, $00, $1f, $00, $0f
-	!byte $00, $1b, $ff
+	!byte $00, $1b, END
 
-le429:  clc
+AddScore:
+	clc
 	sed
 	adc score+1
 	sta score+1
 	lda score+2
-	adc #$00
+	adc #0
 	sta score+2
 	cld
 	ldx #$c4
@@ -761,8 +772,9 @@ le429:  clc
 	stx ptr1
 	sty ptr1+1
 	ldx #$00
-le440:  ldy #$05
-le442:  lda score,x
+PrintScore:  
+	ldy #$05
+-	lda score,x
 	and #$0f
 	clc
 	adc #$01
@@ -778,19 +790,20 @@ le442:  lda score,x
 	sta (ptr1),y
 	inx
 	dey
-	bpl le442
+	bpl -
+
 	lda score+2
 	cmp #$02
-	bcc le473
+	bcc +
 	lda $76
-	bne le473
+	bne +
 	inc $76
 	inc worriors
 	ldx worriors
 	stx ScreenRAMbase+$03de
 	lda #7
 	jsr PlaySound
-le473:  rts
++	rts
 ; -------------------------------------------------------------------------------------------------
 ; $e474
 StartScreen:
@@ -897,16 +910,14 @@ irqx:	pla
 ; $e535
 le535:  lda $2a
 	and #$01
-	beq le53c
+	beq +
 	rts
-; -------------------------------------------------------------------------------------------------
-; $
-le53c:  lda $1e
-	bpl le541
+; $e53c
++	lda $1e
+	bpl +
 	rts
-; -------------------------------------------------------------------------------------------------
-; $
-le541:  jsr CheckJoyKey
+; $e541
++	jsr CheckJoyKey
 	lda #$00
 	sta $30
 	lda #$01
@@ -920,10 +931,10 @@ le541:  jsr CheckJoyKey
 	sta $2e
 	ldx $32
 	lda Table13,x
-	bne le567
+	bne +
 	ldx $2e
 	lda Table13,x
-le567:  sta sprite_data
++	sta sprite_data
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $e56a
@@ -1090,7 +1101,6 @@ le6b3:  lda $31
 	lda #$40
 	sta VIC64+MOBX,x
 	rts
-; -------------------------------------------------------------------------------------------------
 ; $
 le6cf:  beq le6e7
 	lda VIC64+MOBX,x
@@ -1104,10 +1114,10 @@ le6cf:  beq le6e7
 	sta VIC64+MOBX,x
 le6e7:  lda VIC64+MOBY,x
 	cmp #$31
-	bcs le6f4
+	bcs +
 	inc VIC64+MOBY,x
 	inc VIC64+MOBY,x
-le6f4:  rts
++	rts
 ; -------------------------------------------------------------------------------------------------
 ; $e6f5
 Table14:!byte $19, $31, $49, $61, $79, $91, $a9, $c1
@@ -1127,34 +1137,36 @@ le709:  lda $40
 	lda $3f
 	sec
 	sbc #$0b
-	bcs le71d
+	bcs +
 	clc
 	bcc le728
-le71d:  pha
++	pha
 	lda $41
 	and VIC64+MOBMSB
 	clc
-	beq le727
+	beq +
 	sec
-le727:  pla
++	pla
 le728:  ror
 	lsr
 	lsr
 	sta $3f
 	rts
 ; -------------------------------------------------------------------------------------------------
-; $
+; $e72e
 le72e:  lda #$00
 	sta $3a
 	lda $36
-le734:  ldy $37
+-	ldy $37
 	beq le744
 	dec $37
 	clc
 	adc #$28
-	bcc le734
+	bcc -
+
 	inc $3a
-	jmp le734
+	jmp -
+
 le744:  sta $39
 	lda $3a
 	clc
@@ -1165,11 +1177,11 @@ le744:  sta $39
 	sta ($39),y
 	rts
 ; -------------------------------------------------------------------------------------------------
-; $
+; $e754
 le754:  lda $25
-	bpl le75b
+	bpl +
 	jmp le7fc
-le75b:  lda $56
++	lda $56
 	and #$80
 	beq le776
 le761:  lda #$ff
@@ -1181,18 +1193,19 @@ le761:  lda #$ff
 	and VIC64+MOBMSB
 	sta VIC64+MOBMSB
 	rts
-; -------------------------------------------------------------------------------------------------
-; $
+;$ e776
 le776:  lda VIC64+MOBMSB
 	and #$80
 	bne le786
 	lda VIC64+MOBX+14
 	cmp #$14
 	bcc le761
+
 	bcs le78d
 le786:  lda VIC64+MOBX+14
 	cmp #$42
 	bcs le761
+; $e78d
 le78d:  lda $2d
 	cmp #$03
 	bcc le7cd
@@ -1208,8 +1221,7 @@ le78d:  lda $2d
 	and VIC64+MOBMSB
 	sta VIC64+MOBMSB
 le7b0:  rts
-; -------------------------------------------------------------------------------------------------
-; $
+; $e7b1
 le7b1:  inc VIC64+MOBX+14
 	inc VIC64+MOBX+14
 	inc VIC64+MOBX+14
@@ -1221,8 +1233,7 @@ le7b1:  inc VIC64+MOBX+14
 	ora VIC64+MOBMSB
 	sta VIC64+MOBMSB
 	rts
-; -------------------------------------------------------------------------------------------------
-; $
+; $e7cd
 le7cd:  cmp #$01
 	bne le7e5
 	dec VIC64+MOBY+14
@@ -1233,8 +1244,7 @@ le7cd:  cmp #$01
 	cmp #$2a
 	bcc le7f8
 	rts
-; -------------------------------------------------------------------------------------------------
-; $
+; $e7e5
 le7e5:  inc VIC64+MOBY+14
 	inc VIC64+MOBY+14
 	inc VIC64+MOBY+14
@@ -1245,12 +1255,12 @@ le7e5:  inc VIC64+MOBY+14
 le7f8:  jmp le761
 le7fb:  rts
 ; -------------------------------------------------------------------------------------------------
-; $
+; $e7fc
 le7fc:  cmp #$ff
-	bne le804
+	bne +
 	lda $1e
 	bpl chkshot
-le804:  rts
++	rts
 ; -------------------------------------------------------------------------------------------------
 ; $e805 check fire pressed
 chkshot:lda fire
@@ -1582,7 +1592,7 @@ lea77:  lda $1e,x
 	and #$30
 	clc
 	adc #$10
-lea9b:  jsr le429
+lea9b:  jsr AddScore
 lea9e:  lda #5
 	jsr PlaySound
 	jmp lea1d
@@ -2231,9 +2241,6 @@ Tablei4:
 	!byte $01, $01, $01
 ; $f32c
 	!byte $01
-ADR	= $fe
-LIN	= $fd
-END	= $ff
 ; $f32d
 GameScreenData:
 	!byte $00, SH , $2a, LIN, $2a, LIN, $2a, LIN
