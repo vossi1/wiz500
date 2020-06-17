@@ -43,7 +43,7 @@ GRAY2		= $0c
 LIGHTGREEN	= $0d
 LIGHTBLUE	= $0e
 GRAY3		= $0f
-MCM		= $08       ; bit#3 for multicolor character
+MCM		= $08	; bit#3 for multicolor character
 ; game
 ; ************************************** P500 REGISTER ********************************************
 ; vic
