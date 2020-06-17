@@ -124,6 +124,7 @@ CRB		= $F	; Control register B
 !addr TPI2base          = $df00		; TPI2
 !addr HW_IRQ            = $fffe		; System IRQ Vector
 !addr HW_NMI            = $fffa		; System NMI Vector
+SH = >ScreenRAMbase			; Highbyte Screen RAM base
 ; *************************************** C64 ADDRESSES *******************************************
 !addr CPUPort64         = $01		; 6510 CPU port
 !addr VIC64		= $d000		; VIC
@@ -133,18 +134,22 @@ CRB		= $F	; Control register B
 ; ************************************** USER ADDRESSES *******************************************
 
 ; ***************************************** ZERO PAGE *********************************************
-ptr1			= $09		; 16bit pointer
-ptr2			= $0b		; 16bit pointer
-temp1			= $0d
-temp2			= $0e
-temp3			= $0f
-timer			= $13		; game timer - inc with every irq / CIA timer b
-color			= $14
-monster_dir		= $1f		; 5 bytes start screen monster x pos
-lives			= $28		; lives
-monster_delay		= $2b		; delay for monster movment on satrt screen
-state			= $4c
-sprite_data		= $4d		; 8 bytes sprite data 
+!addr score		= $02		; 3bytes score
+!addr highscore		= $05		; 3bytes highscore
+!addr key		= $08		; pressed key/joystick
+!addr ptr1		= $09		; 16bit pointer
+!addr ptr2		= $0b		; 16bit pointer
+!addr temp1		= $0d
+!addr temp2		= $0e
+!addr temp3		= $0f
+!addr timer		= $13		; game timer - inc with every irq / CIA timer b
+!addr color		= $14
+!addr monster_dir	= $1f		; 5 bytes start screen monster x pos
+!addr worriors		= $28		; lives
+!addr monster_delay	= $2b		; delay for monster movment on satrt screen
+!addr state		= $4c
+!addr sprite_data	= $4d		; 8 bytes sprite data
+!addr sound_ptr		= $70		; pointer to sound data
 ; ***************************************** VARIABLES *********************************************
 ; ************************************** P500 ZERO PAGE *******************************************
 !addr ColorRAM0         = $e6
@@ -185,12 +190,12 @@ start:	sei				; disable interrupts
 	ldx #$ff			; init stack
 	txs
 	ldx #$2e			; init vic regs
-inviclp:lda vicregs,x
+inviclp:lda VICRegs,x
 	sta VIC64+MOBX,x
 	dex
 	bpl inviclp
 	ldx #$18			; init sid regs
-insidlp:lda sidregs,x
+insidlp:lda SIDRegs,x
 	sta SID64,x
 	dex
 	bpl insidlp
@@ -213,25 +218,25 @@ clramlp:sta $02,x
 	sta CIA64+TBHI
 	cli				; enable irq
 StartNew:
-	jsr StartNewreen
-	jsr InitSprites			; inits some vars and sprite colors
+	jsr StartScreen			; shows start screen and waits for F1
+	jsr InitGame			; reset score, init lives and sprite colors
 NextLevel:
-	jsr InitGame
+	jsr SetupGame
 TryAgain:
-	jsr InitGameScreen
-	jsr le36b
+	jsr SetupGameScreen
+	jsr SetupWorrior
 	lda #$1f
 	sta SID64+MODVOL		; full volume, filter low pass
-	ldx #$01
+	ldx #1				; start with sound 1
 	lda $29
-	bpl le05f
-	ldx #$02
-le05f:  txa
-	jsr led31
+	bpl +
+	ldx #2				; if $29 bit#7 set, start with sound 2
++	txa
+	jsr PlaySound
 GameLoop:
 	lda timer
 	bne GameLoop
-	jsr le1a9
+	jsr CopySpritePointer
 	lda VIC64+MOBMOB
 	sta $55
 	lda VIC64+MOBBGR
@@ -243,8 +248,8 @@ GameLoop:
 	lda #$05
 	cmp monster_delay
 	bne le089
-	lda #$02
-	jsr led31
+	lda #2
+	jsr PlaySound			; Play sound 2
 	dec $29
 le089:  lda monster_delay
 	cmp #$10
@@ -261,15 +266,15 @@ le092:  jsr le754
 	jsr GameCycle
 	lda $1e
 	cmp #$ff
-	beq declive
+	beq decwor
 	lda $26
 	bne GameLoop
 
 	lda $1e
-	bmi declive
+	bmi decwor
 	jmp LevelFinished
 
-declive:dec lives			; decrease lives
+decwor:	dec worriors			; decrease lives
 	bne TryAgain
 
 	jmp GameOver			; game over
@@ -289,39 +294,40 @@ CheckF1Key:
 	iny				; returns 1 if F1 pressed
 chkf1x:	rts
 ; -------------------------------------------------------------------------------------------------
-; $
-le0db:  ldx #$ff
+; $e0db check joystick and keyboard movement/fire
+CheckKeyboard:
+	ldx #$ff
 	stx CIA64+DDRA			; port a output
 	inx
 	stx CIA64+DDRB			; port b input
-	lda #$1f
+	lda #$1f			; init key value
 	ldx #$df
 	jsr chkkey
-	cpx #$fb
-	bne le0f3
-	and #$fb
-	bne le11b
-le0f3:  cpx #$fd
-	bne le0fb
-	and #$fe
-	bne le11b
-le0fb:  cpx #$ef
-	bne le103
-	and #$fd
-	bne le11b
-le103:  ldx #$fd
+	cpx #$fb			; check 'L' = left
+	bne chkup
+	and #$fb			; clear bit #2
+	bne chkx
+chkup:  cpx #$fd			; check 'P'
+	bne chkdown
+	and #$fe			; clear bitt #0
+	bne chkx
+chkdown:cpx #$ef			; check '.'
+	bne chkfire
+	and #$fd			; clear bit #1
+	bne chkx
+chkfire:ldx #$fd
 	jsr chkkey
-	cpx #$fb
-	bne le110
-	and #$ef
-	bne le11b
-le110:  ldx #$bf
+	cpx #$fb			; check 'A'
+	bne chkrght
+	and #$ef			; clear bit #4
+	bne chkx
+chkrght:ldx #$bf
 	jsr chkkey
-	cpx #$fb
-	bne le11b
-	and #$f7
-le11b:  sta $08
-	jmp le12c
+	cpx #$fb			; check ';'
+	bne chkx
+	and #$f7			; clear bit #3
+chkx:	sta key				; store key
+	jmp CheckJoystick
 ; $e120
 chkkey:	stx CIA64+PRA
 debounc:ldx CIA64+PRB
@@ -329,15 +335,16 @@ debounc:ldx CIA64+PRB
 	bne debounc
 	rts
 ; -------------------------------------------------------------------------------------------------
-; $
-le12c:  ldx #$00
+; $e12c check joystick movement/fire
+CheckJoystick:
+	ldx #$00
 	stx $2c
 	stx CIA64+DDRA
 	stx CIA64+DDRB
 le136:  lda CIA64+PRB
 	cmp CIA64+PRB
 	bne le136
-	and $08
+	and key
 	tay
 	and #$10
 	bne le14b
@@ -402,18 +409,19 @@ clscrlp:lda color			; color
 	bne clscrlp
 	rts
 ; -------------------------------------------------------------------------------------------------
-; $
-le1a9:  ldx #$08
-le1ab:  lda sprite_data-1,x
+; $e1a9 copies all sprites data pointers to the vic pointers
+CopySpritePointer:
+	ldx #8
+cpsprlp:lda sprite_data-1,x
 	sta SpritePointer-1,x
 	dex
-	bne le1ab
-	ldx #$08
-le1b5:  lda sprite_data-1,x
+	bne cpsprlp
+	ldx #8
+chksplp:lda sprite_data-1,x
 	cmp SpritePointer-1,x
-	bne le1a9
+	bne CopySpritePointer
 	dex
-	bne le1b5
+	bne chksplp
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $e1c0 Copies data from xy to address in first two bytes till $ff
@@ -474,7 +482,7 @@ scrcpyx:lda #$00
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $
-InitGameScreen:
+SetupGameScreen:
 	lda #CYAN
 	sta color
 	jsr ClearScreen
@@ -521,7 +529,7 @@ le25d:  inc $12
 	bne le244
 	lda #$00
 	jsr le429
-	ldx lives
+	ldx worriors
 	stx $38
 	lda #$1e
 	sta $36
@@ -594,15 +602,15 @@ le2dc:  jsr le2a3
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $e2f5 inits some vars and sprite colors
-InitSprites:
+InitGame:
 	ldy #0
-	sty $02
-	sty $03
-	sty $04
+	sty score
+	sty score+1
+	sty score+2
 	sty $3b
 	sty $76
 	lda #LIVES			; 3 lives
-	sta lives
+	sta worriors
 	lda #BLUE
 	ldx #7
 incollp:sta VIC64+MOBCOL,x
@@ -611,7 +619,7 @@ incollp:sta VIC64+MOBCOL,x
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $e310
-InitGame:
+SetupGame:
 	ldx #$00
 	stx VIC64+MOBENA		; disable sprites
 -	lda #$ff
@@ -625,9 +633,9 @@ InitGame:
 	sty $29
 	inc $3b				; raise level ? (1-4)
 	ldx $3b
-	cpx #$04			; maximum 4
+	cpx #4				; maximum 4
 	bcc +
-	ldx #$04
+	ldx #4
 +	lda MonsterSpeedTable,x			; setup monster speeds?
 	sta $27
 	lda MonsterSpeedTable+4,x
@@ -653,13 +661,14 @@ MonsterSpeedTable = *-1
 	!byte $00, $01, $00, $02
 	!byte $0a, $10, $14, $18
 ; -------------------------------------------------------------------------------------------------
-; 
-le36b:  lda #$e6
+; $e36b setup worrior sprite
+SetupWorrior:
+	lda #$e6			; init worrior sprite
 	sta sprite_data
 	sta SpritePointer
 	lda #$03
 	sta $2e
-	lda #$01
+	lda #$01			; set worrior start position
 	sta VIC64+MOBMSB
 	lda #$37
 	sta VIC64+MOBX
@@ -674,8 +683,8 @@ le36b:  lda #$e6
 	stx $1e
 	stx $2d
 	lda VIC64+MOBENA
-	ora #$01
-	and #$7f
+	ora #$01			; enable worrior sprite
+	and #$7f			; disable sprite #7
 	sta VIC64+MOBENA
 	rts
 ; -------------------------------------------------------------------------------------------------
@@ -693,8 +702,8 @@ LevelFinished:
 	ldx #<Bonus300
 	ldy #>Bonus300
 	jsr ScreenCopy				; print 'BONUS 300'
-	lda #$07
-	jsr led31
+	lda #7
+	jsr PlaySound
 	lda #$30
 	jsr le429
 	ldx #$00
@@ -705,26 +714,27 @@ Bonus300:
 !byte $24, $05, $0c, $19, $18, $1e, $1c, $00	; 'BONUS 300'
 !byte $04, $01, $01, $01, $ff
 
-GameOver:  ldx #$02
-le3dc:  lda $05,x
-	cmp $02,x
-	bcc le3e7
-	bne le400
+GameOver:
+	ldx #2
+le3dc:  lda highscore,x
+	cmp score,x			; check if new high score
+	bcc newhisc
+	bne nohisc
 	dex
 	bpl le3dc
-le3e7:  lda $02
-	sta $05
-	lda $03
-	sta $06
-	lda $04
-	sta $07
+newhisc:lda score				; store new highscore
+	sta highscore
+	lda score+1
+	sta highscore+1
+	lda score+2
+	sta highscore+2
 	ldx #$d0
-	ldy #$07
+	ldy #SH+3
 	stx ptr1
 	sty ptr1+1
 	ldx #$03
 	jsr le440
-le400:  lda #$00
+nohisc:	lda #$00
 	sta SID64+MODVOL
 	inc state
 	ldx #<Table01
@@ -740,25 +750,25 @@ Table01:!byte $24, $05, $11, $00, $0b, $00, $17, $00
 
 le429:  clc
 	sed
-	adc $03
-	sta $03
-	lda $04
+	adc score+1
+	sta score+1
+	lda score+2
 	adc #$00
-	sta $04
+	sta score+2
 	cld
 	ldx #$c4
-	ldy #$07
+	ldy #SH+3
 	stx ptr1
 	sty ptr1+1
 	ldx #$00
 le440:  ldy #$05
-le442:  lda $02,x
+le442:  lda score,x
 	and #$0f
 	clc
 	adc #$01
 	sta (ptr1),y
 	dey
-	lda $02,x
+	lda score,x
 	lsr
 	lsr
 	lsr
@@ -769,21 +779,21 @@ le442:  lda $02,x
 	inx
 	dey
 	bpl le442
-	lda $04
+	lda score+2
 	cmp #$02
 	bcc le473
 	lda $76
 	bne le473
 	inc $76
-	inc lives
-	ldx lives
-	stx $07de
-	lda #$07
-	jsr led31
+	inc worriors
+	ldx worriors
+	stx ScreenRAMbase+$03de
+	lda #7
+	jsr PlaySound
 le473:  rts
 ; -------------------------------------------------------------------------------------------------
 ; $e474
-StartNewreen:
+StartScreen:
 	lda #$00
 	sta VIC64+MOBENA		; disable all sprites
 	lda #BLUE
@@ -792,8 +802,8 @@ StartNewreen:
 	lda #WHITE
 	sta VIC64+BGRCOL		; set bgr+ext white
 	sta VIC64+EXTCOL
-	ldy #>StartNewreenData
-	ldx #<StartNewreenData
+	ldy #>StartScreenData
+	ldx #<StartScreenData
 	jsr ScreenCopy			; Copies start screen
 
 	ldx #$04
@@ -803,11 +813,11 @@ ssinspr:txa
 	lda #$d7			; sprite start h pos
 	sta monster_dir,x		; set right direction = $d7
 	sta VIC64+MOBX+2,y		; setup monsters sprites 1-5
-	lda StartNewreenMonsterVpos,x
+	lda StartScreenMonsterVpos,x
 	sta VIC64+MOBY+2,y
-	lda StartNewreenMonsterData,x
+	lda StartScreenMonsterData,x
 	sta SpritePointer+1,x
-	lda StartNewreenMonsterColors,x
+	lda StartScreenMonsterColors,x
 	sta VIC64+MOBCOL+1,x
 	dex
 	bpl ssinspr			; setup next sprite
@@ -834,7 +844,7 @@ ssright:tya
 	beq ssleft
 	inc VIC64+MOBX+2,x		; move monsters right
 	lda VIC64+MOBX+2,x
-	cmp StartNewreenMonsterRLimit,y	; check if right limit
+	cmp StartScreenMonsterRLimit,y	; check if right limit
 	bcc ssnxspr
 	lda #$00
 	sta monster_dir,y		; set left direction
@@ -867,11 +877,11 @@ sschkf1:jsr CheckF1Key			; check f1 key pressed
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $e51a
-StartNewreenMonsterVpos:
+StartScreenMonsterVpos:
 	!byte $52, $6a, $82, $9a, $b2
-StartNewreenMonsterData:
+StartScreenMonsterData:
 	!byte $e9, $ed, $f1, $f5, $f9
-StartNewreenMonsterRLimit:
+StartScreenMonsterRLimit:
 	!byte $db, $dc, $db, $dc, $db
 ; -------------------------------------------------------------------------------------------------
 ; $e529 interrupt
@@ -896,7 +906,7 @@ le53c:  lda $1e
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $
-le541:  jsr le0db
+le541:  jsr CheckKeyboard
 	lda #$00
 	sta $30
 	lda #$01
@@ -1248,8 +1258,8 @@ le805:  lda $2c
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $
-le80a:  lda #$04
-	jsr led31
+le80a:  lda #4
+	jsr PlaySound
 	lda VIC64
 	sta VIC64+MOBX+14
 	lda VIC64+MOBY
@@ -1443,8 +1453,8 @@ le980:  and $1e,x
 le999:  iny
 	lda $4a
 	beq le95b
-	lda #$03
-	jsr led31
+	lda #3
+	jsr PlaySound
 	dec $4a
 	dec $4b
 le9a7:  lda #$01
@@ -1491,7 +1501,7 @@ le9e5:  pla
 	lda Table09,y
 	sta sprite_data,x
 	sta SpritePointer,x
-	lda StartNewreenMonsterColors,y
+	lda StartScreenMonsterColors,y
 	sta VIC64+MOBCOL,x
 	lda bits,x
 	ora VIC64+MOBENA
@@ -1501,7 +1511,7 @@ le9e5:  pla
 ; $ea08
 Table07:  
 	!byte $00, $05, $0a, $0f, $14
-StartNewreenMonsterColors:
+StartScreenMonsterColors:
 	!byte BLUE, YELLOW, CYAN, LIGHTGREEN, MAGENTA
 Table09:
 	!byte $ec, $f0, $f4, $f5, $fc
@@ -1525,8 +1535,8 @@ lea21:  cmp #$ff
 	bne lea3c
 	lda #$f6
 	sta sprite_data
-	lda #$06
-	jsr led31
+	lda #6
+	jsr PlaySound
 	jmp lea1d
 lea3c:  cmp #$90
 	bne lea47
@@ -1574,8 +1584,8 @@ lea77:  lda $1e,x
 	clc
 	adc #$10
 lea9b:  jsr le429
-lea9e:  lda #$05
-	jsr led31
+lea9e:  lda #5
+	jsr PlaySound
 	jmp lea1d
 leaa6:  cmp #$90
 	bne leab1
@@ -1916,66 +1926,64 @@ led20:  inc VIC64+MOBY+12
 	bcs led2e
 led2d:  rts
 ; -------------------------------------------------------------------------------------------------
-; $
+; $ed2e
 led2e:  jmp lecb6
-led31:  cmp #$01
-	bne led49
+; -------------------------------------------------------------------------------------------------
+; $ed31 play sound
+PlaySound:
+	cmp #1
+	bne pls02
 	sta $6f
-	lda #$43
-	sta $70
-	lda #$ee
-	sta $71
+	lda #<Sound1
+	sta sound_ptr
+	lda #>Sound1
+	sta sound_ptr+1
 	lda #$21
 	sta SID64+V1CTRL
 	lda #$01
 	sta $72
 	rts
-; -------------------------------------------------------------------------------------------------
-; $
-led49:  cmp #$02
-	bne led5c
+; $ed49
+pls02:  cmp #2
+	bne pls03
 	sta $6f
-	lda #$4c
-	sta $70
-	lda #$ee
-	sta $71
+	lda #<Sound2
+	sta sound_ptr
+	lda #>Sound2
+	sta sound_ptr+1
 	lda #$01
 	sta $72
 	rts
-; -------------------------------------------------------------------------------------------------
-; $
-led5c:  cmp #$03
-	bne led6f
+; $ed5c
+pls03:  cmp #3
+	bne pls04
 	sta $6f
-	lda #$55
-	sta $70
-	lda #$ee
-	sta $71
+	lda #<Sound3
+	sta sound_ptr
+	lda #>Sound3
+	sta sound_ptr+1
 	lda #$01
 	sta $72
 	rts
-; -------------------------------------------------------------------------------------------------
-; $
-led6f:  cmp #$04
-	bne led7d
+; $ed6f
+pls04:  cmp #4
+	bne pls05
 	lda #$0f
 	sta $74
 	lda #$81
 	sta SID64+V2CTRL
 	rts
-; -------------------------------------------------------------------------------------------------
-; $
-led7d:  cmp #$05
-	bne led8b
+; $ed7d
+pls05:  cmp #5
+	bne pls06
 	lda #$0f
 	sta $75
 	lda #$81
 	sta SID64+V3CTRL
 	rts
-; -------------------------------------------------------------------------------------------------
-; $
-led8b:  cmp #$06
-	bne led9e
+; $ed8b
+pls06:  cmp #6
+	bne pls07
 	lda #$3f
 	sta $75
 	sta $74
@@ -1983,10 +1991,9 @@ led8b:  cmp #$06
 	sta SID64+V2CTRL
 	sta SID64+V3CTRL
 	rts
-; -------------------------------------------------------------------------------------------------
-; $
-led9e:  cmp #$07
-	bne ledb4
+; $ed9e
+pls07:  cmp #7
+	bne pls08
 	lda #$3f
 	sta $73
 	asl
@@ -1996,16 +2003,15 @@ led9e:  cmp #$07
 	lda #$00
 	sta $74
 	rts
-; -------------------------------------------------------------------------------------------------
-; $
-ledb4:  cmp #$08
-	bne ledc2
+; $edb4
+pls08:  cmp #8
+	bne plsx
 	lda #$07
 	sta $73
 	lda #$21
 	sta SID64+V2CTRL
 	rts
-ledc2:  rts
+plsx:	rts
 ; -------------------------------------------------------------------------------------------------
 ; $
 GameCycle:
@@ -2036,7 +2042,7 @@ ledea:  lda $73
 	lsr
 	and #$01
 	tax
-	lda Notes1,x
+	lda Sound1,x
 	sta SID64+V2HI
 	dec $73
 	bne lee04
@@ -2045,42 +2051,46 @@ ledea:  lda $73
 lee04:  dec $72
 	bne lee42
 	clc
-	lda $70
+	lda sound_ptr
 	adc #$02
-	sta $70
-	lda $71
+	sta sound_ptr
+	lda sound_ptr+1
 	adc #$00
-	sta $71
+	sta sound_ptr+1
 	ldy #$00
-	lda ($70),y
+	lda (sound_ptr),y
 	bne lee2e
 	lda $6f
 	cmp #$01
 	bne lee24
-	jmp led31
-lee24:  cmp #$02
+	jmp PlaySound
+
+lee24:  cmp #2
 	bne lee2b
-	jmp led49
-lee2b:  jmp led5c
+	jmp pls02
+lee2b:  jmp pls03
 lee2e:  sta $72
 	ldy #$01
-	lda ($70),y
+	lda (sound_ptr),y
 	asl
 	tax
-	lda Notes2,x
+	lda Notes,x
 	sta SID64+V1LO
-	lda Notes2+1,x
+	lda Notes+1,x
 	sta SID64+V1HI
 lee42:  rts
 ; ***************************************** ZONE NOTES ********************************************
 !zone notes
 ; $ee43
-Notes1: !byte $30, $40, $18, $04, $18, $03, $18, $02
-	!byte $18, $01, $00, $08, $04, $08, $19, $08
-	!byte $03, $08, $01, $00, $04, $04, $04, $19
-	!byte $04, $03, $04, $01, $00
+Sound1: !byte $30, $40, $18, $04, $18, $03, $18, $02, $18
+; $ee4c
+Sound2:	!byte $01, $00, $08, $04, $08, $19, $08, $03, $08
+; $ee55
+Sound3:	!byte $01, $00, $04, $04, $04, $19, $04, $03, $04
+
+	!byte $01, $00
 ; $ee60
-Notes2:
+Notes:
 	!byte $00, $00, $0d, $0a, $72, $0b, $20, $0c
 	!byte $d6, $0c, $9c, $0d, $65, $0e, $46, $0f
 	!byte $2f, $10, $25, $11, $2a, $12, $3f, $13
@@ -2095,9 +2105,9 @@ Notes2:
 	!byte $78, $81, $2b, $89, $53, $91, $f7, $99
 	!byte $1f, $a3
 ; $eec2
-; ***************************************** ZONE DATA2 ********************************************
+; ***************************************** ZONE FONT *********************************************
 ; $f000 font
-!zone data2
+!zone font
 *= $f000
 	!byte $00, $00, $00, $00, $00, $00, $00, $00	; space
 	!byte $3c, $66, $6e, $76, $66, $66, $3c, $00	; 0
@@ -2145,8 +2155,10 @@ Notes2:
 	!byte $00, $00, $00, $00, $00, $00, $00, $ff	; _
 	!byte $c0, $c0, $c0, $c0, $c0, $c0, $c0, $ff	; L
 	!byte $ff, $00, $00, $00, $00, $00, $00, $00	; -
-; $f170
-vicregs:
+; ***************************************** ZONE DATA *********************************************
+; $f170 data
+!zone data
+VICRegs:
 	!byte $00, $00, $00, $00, $00, $00, $00, $00
 	!byte $00, $00, $00, $00, $00, $00, $00, $00
 	!byte $00, $1b, $00, $00, $00, $00, $0b, $00
@@ -2154,7 +2166,7 @@ vicregs:
 	!byte $06, $00, $00, $00, $00, $02, $07, $06
 	!byte $06, $06, $06, $06, $06, $06, $06
 ; $f19f
-sidregs:
+SIDRegs:
 	!byte $00, $20, $00, $00, $20, $00, $f9, $00
 	!byte $60, $00, $00, $80, $00, $fa, $ff, $ff
 	!byte $00, $00, $80, $00, $fa, $ff, $ff, $07
@@ -2220,13 +2232,12 @@ Tablei4:
 	!byte $01, $01, $01
 ; $f32c
 	!byte $01
-SC	= >ScreenRAMbase
 ADR	= $fe
 LIN	= $fd
 END	= $ff
 ; $f32d
 GameScreenData:
-	!byte $00, SC , $2a, LIN, $2a, LIN, $2a, LIN
+	!byte $00, SH , $2a, LIN, $2a, LIN, $2a, LIN
 	!byte $2a, LIN, $2a, LIN, $2a, LIN, LIN, LIN
 	!byte LIN, $2a, LIN, $2a, LIN, $2a, LIN, $2a
 	!byte LIN, $2a, LIN, $2a, LIN, $2a, LIN, $2a
@@ -2236,53 +2247,53 @@ GameScreenData:
 	!byte $2b, $2b, $2b, $2b, $2b, $2b, $2b, $2b
 	!byte $2b, $2b, $2b, $2b, $2b, $2b, $2b, $2b
 	!byte $2b, $2b, $2b, $2b, $2b, $2b, ADR, $27
-	!byte SC , $2a, LIN, $2a, LIN, $2a, LIN, $2a
+	!byte SH , $2a, LIN, $2a, LIN, $2a, LIN, $2a
 	!byte LIN, $2a, LIN, $2a, LIN, LIN, LIN, LIN
 	!byte $2a, LIN, $2a, LIN, $2a, LIN, $2a, LIN
 	!byte $2a, LIN, $2a, LIN, $2a, LIN, $2a, LIN
 	!byte $2a, LIN, $2a, LIN, $2a, LIN, $2a, ADR
 	!byte $72, $07, $1c, $0d, $19, $1b, $0f, $00
 	!byte $00, $00, $00, $12, $13, $26, $1c, $0d
-	!byte $19, $1b, $0f, ADR, $8a,SC+3, $1a, $16
+	!byte $19, $1b, $0f, ADR, $8a,SH+3, $1a, $16
 	!byte $0b, $22, $0f, $1b, END
 ; $f3c2
-StartNewreenData:
+StartScreenData:
 	!byte $52, $04, $1a, $1e, $1c, $12, $00, $24
 	!byte $10, $02, $25, $00, $19, $1b, ADR, $a2
-	!byte SC , $0c, $1e, $1d, $1d, $19, $18, $00
+	!byte SH , $0c, $1e, $1d, $1d, $19, $18, $00
 	!byte $19, $18, $00, $14, $19, $22, $1c, $1d
-	!byte $13, $0d, $15, ADR, $f2, SC , $1d, $19
+	!byte $13, $0d, $15, ADR, $f2, SH , $1d, $19
 	!byte $00, $1c, $1d, $0b, $1b, $1d, $28, ADR
-	!byte $6a,SC+1, $24, $0b, $25, $26, $10, $13
-	!byte $1b, $0f, ADR, $ba,SC+1, $24, $16, $25
-	!byte $26, $16, $0f, $10, $1d, ADR, $0a,SC+2
+	!byte $6a,SH+1, $24, $0b, $25, $26, $10, $13
+	!byte $1b, $0f, ADR, $ba,SH+1, $24, $16, $25
+	!byte $26, $16, $0f, $10, $1d, ADR, $0a,SH+2
 	!byte $24, $27, $25, $26, $1b, $13, $11, $12
-	!byte $1d, ADR, $5a,SC+2, $24, $1a, $25, $26
-	!byte $1e, $1a, ADR, $aa,SC+2, $24, $28, $25
-	!byte $26, $0e, $19, $20, $18, ADR, $69, SC
+	!byte $1d, ADR, $5a,SH+2, $24, $1a, $25, $26
+	!byte $1e, $1a, ADR, $aa,SH+2, $24, $28, $25
+	!byte $26, $0e, $19, $20, $18, ADR, $69, SH
 	!byte $26, $00, $1c, $0d, $19, $1b, $0f, $00
-	!byte $26, ADR, $e7, SC , $02, $01, $01, $00
-	!byte $1a, $1d, $1c, $28, ADR, $5f,SC+1, $03
+	!byte $26, ADR, $e7, SH , $02, $01, $01, $00
+	!byte $1a, $1d, $1c, $28, ADR, $5f,SH+1, $03
 	!byte $01, $01, $00, $1a, $1d, $1c, $28, ADR
-	!byte $d7, $05, SC , $01, $01, $00, $1a, $1d
-	!byte $1c, $28, ADR, $4f,SC+2, $05, $01, $01
-	!byte $00, $1a, $1d, $1c, $28, ADR, $c3,SC+2
+	!byte $d7, $05, SH , $01, $01, $00, $1a, $1d
+	!byte $1c, $28, ADR, $4f,SH+2, $05, $01, $01
+	!byte $00, $1a, $1d, $1c, $28, ADR, $c3,SH+2
 	!byte $17, $22, $1c, $1d, $0f, $1b, $22, $00
-	!byte $1a, $1d, $1c, $28, ADR, $37,SC+3, $0f
+	!byte $1a, $1d, $1c, $28, ADR, $37,SH+3, $0f
 	!byte $21, $1d, $1b, $0b, $00, $0c, $19, $18
-	!byte $1e, $1c, ADR, $61,SC+3, $10, $19, $1b
+	!byte $1e, $1c, ADR, $61,SH+3, $10, $19, $1b
 	!byte $00, $03, $01, $01, $01, $01, $00, $1a
-	!byte $1d, $1c, $28, ADR, $78,SC+3, $02, $0a
+	!byte $1d, $1c, $28, ADR, $78,SH+3, $02, $0a
 	!byte $09, $03, $00, $0c, $22, $00, $0d, $19
 	!byte $17, $17, $19, $0e, $19, $1b, $0f, $00
-	!byte $16, $1d, $0e, ADR, $a0,SC+3, $02, $0a
+	!byte $16, $1d, $0e, ADR, $a0,SH+3, $02, $0a
 	!byte $09, $02, $00, $0c, $22, $00, $0c, $0b
 	!byte $16, $16, $22, $23, $17, $13, $0e, $20
 	!byte $0b, $22, END
 ; $f4bd
-; ***************************************** ZONE DATA3 ********************************************
-; $f940 sprites?
-!zone data3
+; **************************************** ZONE SPRITES *******************************************
+; $f940 sprites data $e5 - $fe
+!zone sprites
 *= $f940
 	!byte $00, $2a, $00, $00, $29, $00, $00, $2a
 	!byte $00, $00, $2a, $00, $00, $2a, $00, $00
@@ -2495,7 +2506,7 @@ StartNewreenData:
 ; $ffc0
 ; **************************************** ZONE VECTORS *******************************************
 ; $fffa Hardware vectors
-!zone VECTORS
+!zone vectors
 *= $fffa
 	!word start
 	!word start
