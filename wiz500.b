@@ -147,7 +147,8 @@ SH = >ScreenRAMbase			; Highbyte Screen RAM base
 !addr monster_dir	= $1f		; 5 bytes start screen monster x pos
 !addr worriors		= $28		; lives
 !addr monster_delay	= $2b		; delay for monster movment on satrt screen
-!addr state		= $4c
+!addr fire		= $2c		; fire pressed bit#7=1
+!addr move		= $4c		; movement 0=none, 1=up, 2=down, 3=left, 4=right
 !addr sprite_data	= $4d		; 8 bytes sprite data
 !addr sound_ptr		= $70		; pointer to sound data
 ; ***************************************** VARIABLES *********************************************
@@ -295,7 +296,7 @@ CheckF1Key:
 chkf1x:	rts
 ; -------------------------------------------------------------------------------------------------
 ; $e0db check joystick and keyboard movement/fire
-CheckKeyboard:
+CheckJoyKey:
 	ldx #$ff
 	stx CIA64+DDRA			; port a output
 	inx
@@ -309,7 +310,7 @@ CheckKeyboard:
 	bne chkx
 chkup:  cpx #$fd			; check 'P'
 	bne chkdown
-	and #$fe			; clear bitt #0
+	and #$fe			; clear bit #0
 	bne chkx
 chkdown:cpx #$ef			; check '.'
 	bne chkfire
@@ -327,50 +328,49 @@ chkrght:ldx #$bf
 	bne chkx
 	and #$f7			; clear bit #3
 chkx:	sta key				; store key
-	jmp CheckJoystick
-; $e120
+	jmp chkjoy
+; $e120 check cia
 chkkey:	stx CIA64+PRA
 debounc:ldx CIA64+PRB
 	cpx CIA64+PRB
 	bne debounc
 	rts
-; -------------------------------------------------------------------------------------------------
-; $e12c check joystick movement/fire
-CheckJoystick:
-	ldx #$00
-	stx $2c
-	stx CIA64+DDRA
+; $e12c check joystick
+chkjoy:	ldx #$00
+	stx fire
+	stx CIA64+DDRA				; all CIA ports input
 	stx CIA64+DDRB
-le136:  lda CIA64+PRB
+debjoy:	lda CIA64+PRB				; load joystick port 2 (bit #0-4)
 	cmp CIA64+PRB
-	bne le136
-	and key
+	bne debjoy				; debounce joystick
+	and key					; and pressed key (bit# = 0)
+; store joystick/keyboard movement/fire
 	tay
-	and #$10
-	bne le14b
+	and #$10				; check fire
+	bne jkdown
 	lda #$80
-	sta $2c
-	bne le16d
-le14b:  tya
-	and #$02
-	bne le154
-	ldx #$02
-	bne le16d
-le154:  tya
-	and #$01
-	bne le15d
-	ldx #$01
-	bne le16d
-le15d:  tya
-	and #$04
-	bne le166
-	ldx #$03
-	bne le16d
-le166:  tya
-	and #$08
-	bne le16d
-	ldx #$04
-le16d:  stx $46
+	sta fire					; store fire
+	bne jkx
+jkdown:	tya
+	and #$02				; check down
+	bne jkup
+	ldx #2
+	bne jkx
+jkup:	tya
+	and #$01				; check up
+	bne jkleft
+	ldx #1
+	bne jkx
+jkleft:	tya
+	and #$04				; check left
+	bne jkright
+	ldx #3
+	bne jkx
+jkright:tya
+	and #$08				; check right
+	bne jkx
+	ldx #4
+jkx:	stx $46					; store move direction
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $e170 Game Cycle
@@ -451,8 +451,8 @@ scrcplp:iny
 	sta (ptr2),y
 	inc temp2
 	ldy temp1
-	lda state
-	beq scrcplp			; next if state = 0
+	lda move
+	beq scrcplp			; next if no movement
 	ldx #10
 	jsr GameUpdate			; 10 game updates
 	jmp scrcplp
@@ -477,8 +477,8 @@ scrline:clc
 	lda #$00
 	sta temp2
 	beq scrcplp			; always next
-scrcpyx:lda #$00
-	sta state
+scrcpyx:lda #0
+	sta move			; store no movement
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $
@@ -736,7 +736,7 @@ newhisc:lda score				; store new highscore
 	jsr le440
 nohisc:	lda #$00
 	sta SID64+MODVOL
-	inc state
+	inc move
 	ldx #<Table01
 	ldy #>Table01
 	jsr ScreenCopy
@@ -906,7 +906,7 @@ le53c:  lda $1e
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $
-le541:  jsr CheckKeyboard
+le541:  jsr CheckJoyKey
 	lda #$00
 	sta $30
 	lda #$01
@@ -1249,16 +1249,15 @@ le7fb:  rts
 le7fc:  cmp #$ff
 	bne le804
 	lda $1e
-	bpl le805
+	bpl chkshot
 le804:  rts
 ; -------------------------------------------------------------------------------------------------
-; $
-le805:  lda $2c
-	bmi le80a
+; $e805 check fire pressed
+chkshot:lda fire
+	bmi shoot
 	rts
-; -------------------------------------------------------------------------------------------------
-; $
-le80a:  lda #4
+; $e80a shoot
+shoot:	lda #4
 	jsr PlaySound
 	lda VIC64
 	sta VIC64+MOBX+14
