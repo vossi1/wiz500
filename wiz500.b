@@ -710,7 +710,7 @@ LevelFinished:
 	ldy #>TextBonus300
 	jsr ScreenCopy			; print 'BONUS 300'
 	lda #7
-	jsr PlaySound
+	jsr PlaySound			; play bonus sound
 	lda #$30
 	jsr AddScore
 	ldx #$00
@@ -757,27 +757,28 @@ TextGameOver:
 	!byte $24,SH+1, $11, $00, $0b, $00, $17, $00
 	!byte $0f, $00, $00, $19, $00, $1f, $00, $0f
 	!byte $00, $1b, END
-
+; add and print score
 AddScore:
 	clc
 	sed
-	adc score+1
+	adc score+1			; add score
 	sta score+1
 	lda score+2
 	adc #0
 	sta score+2
 	cld
-	ldx #$c4
+	ldx #$c4			; set screen pointer to score
 	ldy #SH+3
 	stx ptr1
 	sty ptr1+1
-	ldx #$00
-PrintScore:  
-	ldy #$05
--	lda score,x
-	and #$0f
+	ldx #0				; print score
+
+PrintScore:
+	ldy #5
+pslp:	lda score,x
+	and #$0f			; clear hinibble
 	clc
-	adc #$01
+	adc #1
 	sta (ptr1),y
 	dey
 	lda score,x
@@ -786,24 +787,24 @@ PrintScore:
 	lsr
 	lsr
 	clc
-	adc #$01
+	adc #1
 	sta (ptr1),y
 	inx
 	dey
-	bpl -
-
+	bpl pslp
+; check bonus worrior
 	lda score+2
-	cmp #$02
-	bcc +
+	cmp #2				; check score
+	bcc psx				; not enough
 	lda $76
-	bne +
+	bne psx				; already bonus worrior
 	inc $76
 	inc worriors
 	ldx worriors
-	stx ScreenRAMbase+$03de
+	stx ScreenRAMbase+$03de		; print bonus worrior
 	lda #7
-	jsr PlaySound
-+	rts
+	jsr PlaySound			; play bonus sound
+psx:	rts
 ; -------------------------------------------------------------------------------------------------
 ; $e474
 StartScreen:
@@ -1268,7 +1269,7 @@ chkshot:lda fire
 	rts
 ; $e80a shoot
 shoot:	lda #4
-	jsr PlaySound
+	jsr PlaySound			; play shoot sound
 	lda VIC64
 	sta VIC64+MOBX+14
 	lda VIC64+MOBY
@@ -1938,10 +1939,11 @@ led2d:  rts
 ; $ed2e
 led2e:  jmp lecb6
 ; -------------------------------------------------------------------------------------------------
-; $ed31 play sound
+; $ed31 play sound no. x
 PlaySound:
 	cmp #1
 	bne pls02
+; start sound
 	sta $6f
 	lda #<Sound1
 	sta sound_ptr
@@ -1952,7 +1954,7 @@ PlaySound:
 	lda #$01
 	sta $72
 	rts
-; $ed49
+; $ed49 alternative start sound
 pls02:  cmp #2
 	bne pls03
 	sta $6f
@@ -1974,7 +1976,7 @@ pls03:  cmp #3
 	lda #$01
 	sta $72
 	rts
-; $ed6f
+; $ed6f Shoot sound
 pls04:  cmp #4
 	bne pls05
 	lda #$0f
@@ -2000,7 +2002,7 @@ pls06:  cmp #6
 	sta SID64+V2CTRL
 	sta SID64+V3CTRL
 	rts
-; $ed9e
+; $ed9e Bonus sound
 pls07:  cmp #7
 	bne pls08
 	lda #$3f
