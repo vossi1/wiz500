@@ -27,9 +27,9 @@ SYSTEMBANK	= $f	; systembank
 
 LIVES		= 3	; start lives
 ; table codes
-ADR	= $fe
-LIN	= $fd
-END	= $ff
+ADR	= $fe	; new target address follows
+LIN	= $fd	; new line (target +40)
+END	= $ff	; end of data
 ; color codes
 BLACK		= $00
 WHITE		= $01
@@ -146,6 +146,7 @@ SH = >ScreenRAMbase			; Highbyte Screen RAM base
 !addr temp1		= $0d
 !addr temp2		= $0e
 !addr temp3		= $0f
+!addr data_ctr		= $12		; data counter
 !addr timer		= $13		; game timer - inc with every irq / CIA timer b
 !addr color		= $14
 !addr monster_dir	= $1f		; 5 bytes start screen monster x pos
@@ -154,7 +155,12 @@ SH = >ScreenRAMbase			; Highbyte Screen RAM base
 !addr fire		= $2c		; fire pressed bit#7=1
 !addr worrior_dir	= $32		; worrior direction 1-4
 !addr draw_ptr		= $39		; pointer to print maze on screen
+!addr draw_column	= $36		; draw column
+!addr draw_line		= $37		; draw line
+!addr draw_char		= $38		; draw char/tile
 !addr level		= $3b		; level 1-4
+!addr maze_column	= $3c		; actual maze column
+!addr maze_line		= $3d		; actual maze line
 !addr mazedata_ptr	= $44		; pointer to mazedata
 !addr move		= $4c		; movement 0=none, 1=up, 2=down, 3=left, 4=right
 !addr sprite_data	= $4d		; 8 bytes sprite data
@@ -199,15 +205,15 @@ start:	sei				; disable interrupts
 	ldx #$ff			; init stack
 	txs
 	ldx #$2e			; init vic regs
-inviclp:lda VICRegs,x
+viclp:lda VICRegs,x
 	sta VIC64+MOBX,x
 	dex
-	bpl inviclp
+	bpl viclp
 	ldx #$18			; init sid regs
-insidlp:lda SIDRegs,x
+sidlp:lda SIDRegs,x
 	sta SID64,x
 	dex
-	bpl insidlp
+	bpl sidlp
 	ldx #$00			; clear RAM
 	txa
 clramlp:sta $02,x
@@ -230,7 +236,7 @@ StartNew:
 	jsr StartScreen			; shows start screen and waits for F1
 	jsr InitGame			; reset score, init lives and sprite colors
 NextLevel:
-	jsr SetupGame
+	jsr SetupGame			; increase + init new level
 TryAgain:
 	jsr SetupGameScreen
 	jsr SetupWorrior
@@ -493,65 +499,66 @@ scrcpyx:lda #0
 SetupGameScreen:
 	lda #CYAN
 	sta color
-	jsr ClearScreen			; clear screen with cyan
+	jsr ClearScreen			; clear game screen
 	ldx #<GameScreenData
 	ldy #>GameScreenData
 	jsr ScreenCopy			; copy game screen
 	lda level
 	and #$03			; maximum maze 3
-	asl				; x2 for address
+	asl				; x2 for mazedata address
 	tax
 	lda MazePointer,x		; init pointer to mazedata level 1-4
 	sta mazedata_ptr
 	lda MazePointer+1,x
 	sta mazedata_ptr+1
-	lda #$00			; decode and print maze
-	sta $12
-	sta $3d
-	sta $3c
-sglp:	ldy $12
+; decode and print maze
+	lda #0		
+	sta data_ctr			; reset data counter
+	sta maze_line			; reset screen line
+	sta maze_column			; reset screem column
+mazelp:	ldy data_ctr
 	lda (mazedata_ptr),y		; load data byte
 	cmp #$19
-	bne sgskip1
-	jsr mzdat19
-sgskip1:cmp #$18
-	bne sgskip2
-	jsr mzdat18
-sgskip2:cmp #$1a
-	bne sgskip3
-	jsr mzdat1a
-sgskip3:inc $12
-	lda #$03
+	bne mzchkv
+	jsr mzhtile			; draw horizontal line
+mzchkv:	cmp #$18
+	bne mzchkhv
+	jsr mzvtile			; draw vertical line
+mzchkhv:cmp #$1a
+	bne mzblank
+	jsr mzhvtil			; draw h+v line
+mzblank:inc data_ctr			; increase data pointer
+	lda #3
 	clc
-	adc $3c
-	sta $3c
-	cmp #$27
-	bne sglp
+	adc maze_column			; add actual column + 3
+	sta maze_column			; ...and store to draw column
+	cmp #39
+	bne mazelp			; next field if not end of line
 
-	lda #$00
-	sta $3c
-	lda #$03
+	lda #0
+	sta maze_column			; reset column
+	lda #3
 	clc
-	adc $3d
-	sta $3d
-	cmp #$15
-	bne sglp
+	adc maze_line			; add 3 lines
+	sta maze_line
+	cmp #21
+	bne mazelp			; repeat if < line 21
 
 	lda #$00
 	jsr AddScore			; print zero score
 	ldx players
-	stx $38
-	lda #$1e
-	sta $36
-	lda #$18
-	sta $37
-	jsr DrawMaze
+	stx draw_char			; store player char
+	lda #30
+	sta draw_column			; store column 30, line 24
+	lda #24
+	sta draw_line
+	jsr DrawMazeTile		; draw player count
 	ldx #$d0			; set screen pointer to highscore
 	ldy #SH+3
 	stx ptr1
 	sty ptr1+1
 	ldx #$03
-	jsr PrintScore			; print highscore
+	jsr PrintScore			; print highscore (score+3)
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $e29b Table with maze addresses
@@ -561,54 +568,54 @@ MazePointer:
 	!word Maze3
 	!word Maze4
 ; -------------------------------------------------------------------------------------------------
-; $e2a3
-mzdat19:ldx #$00
-mzd19lp:lda $3d
+; $e2a3 Draw 3x horizontal line
+mzhtile:ldx #0
+mzhlp:	lda maze_line
 	clc
-	adc #$02
-	sta $37
+	adc #2				; add 2 lines
+	sta draw_line			; ...and store to draw line
 	txa
 	clc
-	adc $3c
-	sta $36
+	adc maze_column				; load actual column
+	sta draw_column			; ...and add to draw column
 	lda #$2b
-	sta $38
-	jsr DrawMaze
+	sta draw_char
+	jsr DrawMazeTile		; draw tile $2b
 	inx
-	cpx #$03
-	bne mzd19lp
+	cpx #3
+	bne mzhlp			; print 3 column
 	lda #$05
 	rts
 ; -------------------------------------------------------------------------------------------------
-; $e2c1
-mzdat18:ldx #$00
-mzd18lp:lda $3c
-	sta $36
+; $e2c1 Draw 3x vertical line
+mzvtile:ldx #0
+mzvlp:	lda maze_column			; load actual column
+	sta draw_column			; ...and store to draw column
 	txa
 	clc
-	adc $3d
-	sta $37
+	adc maze_line			; load actual line+carry
+	sta draw_line			; ...and store to draw line
 	lda #$2a
-	sta $38
-	jsr DrawMaze
+	sta draw_char
+	jsr DrawMazeTile		; draw tile $2a
 	inx
-	cpx #$03
-	bne mzd18lp
+	cpx #3
+	bne mzvlp			; print 3 lines
 	lda #$05
 	rts
 ; -------------------------------------------------------------------------------------------------
-; $e2dc
-mzdat1a:jsr mzdat19
-	jsr mzdat18
-	lda #$02
+; $e2dc Draw left-low corner
+mzhvtil:jsr mzhtile			; draw 3x horizontal line
+	jsr mzvtile			; draw 3x vertical line
+	lda #2
 	clc
-	adc $3d
-	sta $37
-	lda $3c
-	sta $36
+	adc maze_line			; add actual line + 2
+	sta draw_line			; ...and store to draw line
+	lda maze_column
+	sta draw_column			; store actual column
 	lda #$2c
-	sta $38
-	jsr DrawMaze
+	sta draw_char
+	jsr DrawMazeTile		; draw low-left corner 'L'-tile
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $e2f5 inits some vars and sprite colors
@@ -621,32 +628,37 @@ InitGame:
 	sty $76
 	lda #LIVES			; 3 lives
 	sta players
-	lda #BLUE
+
+	lda #BLUE			; all sprites blue
 	ldx #7
 incollp:sta VIC64+MOBCOL,x
 	dex
 	bpl incollp
+
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $e310
 SetupGame:
 	ldx #$00
 	stx VIC64+MOBENA		; disable sprites
--	lda #$ff
+
+sg1elp:	lda #$ff
 	sta $1e,x			; set $1e- 8 vars to $ff 
 	inx
 	cpx #$08
-	bne -
+	bne sg1elp
+
 	ldy #$00			; clear some vars
 	sty delay
 	sty $2a
 	sty $29
+
 	inc level			; raise level (1-4)
 	ldx level
 	cpx #4				; maximum 4
-	bcc +
+	bcc levmax4
 	ldx #4
-+	lda MonsterSpeedTable-1,x	; setup monster speeds?
+levmax4:lda MonsterSpeedTable-1,x	; setup monster speeds?
 	sta $27
 	lda MonsterSpeedTable-1+4,x
 	sta $47
@@ -904,10 +916,10 @@ StartScreenMonsterRLimit:
 ; $e529 interrupt
 Interrupt:
 	pha
-	lda CIA64+ICR		; load irq-reg
+	lda CIA64+ICR			; load irq-reg
 	and #$02
-	beq irqx		; skip if not timer b
-	inc timer		; inc timer
+	beq irqx			; skip if not timer b
+	inc timer			; inc timer
 irqx:	pla
 	rti
 ; -------------------------------------------------------------------------------------------------
@@ -1157,29 +1169,30 @@ le728:  ror
 	sta $3f
 	rts
 ; -------------------------------------------------------------------------------------------------
-; $e72e draw maze
-DrawMaze:
-	lda #$00
+; $e72e Calc screen position and draw maze tile
+DrawMazeTile:
+	lda #$00			; reset draw ptr hi
 	sta draw_ptr+1
-	lda $36
-drwmzlp:ldy $37
-	beq drwmz
-	dec $37
+
+	lda draw_column			; load column+carry
+; add 40 cols for each line
+dmlinlp:ldy draw_line			; load line
+	beq drawmz			; line 0 ?
+	dec draw_line
 	clc
-	adc #$28
-	bcc drwmzlp
+	adc #40				; decrease line and add 40 to lo
+	bcc dmlinlp
+	inc draw_ptr+1			; inc draw ptr hi if carry
+	jmp dmlinlp
 
-	inc draw_ptr+1
-	jmp drwmzlp
-
-drwmz:	sta draw_ptr
+drawmz:	sta draw_ptr			; store draw ptr lo
 	lda draw_ptr+1
 	clc
-	adc #SH
+	adc #SH				; add screen base address hi
 	sta draw_ptr+1
 	ldy #0
-	lda $38
-	sta (draw_ptr),y
+	lda draw_char
+	sta (draw_ptr),y		; store tile to screen
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $e754
@@ -1729,7 +1742,7 @@ leb9d:  lda #$0e
 	lda #$0b
 	sta $11
 	lda #$17
-	sta $12
+	sta data_ctr
 	jsr lebba
 	bcc lebb9
 	lda #$80
@@ -1763,7 +1776,7 @@ lebba:  sec
 	sbc ptr1+1
 	bcs lebfc
 	lda ptr2+1
-	adc $12
+	adc data_ctr
 	sta ptr2+1
 	lda temp1
 	adc #$00
@@ -2123,8 +2136,8 @@ Notes:
 ; ***************************************** ZONE FONT *********************************************
 !zone font
 *= $f000
-	!byte $00, $00, $00, $00, $00, $00, $00, $00	; space
-	!byte $3c, $66, $6e, $76, $66, $66, $3c, $00	; 0
+	!byte $00, $00, $00, $00, $00, $00, $00, $00	; $00 space
+	!byte $3c, $66, $6e, $76, $66, $66, $3c, $00	; $01 '0'
 	!byte $18, $18, $38, $18, $18, $18, $7e, $00
 	!byte $3c, $66, $06, $0c, $30, $60, $7e, $00
 	!byte $3c, $66, $06, $1c, $06, $66, $3c, $00
@@ -2133,8 +2146,8 @@ Notes:
 	!byte $3c, $66, $60, $7c, $66, $66, $3c, $00
 	!byte $7e, $66, $0c, $18, $18, $18, $18, $00
 	!byte $3c, $66, $66, $3c, $66, $66, $3c, $00
-	!byte $3c, $66, $66, $3c, $06, $66, $3c, $00	; 9
-	!byte $18, $3c, $66, $7e, $66, $66, $66, $00	; A
+	!byte $3c, $66, $66, $3c, $06, $66, $3c, $00	; $0a '9'
+	!byte $18, $3c, $66, $7e, $66, $66, $66, $00	; $0b 'A'
 	!byte $7c, $66, $66, $7c, $66, $66, $7c, $00
 	!byte $3c, $66, $60, $60, $60, $66, $3c, $00
 	!byte $78, $6c, $66, $66, $66, $6c, $78, $00
@@ -2149,26 +2162,26 @@ Notes:
 	!byte $63, $77, $7f, $6b, $63, $63, $63, $00
 	!byte $66, $76, $7e, $7e, $6e, $66, $66, $00
 	!byte $3c, $66, $66, $66, $66, $66, $3c, $00
-	!byte $7c, $66, $66, $78, $60, $60, $60, $00	; P
-	!byte $7c, $66, $66, $7c, $78, $6c, $66, $00	; R
+	!byte $7c, $66, $66, $78, $60, $60, $60, $00	; $1a 'P'
+	!byte $7c, $66, $66, $7c, $78, $6c, $66, $00	; $1b 'R'
 	!byte $3c, $66, $60, $3c, $06, $66, $3c, $00
 	!byte $7e, $18, $18, $18, $18, $18, $18, $00
 	!byte $66, $66, $66, $66, $66, $66, $3c, $00
 	!byte $66, $66, $66, $66, $66, $3c, $18, $00
 	!byte $63, $63, $63, $6b, $7f, $77, $63, $00
 	!byte $66, $66, $3c, $18, $3c, $66, $66, $00
-	!byte $66, $66, $66, $3c, $18, $18, $18, $00	; Y
-	!byte $03, $06, $0c, $18, $30, $60, $c0, $00	; /
-	!byte $0c, $18, $30, $30, $30, $18, $0c, $00	; (
-	!byte $30, $18, $0c, $0c, $0c, $18, $30, $00	; )
-	!byte $00, $00, $00, $7e, $00, $00, $00, $00	; -
-	!byte $00, $00, $18, $00, $00, $18, $18, $30	; ;
-	!byte $00, $00, $00, $00, $00, $18, $18, $00	; .
-	!byte $aa, $aa, $aa, $aa, $aa, $aa, $aa, $aa	; ||||
-	!byte $c0, $c0, $c0, $c0, $c0, $c0, $c0, $c0	; |
-	!byte $00, $00, $00, $00, $00, $00, $00, $ff	; _
-	!byte $c0, $c0, $c0, $c0, $c0, $c0, $c0, $ff	; L
-	!byte $ff, $00, $00, $00, $00, $00, $00, $00	; -
+	!byte $66, $66, $66, $3c, $18, $18, $18, $00	; $22 'Y'
+	!byte $03, $06, $0c, $18, $30, $60, $c0, $00	; $23 '/'
+	!byte $0c, $18, $30, $30, $30, $18, $0c, $00	; $24 '('
+	!byte $30, $18, $0c, $0c, $0c, $18, $30, $00	; $25 ')'
+	!byte $00, $00, $00, $7e, $00, $00, $00, $00	; $26 '-'
+	!byte $00, $00, $18, $00, $00, $18, $18, $30	; $27 ';'
+	!byte $00, $00, $00, $00, $00, $18, $18, $00	; $28 '.'
+	!byte $aa, $aa, $aa, $aa, $aa, $aa, $aa, $aa	; $29 ||||
+	!byte $c0, $c0, $c0, $c0, $c0, $c0, $c0, $c0	; $2a vertical line
+	!byte $00, $00, $00, $00, $00, $00, $00, $ff	; $2b low line
+	!byte $c0, $c0, $c0, $c0, $c0, $c0, $c0, $ff	; $2c left-low corner
+	!byte $ff, $00, $00, $00, $00, $00, $00, $00	; $2d high line
 ; ***************************************** ZONE DATA *********************************************
 !zone data
 ; $f170 initial vic reg values
