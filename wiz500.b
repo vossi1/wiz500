@@ -2121,7 +2121,6 @@ Notes:
 	!byte $1f, $a3
 ; $eec2
 ; ***************************************** ZONE FONT *********************************************
-; $f000 font
 !zone font
 *= $f000
 	!byte $00, $00, $00, $00, $00, $00, $00, $00	; space
@@ -2171,24 +2170,22 @@ Notes:
 	!byte $c0, $c0, $c0, $c0, $c0, $c0, $c0, $ff	; L
 	!byte $ff, $00, $00, $00, $00, $00, $00, $00	; -
 ; ***************************************** ZONE DATA *********************************************
-; $f170 data
 !zone data
+; $f170 initial vic reg values
 VICRegs:
 	!byte $00, $00, $00, $00, $00, $00, $00, $00
 	!byte $00, $00, $00, $00, $00, $00, $00, $00
-	!byte $00, $1b, $00, $00, $00, $00, $0b, $00
-	!byte $1d, $ff, $00, $00, $ff, $00, $00, $00
-	!byte $06, $00, $00, $00, $00, $02, $07, $06
+	!byte $00, $1b, $00, $00, $00, $00, $0b, $00	; display on, 25 rows, 40 columns
+	!byte $1d, $ff, $00, $00, $ff, $00, $00, $00	; VM = $0400, CB = $f000, multicolor sprites
+	!byte $06, $00, $00, $00, $00, $02, $07, $06	; sprite_mcm_color0 = red, _color1 = yellow
 	!byte $06, $06, $06, $06, $06, $06, $06
-; $f19f
+; $f19f initial sid reg values
 SIDRegs:
-	!byte $00, $20, $00, $00, $20, $00, $f9, $00
-	!byte $60, $00, $00, $80, $00, $fa, $ff, $ff
-	!byte $00, $00, $80, $00, $fa, $ff, $ff, $07
-
-; $f1b7
-	!byte $1f
-; $f1b8 Mazedatae Level 1
+	!byte $00, $20, $00, $00, $20, $00, $f9		; osc1: f = $2000, triangle, s = $f, r = $9
+	!byte $00, $60, $00, $00, $80, $00, $fa		; osc2: f = $6000, noise, s = $f, r = $a
+	!byte $ff, $ff, $00, $00, $80, $00, $fa		; osc3: f = $ffff, noise, s = $f, r = $a
+	!byte $ff, $ff, $07, $1f			; filter = $ffff osc 1-3, lowpass, max vol
+; $f1b8 Mazedata Level 1
 Maze1:
 	!byte $1a, $1c, $19, $1c, $19, $19, $1c, $19
 	!byte $19, $1c, $19, $1c, $18, $1c, $1c, $1c
@@ -2202,7 +2199,7 @@ Maze1:
 	!byte $19, $1c, $18, $1a, $1c, $1c, $1a, $1c
 	!byte $1c, $1c, $1a, $1c, $1c, $1c, $1c, $1a
 	!byte $1c, $1c, $1a
-; $f213 Mazedatae Level 2
+; $f213 Mazedata Level 2
 Maze2:
 	!byte $18, $1c, $18, $19, $1c, $19, $1c, $19
 	!byte $1c, $19, $19, $1c, $1c, $1a, $1c, $1c
@@ -2216,7 +2213,7 @@ Maze2:
 	!byte $1c, $18, $1c, $1a, $1c, $18, $1c, $1c
 	!byte $1c, $1c, $1c, $1a, $1c, $1c, $1c, $1a
 	!byte $1c, $1c, $1c
-; $f26e Mazedatae Level 3
+; $f26e Mazedata Level 3
 Maze3:
 	!byte $18, $1c, $18, $19, $1c, $19, $1c, $19
 	!byte $1c, $19, $19, $19, $1c, $18, $1c, $19
@@ -2230,7 +2227,7 @@ Maze3:
 	!byte $1c, $1c, $18, $19, $1c, $19, $1a, $1c
 	!byte $1c, $1a, $1c, $1c, $1c, $1c, $1c, $1a
 	!byte $1c, $1c, $1c
-; $f2c9 Mazedatae Level 4
+; $f2c9 Mazedata Level 4
 Maze4:
 	!byte $1a, $1c, $19, $1c, $18, $19, $1c, $19
 	!byte $1c, $18, $19, $1c, $18, $1c, $1c, $19
@@ -2304,8 +2301,7 @@ StartScreenData:
 	!byte $0b, $22, END
 ; $f4bd
 ; **************************************** ZONE SPRITES *******************************************
-; $f940 sprites data $e5 - $fe
-!zone sprites
+!zone sprites ; sprite data $e5 - $fe
 *= $f940
 ; $e5 worrior right
 	!byte $00, $2a, $00, $00, $29, $00, $00, $2a
