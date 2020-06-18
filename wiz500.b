@@ -149,10 +149,13 @@ SH = >ScreenRAMbase			; Highbyte Screen RAM base
 !addr timer		= $13		; game timer - inc with every irq / CIA timer b
 !addr color		= $14
 !addr monster_dir	= $1f		; 5 bytes start screen monster x pos
-!addr worriors		= $28		; lives
-!addr monster_delay	= $2b		; delay for monster movment on satrt screen
+!addr players		= $28		; lives
+!addr delay		= $2b		; delay for monster movment on satrt screen
 !addr fire		= $2c		; fire pressed bit#7=1
+!addr worrior_dir	= $32		; worrior direction 1-4
+!addr draw_ptr		= $39		; pointer to print maze on screen
 !addr level		= $3b		; level 1-4
+!addr mazedata_ptr	= $44		; pointer to mazedata
 !addr move		= $4c		; movement 0=none, 1=up, 2=down, 3=left, 4=right
 !addr sprite_data	= $4d		; 8 bytes sprite data
 !addr sound_ptr		= $70		; pointer to sound data
@@ -249,20 +252,20 @@ GameLoop:
 	sta $56
 	inc $2a
 	lda $2a
-	bne le089
-	inc monster_delay
+	bne +
+	inc delay
 	lda #$05
-	cmp monster_delay
-	bne le089
+	cmp delay
+	bne +
 	lda #2
 	jsr PlaySound			; Play sound 2
 	dec $29
-le089:  lda monster_delay
++	lda delay
 	cmp #$10
-	bcc le092
+	bcc +
 	jsr le855
-le092:  jsr le754
-	jsr le535
++	jsr le754
+	jsr MoveWorrior
 	jsr le855
 	jsr le944
 	jsr lebfe
@@ -280,7 +283,7 @@ le092:  jsr le754
 	bmi decwor
 	jmp LevelFinished
 
-decwor:	dec worriors			; decrease lives
+decwor:	dec players			; decrease lives
 	bne TryAgain
 
 	jmp GameOver			; game over
@@ -495,29 +498,29 @@ SetupGameScreen:
 	ldy #>GameScreenData
 	jsr ScreenCopy			; copy game screen
 	lda level
-	and #$03
-	asl
+	and #$03			; maximum maze 3
+	asl				; x2 for address
 	tax
-	lda Table05,x
-	sta $44
-	lda Table05+1,x
-	sta $45
-	lda #$00
+	lda MazePointer,x		; init pointer to mazedata level 1-4
+	sta mazedata_ptr
+	lda MazePointer+1,x
+	sta mazedata_ptr+1
+	lda #$00			; decode and print maze
 	sta $12
 	sta $3d
 	sta $3c
 sglp:	ldy $12
-	lda ($44),y
+	lda (mazedata_ptr),y		; load data byte
 	cmp #$19
-	bne +
-	jsr le2a3
-+	cmp #$18
-	bne +
-	jsr le2c1
-+	cmp #$1a
-	bne +
-	jsr le2dc
-+	inc $12
+	bne sgskip1
+	jsr mzdat19
+sgskip1:cmp #$18
+	bne sgskip2
+	jsr mzdat18
+sgskip2:cmp #$1a
+	bne sgskip3
+	jsr mzdat1a
+sgskip3:inc $12
 	lda #$03
 	clc
 	adc $3c
@@ -535,32 +538,32 @@ sglp:	ldy $12
 	bne sglp
 
 	lda #$00
-	jsr AddScore
-	ldx worriors
+	jsr AddScore			; print zero score
+	ldx players
 	stx $38
 	lda #$1e
 	sta $36
 	lda #$18
 	sta $37
-	jsr le72e
-	ldx #$d0
-	ldy #$07
+	jsr DrawMaze
+	ldx #$d0			; set screen pointer to highscore
+	ldy #SH+3
 	stx ptr1
 	sty ptr1+1
 	ldx #$03
-	jsr PrintScore
+	jsr PrintScore			; print highscore
 	rts
 ; -------------------------------------------------------------------------------------------------
-; $e29b
-Table05:
-	!word Tablei1
-	!word Tablei2
-	!word Tablei3
-	!word Tablei4
+; $e29b Table with maze addresses
+MazePointer:
+	!word Maze1
+	!word Maze2
+	!word Maze3
+	!word Maze4
 ; -------------------------------------------------------------------------------------------------
 ; $e2a3
-le2a3:  ldx #$00
--	lda $3d
+mzdat19:ldx #$00
+mzd19lp:lda $3d
 	clc
 	adc #$02
 	sta $37
@@ -570,16 +573,16 @@ le2a3:  ldx #$00
 	sta $36
 	lda #$2b
 	sta $38
-	jsr le72e
+	jsr DrawMaze
 	inx
 	cpx #$03
-	bne -
+	bne mzd19lp
 	lda #$05
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $e2c1
-le2c1:  ldx #$00
--	lda $3c
+mzdat18:ldx #$00
+mzd18lp:lda $3c
 	sta $36
 	txa
 	clc
@@ -587,16 +590,16 @@ le2c1:  ldx #$00
 	sta $37
 	lda #$2a
 	sta $38
-	jsr le72e
+	jsr DrawMaze
 	inx
 	cpx #$03
-	bne -
+	bne mzd18lp
 	lda #$05
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $e2dc
-le2dc:  jsr le2a3
-	jsr le2c1
+mzdat1a:jsr mzdat19
+	jsr mzdat18
 	lda #$02
 	clc
 	adc $3d
@@ -605,7 +608,7 @@ le2dc:  jsr le2a3
 	sta $36
 	lda #$2c
 	sta $38
-	jsr le72e
+	jsr DrawMaze
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $e2f5 inits some vars and sprite colors
@@ -617,7 +620,7 @@ InitGame:
 	sty level			; reset level
 	sty $76
 	lda #LIVES			; 3 lives
-	sta worriors
+	sta players
 	lda #BLUE
 	ldx #7
 incollp:sta VIC64+MOBCOL,x
@@ -635,7 +638,7 @@ SetupGame:
 	cpx #$08
 	bne -
 	ldy #$00			; clear some vars
-	sty monster_delay
+	sty delay
 	sty $2a
 	sty $29
 	inc level			; raise level (1-4)
@@ -706,9 +709,9 @@ TableY:
 LevelFinished:
 	lda #$00
 	sta VIC64+MOBENA		; disable sprites
-	ldx #<TextBonus300
-	ldy #>TextBonus300
-	jsr ScreenCopy			; print 'BONUS 300'
+	ldx #<TextBonus3000
+	ldy #>TextBonus3000
+	jsr ScreenCopy			; print 'BONUS 3000'
 	lda #7
 	jsr PlaySound			; play bonus sound
 	lda #$30
@@ -717,8 +720,8 @@ LevelFinished:
 	jsr GameUpdate
 	jmp NextLevel
 
-TextBonus300:
-!byte $24, $05, $0c, $19, $18, $1e, $1c, $00	; 'BONUS 300'
+TextBonus3000:
+!byte $24, $05, $0c, $19, $18, $1e, $1c, $00	; 'BONUS 3000'
 !byte $04, $01, $01, $01, $ff
 
 GameOver:
@@ -736,7 +739,7 @@ newhisc:lda score			; store new highscore
 	sta highscore+1
 	lda score+2
 	sta highscore+2
-	ldx #$d0			; set screen ptr fot highscore
+	ldx #$d0			; set screen ptr to highscore
 	ldy #SH+3
 	stx ptr1
 	sty ptr1+1
@@ -792,16 +795,16 @@ pslp:	lda score,x
 	inx
 	dey
 	bpl pslp
-; check bonus worrior
+; check bonus player
 	lda score+2
 	cmp #2				; check score
 	bcc psx				; not enough
 	lda $76
-	bne psx				; already bonus worrior
+	bne psx				; already bonus player
 	inc $76
-	inc worriors
-	ldx worriors
-	stx ScreenRAMbase+$03de		; print bonus worrior
+	inc players
+	ldx players
+	stx ScreenRAMbase+$03de		; print bonus player
 	lda #7
 	jsr PlaySound			; play bonus sound
 psx:	rts
@@ -845,8 +848,8 @@ sssprlp:lda timer			; wait
 	bne sssprlp
 sswait	lda timer
 	bne sswait
-	inc monster_delay
-	lda monster_delay
+	inc delay
+	lda delay
 	and #$1f			; delay next movement
 	bne sschkf1
 
@@ -909,7 +912,7 @@ irqx:	pla
 	rti
 ; -------------------------------------------------------------------------------------------------
 ; $e535
-le535:  lda $2a
+MoveWorrior:  lda $2a
 	and #$01
 	beq +
 	rts
@@ -924,22 +927,22 @@ le535:  lda $2a
 	lda #$01
 	sta $31
 	lda $46
-	sta $32
+	sta worrior_dir
 	lda $2e
 	sta $35
 	jsr le56f
 	lda $35
 	sta $2e
-	ldx $32
-	lda Table13,x
+	ldx worrior_dir
+	lda WorriorSpriteTable,x
 	bne +
 	ldx $2e
-	lda Table13,x
+	lda WorriorSpriteTable,x
 +	sta sprite_data
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $e56a
-Table13:  
+WorriorSpriteTable:  
 	!byte $00, $e8, $e7, $e6, $e5
 ; -------------------------------------------------------------------------------------------------
 ; $e56f
@@ -954,13 +957,13 @@ le56f:  ldx $30
 	lda VIC64+MOBY,x
 	sta $40
 	jsr le709
-	lda $32
+	lda worrior_dir
 	bne le590
 	jmp le6b3
 le590:  lda $35
 	cmp #$03
 	bcs le5ca
-	lda $32
+	lda worrior_dir
 	cmp #$03
 	bcc le601
 	dec $40
@@ -982,9 +985,9 @@ le5b6:  ldx ptr1
 	sta VIC64+MOBY,x
 	jmp le601
 le5c3:  lda #$00
-	sta $32
+	sta worrior_dir
 	jmp le6b3
-le5ca:  lda $32
+le5ca:  lda worrior_dir
 	cmp #$03
 	bcs le601
 	lda $3f
@@ -1010,10 +1013,10 @@ le5eb:  ldx ptr1
 le5f9:  lda Table14,x
 	ldx $30
 	sta VIC64+MOBX,x
-le601:  lda $32
+le601:  lda worrior_dir
 	sta $35
 	ldx $30
-	lda $32
+	lda worrior_dir
 	cmp #$01
 	bne le616
 	dec VIC64+MOBY,x
@@ -1056,7 +1059,7 @@ le65d:  lda VIC64+MOBX,x
 	lda $31
 	sta $41
 	jsr le709
-	lda $32
+	lda worrior_dir
 	beq le6b2
 	cmp #$03
 	bcc le685
@@ -1071,7 +1074,7 @@ le685:  cmp #$01
 	jmp le690
 le68e:  inc $40
 le690:  lda #$04
-	sta $3a
+	sta draw_ptr+1
 	lda $3f
 le696:  ldy $40
 	beq le6a6
@@ -1079,14 +1082,14 @@ le696:  ldy $40
 	clc
 	adc #$28
 	bcc le696
-	inc $3a
+	inc draw_ptr+1
 	jmp le696
-le6a6:  sta $39
+le6a6:  sta draw_ptr
 	ldy #$00
-	lda ($39),y
+	lda (draw_ptr),y
 	beq le6b2
 	lda #$00
-	sta $32
+	sta worrior_dir
 le6b2:  rts
 ; -------------------------------------------------------------------------------------------------
 ; $
@@ -1154,28 +1157,29 @@ le728:  ror
 	sta $3f
 	rts
 ; -------------------------------------------------------------------------------------------------
-; $e72e
-le72e:  lda #$00
-	sta $3a
+; $e72e draw maze
+DrawMaze:
+	lda #$00
+	sta draw_ptr+1
 	lda $36
--	ldy $37
-	beq le744
+drwmzlp:ldy $37
+	beq drwmz
 	dec $37
 	clc
 	adc #$28
-	bcc -
+	bcc drwmzlp
 
-	inc $3a
-	jmp -
+	inc draw_ptr+1
+	jmp drwmzlp
 
-le744:  sta $39
-	lda $3a
+drwmz:	sta draw_ptr
+	lda draw_ptr+1
 	clc
-	adc #$04
-	sta $3a
-	ldy #$00
+	adc #SH
+	sta draw_ptr+1
+	ldy #0
 	lda $38
-	sta ($39),y
+	sta (draw_ptr),y
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $e754
@@ -1374,11 +1378,11 @@ le8df:  lda SID64+RANDOM
 	beq le8da
 le8e6:  lda #$01
 le8e8:  ldx $10
-	sta $32
+	sta worrior_dir
 	lda $67,x
 	sta $35
 	jsr le56f
-	lda $32
+	lda worrior_dir
 	bne le8fa
 	jsr le912
 le8fa:  ldx $10
@@ -2184,8 +2188,8 @@ SIDRegs:
 
 ; $f1b7
 	!byte $1f
-; $f1b8
-Tablei1:
+; $f1b8 Mazedatae Level 1
+Maze1:
 	!byte $1a, $1c, $19, $1c, $19, $19, $1c, $19
 	!byte $19, $1c, $19, $1c, $18, $1c, $1c, $1c
 	!byte $18, $1c, $19, $19, $19, $1c, $1c, $19
@@ -2198,8 +2202,8 @@ Tablei1:
 	!byte $19, $1c, $18, $1a, $1c, $1c, $1a, $1c
 	!byte $1c, $1c, $1a, $1c, $1c, $1c, $1c, $1a
 	!byte $1c, $1c, $1a
-; $f213
-Tablei2:
+; $f213 Mazedatae Level 2
+Maze2:
 	!byte $18, $1c, $18, $19, $1c, $19, $1c, $19
 	!byte $1c, $19, $19, $1c, $1c, $1a, $1c, $1c
 	!byte $1c, $18, $1a, $1c, $19, $18, $18, $19
@@ -2212,8 +2216,8 @@ Tablei2:
 	!byte $1c, $18, $1c, $1a, $1c, $18, $1c, $1c
 	!byte $1c, $1c, $1c, $1a, $1c, $1c, $1c, $1a
 	!byte $1c, $1c, $1c
-; $f26e
-Tablei3:
+; $f26e Mazedatae Level 3
+Maze3:
 	!byte $18, $1c, $18, $19, $1c, $19, $1c, $19
 	!byte $1c, $19, $19, $19, $1c, $18, $1c, $19
 	!byte $18, $1c, $1c, $1c, $1c, $1c, $1c, $1a
@@ -2226,8 +2230,8 @@ Tablei3:
 	!byte $1c, $1c, $18, $19, $1c, $19, $1a, $1c
 	!byte $1c, $1a, $1c, $1c, $1c, $1c, $1c, $1a
 	!byte $1c, $1c, $1c
-; $f2c9
-Tablei4:
+; $f2c9 Mazedatae Level 4
+Maze4:
 	!byte $1a, $1c, $19, $1c, $18, $19, $1c, $19
 	!byte $1c, $18, $19, $1c, $18, $1c, $1c, $19
 	!byte $19, $1c, $18, $19, $1c, $18, $19, $19
@@ -2303,6 +2307,7 @@ StartScreenData:
 ; $f940 sprites data $e5 - $fe
 !zone sprites
 *= $f940
+; $e5 worrior right
 	!byte $00, $2a, $00, $00, $29, $00, $00, $2a
 	!byte $00, $00, $2a, $00, $00, $2a, $00, $00
 	!byte $08, $00, $02, $2a, $00, $02, $a9, $00
@@ -2311,6 +2316,7 @@ StartScreenData:
 	!byte $2a, $00, $00, $a2, $00, $00, $a2, $80
 	!byte $02, $80, $80, $02, $80, $a0, $0a, $00
 	!byte $30, $0a, $00, $30, $00, $00, $00, $00
+; $e6 worrior left
 	!byte $00, $0a, $80, $00, $06, $80, $00, $0a
 	!byte $80, $00, $0a, $80, $00, $0a, $80, $00
 	!byte $02, $00, $00, $0a, $88, $00, $06, $a8
@@ -2319,6 +2325,7 @@ StartScreenData:
 	!byte $0a, $80, $00, $08, $a0, $00, $28, $a0
 	!byte $00, $20, $28, $00, $a0, $28, $00, $80
 	!byte $0a, $02, $00, $0a, $00, $00, $00, $00
+; $e7 worrior down
 	!byte $00, $00, $01, $00, $00, $0a, $00, $00
 	!byte $0a, $00, $0a, $8a, $00, $09, $a8, $00
 	!byte $0a, $a8, $0a, $8a, $a8, $0a, $8a, $a0
@@ -2327,6 +2334,7 @@ StartScreenData:
 	!byte $01, $00, $00, $01, $00, $00, $0a, $00
 	!byte $00, $0a, $00, $00, $01, $00, $00, $01
 	!byte $00, $00, $01, $00, $00, $00, $00, $00
+; $e8 worrior up
 	!byte $00, $01, $00, $00, $01, $00, $00, $01
 	!byte $00, $00, $0a, $00, $00, $0a, $00, $00
 	!byte $01, $00, $00, $01, $02, $00, $01, $0a
@@ -2335,6 +2343,7 @@ StartScreenData:
 	!byte $8a, $a0, $00, $09, $a8, $00, $08, $a8
 	!byte $00, $0a, $8a, $00, $00, $0a, $00, $00
 	!byte $0a, $00, $00, $02, $00, $00, $00, $00
+; $e9 monster 100 blue right
 	!byte $00, $a0, $00, $00, $28, $00, $a0, $2a
 	!byte $00, $a0, $ad, $80, $a0, $2d, $80, $a0
 	!byte $20, $00, $20, $aa, $00, $28, $a8, $00
@@ -2343,6 +2352,7 @@ StartScreenData:
 	!byte $aa, $80, $0a, $aa, $80, $0a, $02, $80
 	!byte $08, $00, $a0, $28, $00, $00, $00, $00
 	!byte $00, $00, $00, $00, $00, $00, $00, $00
+; $ea monster 100 blue left
 	!byte $00, $a0, $00, $02, $80, $00, $0a, $80
 	!byte $a0, $2b, $a0, $a0, $2b, $80, $a0, $00
 	!byte $80, $a0, $0a, $a0, $80, $02, $a2, $80
@@ -2351,6 +2361,7 @@ StartScreenData:
 	!byte $a8, $00, $02, $aa, $00, $28, $0a, $00
 	!byte $20, $02, $00, $a0, $02, $80, $00, $00
 	!byte $00, $00, $00, $00, $00, $00, $00, $00
+; $eb monster 100 blue down
 	!byte $0a, $00, $00, $0a, $00, $00, $0a, $a0
 	!byte $08, $0a, $a0, $08, $00, $2a, $28, $00
 	!byte $2a, $a2, $00, $02, $a0, $00, $02, $a0
@@ -2359,6 +2370,7 @@ StartScreenData:
 	!byte $aa, $a0, $0c, $aa, $a8, $22, $80, $28
 	!byte $08, $80, $08, $08, $80, $08, $00, $00
 	!byte $00, $00, $00, $00, $00, $00, $00, $00
+; $ec monster 100 blue up
 	!byte $08, $80, $08, $08, $80, $08, $28, $80
 	!byte $28, $38, $2a, $a8, $38, $2a, $a8, $2a
 	!byte $aa, $a0, $2a, $aa, $80, $22, $2a, $80
@@ -2367,6 +2379,7 @@ StartScreenData:
 	!byte $2a, $28, $0a, $a0, $08, $0a, $a0, $08
 	!byte $0a, $00, $00, $0a, $00, $00, $00, $00
 	!byte $00, $00, $00, $00, $00, $00, $00, $00
+; $ed monster 200 yellow right
 	!byte $00, $00, $00, $00, $00, $00, $30, $0f
 	!byte $c0, $30, $0d, $c0, $30, $3d, $f0, $30
 	!byte $fd, $fc, $30, $ff, $fc, $30, $ff, $00
@@ -2375,6 +2388,7 @@ StartScreenData:
 	!byte $ff, $fc, $0f, $ff, $fc, $03, $ff, $cc
 	!byte $03, $ff, $00, $03, $0f, $00, $0f, $03
 	!byte $00, $3f, $03, $c0, $3f, $03, $c0, $00
+; $ee monster 200 yellow left
 	!byte $00, $00, $00, $00, $00, $00, $03, $e0
 	!byte $0c, $03, $e0, $0c, $0d, $ec, $0c, $3d
 	!byte $ff, $0c, $3f, $ff, $0c, $00, $ff, $0c
@@ -2383,6 +2397,7 @@ StartScreenData:
 	!byte $ff, $fc, $3f, $ff, $f0, $33, $ff, $c0
 	!byte $00, $ff, $c0, $00, $f0, $c0, $00, $c0
 	!byte $f0, $03, $c0, $fc, $03, $c0, $fc, $00
+; $ef monster 200 yellow down
 	!byte $00, $00, $00, $30, $00, $00, $3c, $3f
 	!byte $f0, $3c, $30, $00, $0f, $30, $00, $0f
 	!byte $fc, $00, $0f, $ff, $00, $03, $ff, $c0
@@ -2391,6 +2406,7 @@ StartScreenData:
 	!byte $ff, $70, $3f, $3f, $f0, $33, $33, $f0
 	!byte $30, $33, $f0, $00, $03, $c0, $00, $03
 	!byte $c0, $00, $03, $c0, $00, $00, $00, $00
+; $f0 monster 200 yellow up
 	!byte $00, $00, $00, $0f, $00, $00, $0f, $00
 	!byte $00, $0f, $00, $00, $3f, $30, $30, $3f
 	!byte $33, $30, $3f, $f3, $f0, $37, $ff, $f0
@@ -2399,6 +2415,7 @@ StartScreenData:
 	!byte $ff, $00, $03, $ff, $c0, $00, $ff, $c0
 	!byte $00, $ff, $c0, $00, $33, $f0, $ff, $30
 	!byte $f0, $00, $f0, $20, $00, $00, $00, $00
+; $f1 monster 300 cyan right
 	!byte $00, $00, $00, $0a, $80, $a8, $0a, $80
 	!byte $a8, $08, $02, $80, $08, $02, $80, $08
 	!byte $2a, $a0, $08, $2b, $e0, $2a, $ab, $e8
@@ -2407,6 +2424,7 @@ StartScreenData:
 	!byte $aa, $a8, $2a, $aa, $a0, $2a, $aa, $a0
 	!byte $08, $20, $80, $08, $20, $80, $08, $20
 	!byte $80, $0a, $28, $a0, $0a, $28, $a0, $00
+; $f2 monster 300 cyan left
 	!byte $00, $00, $00, $2a, $02, $a0, $2a, $02
 	!byte $a0, $02, $80, $20, $02, $80, $20, $0a
 	!byte $a8, $20, $0b, $e8, $20, $2b, $ea, $a8
@@ -2415,6 +2433,7 @@ StartScreenData:
 	!byte $aa, $a8, $0a, $aa, $a8, $0a, $aa, $a8
 	!byte $02, $08, $20, $02, $08, $20, $02, $08
 	!byte $20, $0a, $28, $a0, $0a, $28, $a0, $00
+; $f3 monster 300 cyan down
 	!byte $00, $28, $00, $00, $aa, $00, $00, $aa
 	!byte $a8, $2a, $aa, $a8, $2a, $aa, $08, $20
 	!byte $aa, $08, $00, $aa, $08, $00, $aa, $80
@@ -2423,6 +2442,7 @@ StartScreenData:
 	!byte $a2, $e0, $00, $a2, $e8, $2a, $a2, $e8
 	!byte $2a, $a2, $a8, $20, $a2, $88, $20, $a2
 	!byte $88, $00, $22, $08, $00, $22, $08, $00
+; $f4 monster 300 cyan up
 	!byte $20, $88, $00, $20, $88, $00, $22, $8a
 	!byte $08, $22, $8a, $08, $2a, $8a, $a8, $2b
 	!byte $8a, $a8, $2b, $8a, $00, $0b, $8a, $00
@@ -2431,6 +2451,7 @@ StartScreenData:
 	!byte $aa, $00, $20, $aa, $08, $20, $aa, $08
 	!byte $20, $aa, $a8, $2a, $aa, $a8, $2a, $aa
 	!byte $00, $00, $aa, $00, $00, $28, $00, $00
+; $f5 monster 400 yellow uni
 	!byte $00, $00, $00, $0c, $00, $30, $03, $00
 	!byte $c0, $00, $c3, $00, $00, $41, $00, $01
 	!byte $55, $40, $33, $69, $cc, $3f, $69, $fc
@@ -2439,6 +2460,7 @@ StartScreenData:
 	!byte $aa, $c0, $03, $aa, $c0, $00, $aa, $00
 	!byte $00, $aa, $00, $02, $aa, $80, $02, $aa
 	!byte $80, $2a, $00, $a8, $2a, $00, $a8, $00
+; $f6 explosion 1
 	!byte $00, $00, $00, $00, $00, $00, $00, $00
 	!byte $00, $00, $00, $00, $00, $00, $00, $00
 	!byte $00, $00, $00, $30, $00, $00, $3c, $00
@@ -2447,6 +2469,7 @@ StartScreenData:
 	!byte $ff, $c0, $0f, $ff, $c0, $0f, $ff, $f0
 	!byte $03, $0f, $c0, $00, $00, $c0, $00, $00
 	!byte $00, $00, $00, $00, $00, $00, $00, $00
+; $f7 explosion 2
 	!byte $00, $00, $00, $00, $28, $00, $20, $28
 	!byte $20, $00, $2a, $00, $0c, $aa, $80, $00
 	!byte $aa, $a8, $02, $be, $a8, $2a, $bf, $a0
@@ -2455,6 +2478,7 @@ StartScreenData:
 	!byte $ff, $e0, $02, $fa, $e8, $32, $ea, $b8
 	!byte $02, $a0, $a8, $0a, $80, $28, $0a, $00
 	!byte $08, $28, $08, $00, $20, $00, $00, $00
+; $f8 explosion 3
 	!byte $00, $00, $00, $00, $00, $00, $00, $00
 	!byte $00, $0c, $20, $00, $03, $00, $c0, $00
 	!byte $03, $00, $00, $0c, $0c, $02, $00, $30
@@ -2463,6 +2487,7 @@ StartScreenData:
 	!byte $c2, $00, $00, $00, $a0, $08, $00, $0c
 	!byte $00, $30, $00, $00, $c2, $00, $03, $00
 	!byte $00, $00, $00, $00, $00, $00, $00, $00
+; $f9 mystery right
 	!byte $00, $08, $00, $00, $28, $00, $00, $2c
 	!byte $00, $00, $2c, $00, $00, $2c, $00, $00
 	!byte $2c, $00, $00, $28, $00, $00, $aa, $50
@@ -2471,6 +2496,7 @@ StartScreenData:
 	!byte $a0, $00, $00, $a0, $00, $00, $a8, $00
 	!byte $00, $a8, $00, $00, $a8, $00, $00, $aa
 	!byte $00, $02, $aa, $80, $02, $aa, $80, $00
+; $fa mystery left
 	!byte $00, $20, $00, $00, $28, $00, $00, $38
 	!byte $00, $00, $38, $00, $00, $38, $00, $00
 	!byte $38, $00, $00, $28, $00, $05, $aa, $00
@@ -2479,6 +2505,7 @@ StartScreenData:
 	!byte $0a, $00, $00, $0a, $00, $00, $2a, $00
 	!byte $00, $2a, $00, $00, $2a, $00, $00, $aa
 	!byte $00, $02, $aa, $80, $02, $aa, $80, $00
+; $fb mystery down
 	!byte $00, $00, $00, $00, $00, $00, $00, $00
 	!byte $00, $00, $00, $00, $20, $00, $00, $20
 	!byte $00, $00, $2a, $a8, $00, $2a, $aa, $80
@@ -2487,6 +2514,7 @@ StartScreenData:
 	!byte $02, $00, $20, $02, $00, $20, $01, $00
 	!byte $00, $01, $00, $00, $01, $00, $00, $00
 	!byte $00, $00, $00, $00, $00, $00, $00, $00
+; $fc mystery up
 	!byte $00, $00, $00, $00, $00, $00, $00, $00
 	!byte $00, $00, $40, $00, $00, $40, $00, $00
 	!byte $40, $08, $00, $80, $08, $00, $80, $08
@@ -2495,6 +2523,7 @@ StartScreenData:
 	!byte $aa, $a8, $00, $2a, $a8, $00, $00, $08
 	!byte $00, $00, $08, $00, $00, $00, $00, $00
 	!byte $00, $00, $00, $00, $00, $00, $00, $00
+; $fd shot horizontal
 	!byte $00, $00, $00, $00, $00, $00, $00, $00
 	!byte $00, $00, $00, $00, $00, $00, $00, $00
 	!byte $00, $00, $00, $00, $00, $00, $00, $00
@@ -2503,6 +2532,7 @@ StartScreenData:
 	!byte $00, $00, $00, $00, $00, $00, $00, $00
 	!byte $00, $00, $00, $00, $00, $00, $00, $00
 	!byte $00, $00, $00, $00, $00, $00, $00, $00
+; $fe shot vertical
 	!byte $00, $00, $00, $00, $00, $00, $00, $00
 	!byte $00, $00, $00, $00, $00, $00, $00, $00
 	!byte $00, $00, $00, $00, $00, $00, $00, $00
