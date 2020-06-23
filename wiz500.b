@@ -151,9 +151,13 @@ SH = >ScreenRAMbase			; Highbyte Screen RAM base
 !addr color		= $14
 !addr monster_dir	= $1f		; 5 bytes start screen monster x pos
 !addr players		= $28		; lives
+!addr state		= $29		; state 0=new level, neg.=player died
+!addr timer2		= $2a
 !addr delay		= $2b		; delay for monster movment on satrt screen
 !addr fire		= $2c		; fire pressed bit#7=1
-!addr worrior_dir	= $32		; worrior direction 1-4
+!addr sprite_xreg	= $30		; actual sprite x register
+!addr sprite_xmsb	= $31		; actual sprite x-msb
+!addr sprite_dir	= $32		; actual sprite direction 1-4
 !addr draw_ptr		= $39		; pointer to print maze on screen
 !addr draw_column	= $36		; draw column
 !addr draw_line		= $37		; draw line
@@ -161,9 +165,15 @@ SH = >ScreenRAMbase			; Highbyte Screen RAM base
 !addr level		= $3b		; level 1-4
 !addr maze_column	= $3c		; actual maze column
 !addr maze_line		= $3d		; actual maze line
+!addr move_x		= $3f		; sprite mov sub x
+!addr move_y		= $40		; sprite mov sub y
+!addr move_xmsb		= $41		; sprite mov sub xmsb
 !addr mazedata_ptr	= $44		; pointer to mazedata
+!addr worrior_dir	= $46		; worrior direction after joy/key check
 !addr move		= $4c		; movement 0=none, 1=up, 2=down, 3=left, 4=right
 !addr sprite_data	= $4d		; 8 bytes sprite data
+!addr collision_mob	= $55		; mob-mob collision
+!addr collision_bgr	= $56		; mob-bgr collision
 !addr sound_ptr		= $70		; pointer to sound data
 ; ***************************************** VARIABLES *********************************************
 ; ************************************** P500 ZERO PAGE *******************************************
@@ -205,12 +215,12 @@ start:	sei				; disable interrupts
 	ldx #$ff			; init stack
 	txs
 	ldx #$2e			; init vic regs
-viclp:lda VICRegs,x
+viclp:	lda VICRegs,x
 	sta VIC64+MOBX,x
 	dex
 	bpl viclp
 	ldx #$18			; init sid regs
-sidlp:lda SIDRegs,x
+sidlp:	lda SIDRegs,x
 	sta SID64,x
 	dex
 	bpl sidlp
@@ -236,43 +246,43 @@ StartNew:
 	jsr StartScreen			; shows start screen and waits for F1
 	jsr InitGame			; reset score, init lives and sprite colors
 NextLevel:
-	jsr SetupGame			; increase + init new level
+	jsr SetupGame			; increase + init new level, state=0
 TryAgain:
-	jsr SetupGameScreen
-	jsr SetupWorrior
+	jsr SetupGameScreen		; draw game screen
+	jsr SetupWorrior		; setup player sprite
 	lda #$1f
 	sta SID64+MODVOL		; full volume, filter low pass
-	ldx #1				; start with sound 1
-	lda $29
-	bpl +
-	ldx #2				; if $29 bit#7 set, start with sound 2
-+	txa
+	ldx #1
+	lda state
+	bpl newlev			; start with sound 1, if new level (state=0)
+	ldx #2				; if not, start with sound 2
+newlev:	txa
 	jsr PlaySound
 GameLoop:
 	lda timer
-	bne GameLoop
-	jsr CopySpritePointer
+	bne GameLoop			; wait 1 inc of timer
+	jsr CopySpritePointer		; copies all sprites data pointers to the vic pointers
 	lda VIC64+MOBMOB
-	sta $55
+	sta collision_mob		; save mob-mob collision
 	lda VIC64+MOBBGR
-	sta $56
-	inc $2a
-	lda $2a
-	bne +
-	inc delay
+	sta collision_bgr		; save mob-bgr collision
+	inc timer2			; inc timer2
+	lda timer2
+	bne nosound			; skip if not time for sound
+	inc delay			; inc delay
 	lda #$05
 	cmp delay
-	bne +
+	bne nosound			; skip if not time for sound
 	lda #2
 	jsr PlaySound			; Play sound 2
-	dec $29
-+	lda delay
+	dec state			; state=neg for sound 2 
+nosound:lda delay
 	cmp #$10
-	bcc +
-	jsr le855
-+	jsr le754
-	jsr MoveWorrior
-	jsr le855
+	bcc skipmm
+	jsr MoveMonster			; move monsteras
+skipmm:	jsr WorriorShot			; check and move worrior shot
+	jsr MoveWorrior			; move worrior
+	jsr MoveMonster			; move monsters
 	jsr le944
 	jsr lebfe
 	jsr lecab
@@ -384,7 +394,7 @@ jkright:tya
 	and #$08			; check right
 	bne jkx
 	ldx #4
-jkx:	stx $46				; store move direction
+jkx:	stx worrior_dir				; store move direction
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $e170 Game Cycle
@@ -650,8 +660,8 @@ sg1elp:	lda #$ff
 
 	ldy #$00			; clear some vars
 	sty delay
-	sty $2a
-	sty $29
+	sty timer2
+	sty state
 
 	inc level			; raise level (1-4)
 	ldx level
@@ -846,7 +856,7 @@ ssinspr:txa
 	sta VIC64+MOBY+2,y
 	lda StartScreenMonsterData,x
 	sta SpritePointer+1,x
-	lda StartScreenMonsterColors,x
+	lda MonsterColorTable,x
 	sta VIC64+MOBCOL+1,x
 	dex
 	bpl ssinspr			; setup next sprite
@@ -923,8 +933,9 @@ Interrupt:
 irqx:	pla
 	rti
 ; -------------------------------------------------------------------------------------------------
-; $e535
-MoveWorrior:  lda $2a
+; $e535 move worrior sprite
+MoveWorrior:
+	lda timer2
 	and #$01
 	beq +
 	rts
@@ -933,19 +944,19 @@ MoveWorrior:  lda $2a
 	bpl +
 	rts
 ; $e541
-+	jsr CheckJoyKey
++	jsr CheckJoyKey			; check movement
 	lda #$00
-	sta $30
+	sta sprite_xreg			; store xregs for worrior sprite
 	lda #$01
-	sta $31
-	lda $46
-	sta worrior_dir
+	sta sprite_xmsb
+	lda worrior_dir
+	sta sprite_dir
 	lda $2e
 	sta $35
-	jsr le56f
+	jsr MoveSprite
 	lda $35
 	sta $2e
-	ldx worrior_dir
+	ldx sprite_dir
 	lda WorriorSpriteTable,x
 	bne +
 	ldx $2e
@@ -957,29 +968,30 @@ MoveWorrior:  lda $2a
 WorriorSpriteTable:  
 	!byte $00, $e8, $e7, $e6, $e5
 ; -------------------------------------------------------------------------------------------------
-; $e56f
-le56f:  ldx $30
+; $e56f move sprite (sprite_xreg, _xmsb, _dir)
+MoveSprite:
+	ldx sprite_xreg
 	lda #$00
 	sta ptr1
 	jsr le65d
-	lda $31
-	sta $41
+	lda sprite_xmsb
+	sta move_xmsb
 	lda VIC64+MOBX,x
-	sta $3f
+	sta move_x
 	lda VIC64+MOBY,x
-	sta $40
+	sta move_y
 	jsr le709
-	lda worrior_dir
+	lda sprite_dir
 	bne le590
 	jmp le6b3
 le590:  lda $35
 	cmp #$03
 	bcs le5ca
-	lda worrior_dir
+	lda sprite_dir
 	cmp #$03
 	bcc le601
-	dec $40
-	lda $40
+	dec move_y
+	lda move_y
 le5a0:  beq le5b6
 	cmp #$01
 	beq le5b6
@@ -993,16 +1005,16 @@ le5a0:  beq le5b6
 	jmp le5a0
 le5b6:  ldx ptr1
 	lda Table14+13,x
-	ldx $30
+	ldx sprite_xreg
 	sta VIC64+MOBY,x
 	jmp le601
 le5c3:  lda #$00
-	sta worrior_dir
+	sta sprite_dir
 	jmp le6b3
-le5ca:  lda worrior_dir
+le5ca:  lda sprite_dir
 	cmp #$03
 	bcs le601
-	lda $3f
+	lda move_x
 	sec
 	sbc #$01
 le5d5:  beq le5eb
@@ -1019,16 +1031,16 @@ le5d5:  beq le5eb
 le5eb:  ldx ptr1
 	cpx #$0a
 	bne le5f9
-	lda $31
+	lda sprite_xmsb
 	ora VIC64+MOBMSB
 	sta VIC64+MOBMSB
 le5f9:  lda Table14,x
-	ldx $30
+	ldx sprite_xreg
 	sta VIC64+MOBX,x
-le601:  lda worrior_dir
+le601:  lda sprite_dir
 	sta $35
-	ldx $30
-	lda worrior_dir
+	ldx sprite_xreg
+	lda sprite_dir
 	cmp #$01
 	bne le616
 	dec VIC64+MOBY,x
@@ -1046,7 +1058,7 @@ le623:  cmp #$03
 	lda VIC64+MOBX,x
 	cmp #$fe
 	bcc le63e
-	lda $31
+	lda sprite_xmsb
 	eor #$ff
 	and VIC64+MOBMSB
 	sta VIC64+MOBMSB
@@ -1058,39 +1070,39 @@ le641:  cmp #$04
 	lda VIC64+MOBX,x
 	cmp #$02
 	bcs le6b3
-	lda $31
+	lda sprite_xmsb
 	ora VIC64+MOBMSB
 	sta VIC64+MOBMSB
 	jmp le6b3
 le65d:  lda VIC64+MOBX,x
-	sta $3f
+	sta move_x
 	lda VIC64+MOBY,x
 	clc
 	sbc #$06
-	sta $40
-	lda $31
-	sta $41
+	sta move_y
+	lda sprite_xmsb
+	sta move_xmsb
 	jsr le709
-	lda worrior_dir
+	lda sprite_dir
 	beq le6b2
 	cmp #$03
 	bcc le685
 	beq le680
-	inc $3f
+	inc move_x
 	jmp le690
-le680:  dec $3f
+le680:  dec move_x
 	jmp le690
 le685:  cmp #$01
 	bne le68e
-	dec $40
+	dec move_y
 	jmp le690
-le68e:  inc $40
+le68e:  inc move_y
 le690:  lda #$04
 	sta draw_ptr+1
-	lda $3f
-le696:  ldy $40
+	lda move_x
+le696:  ldy move_y
 	beq le6a6
-	dec $40
+	dec move_y
 	clc
 	adc #$28
 	bcc le696
@@ -1101,28 +1113,27 @@ le6a6:  sta draw_ptr
 	lda (draw_ptr),y
 	beq le6b2
 	lda #$00
-	sta worrior_dir
+	sta sprite_dir
 le6b2:  rts
-; -------------------------------------------------------------------------------------------------
-; $
-le6b3:  lda $31
+; $e6b3
+le6b3:  lda sprite_xmsb
 	and VIC64+MOBMSB
 	bne le6cf
 	lda VIC64+MOBX,x
 	cmp #$16
 	bcs le6e7
-	lda $31
+	lda sprite_xmsb
 	ora VIC64+MOBMSB
 	sta VIC64+MOBMSB
 	lda #$40
 	sta VIC64+MOBX,x
 	rts
-; $
+; $e6cf
 le6cf:  beq le6e7
 	lda VIC64+MOBX,x
 	cmp #$42
 	bcc le6e7
-	lda $31
+	lda sprite_xmsb
 	eor #$ff
 	and VIC64+MOBMSB
 	sta VIC64+MOBMSB
@@ -1143,21 +1154,21 @@ Table15:
 	!byte $33, $4b, $63, $7b, $93, $ab, $c3
 ; -------------------------------------------------------------------------------------------------
 ; 
-le709:  lda $40
+le709:  lda move_y
 	sec
 	sbc #$26
 	lsr
 	lsr
 	lsr
-	sta $40
-	lda $3f
+	sta move_y
+	lda move_x
 	sec
 	sbc #$0b
 	bcs +
 	clc
 	bcc le728
 +	pha
-	lda $41
+	lda move_xmsb
 	and VIC64+MOBMSB
 	clc
 	beq +
@@ -1166,7 +1177,7 @@ le709:  lda $40
 le728:  ror
 	lsr
 	lsr
-	sta $3f
+	sta move_x
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $e72e Calc screen position and draw maze tile
@@ -1195,14 +1206,15 @@ drawmz:	sta draw_ptr			; store draw ptr lo
 	sta (draw_ptr),y		; store tile to screen
 	rts
 ; -------------------------------------------------------------------------------------------------
-; $e754
-le754:  lda $25
+; $e754 Move Worrior Shot
+WorriorShot:
+	lda $25
 	bpl +
 	jmp le7fc
-+	lda $56
++	lda collision_bgr
 	and #$80
-	beq le776
-le761:  lda #$ff
+	beq +
+colllp:	lda #$ff
 	sta $25
 	lda #$7f
 	and VIC64+MOBENA
@@ -1212,17 +1224,17 @@ le761:  lda #$ff
 	sta VIC64+MOBMSB
 	rts
 ;$ e776
-le776:  lda VIC64+MOBMSB
++	lda VIC64+MOBMSB
 	and #$80
 	bne le786
 	lda VIC64+MOBX+14
 	cmp #$14
-	bcc le761
+	bcc colllp
 
 	bcs le78d
 le786:  lda VIC64+MOBX+14
 	cmp #$42
-	bcs le761
+	bcs colllp
 ; $e78d
 le78d:  lda $2d
 	cmp #$03
@@ -1270,16 +1282,14 @@ le7e5:  inc VIC64+MOBY+14
 	lda VIC64+MOBY+14
 	cmp #$ca
 	bcc le7fb
-le7f8:  jmp le761
+le7f8:  jmp colllp
 le7fb:  rts
-; -------------------------------------------------------------------------------------------------
 ; $e7fc
 le7fc:  cmp #$ff
 	bne +
 	lda $1e
 	bpl chkshot
 +	rts
-; -------------------------------------------------------------------------------------------------
 ; $e805 check fire pressed
 chkshot:lda fire
 	bmi shoot
@@ -1317,35 +1327,33 @@ le848:  lda #$80
 	sta $25
 	rts
 ; -------------------------------------------------------------------------------------------------
-; $
-le855:  lda $29
-	bne le860
-	lda $2a
+; $e855 MoveMonster
+MoveMonster:
+	lda state
+	bne +
+	lda timer2
 	and #$01
-	bne le860
+	bne +
 	rts
-; -------------------------------------------------------------------------------------------------
-; $
-le860:  lda $1e
-	bpl le865
+; $e860
++	lda $1e
+	bpl +
 	rts
-; -------------------------------------------------------------------------------------------------
-; $
-le865:  ldx #$01
+; $e865
++	ldx #1
 	stx $10
-le869:  lda $1e,x
-	bpl le876
-le86d:  inc $10
+-	lda $1e,x
+	bpl +
+mmloop:	inc $10
 	ldx $10
-	cpx #$06
-	bne le869
+	cpx #6
+	bne -
 	rts
-; -------------------------------------------------------------------------------------------------
-; $
-le876:  lda Table16,x
-	sta $30
+; $e876
++	lda SpritePosTable,x
+	sta sprite_xreg
 	lda bits,x
-	sta $31
+	sta sprite_xmsb
 	dec $5f,x
 	dec $5f,x
 	bmi le88b
@@ -1353,7 +1361,7 @@ le876:  lda Table16,x
 	jmp le8e8
 le88b:  lda #$17
 	sta $5f,x
-	ldx $30
+	ldx sprite_xreg
 	lda SID64+RANDOM
 	and #$01
 	beq le8cb
@@ -1391,11 +1399,11 @@ le8df:  lda SID64+RANDOM
 	beq le8da
 le8e6:  lda #$01
 le8e8:  ldx $10
-	sta worrior_dir
+	sta sprite_dir
 	lda $67,x
 	sta $35
-	jsr le56f
-	lda worrior_dir
+	jsr MoveSprite
+	lda sprite_dir
 	bne le8fa
 	jsr le912
 le8fa:  ldx $10
@@ -1409,7 +1417,7 @@ le8fa:  ldx $10
 	beq le90f
 le90b:  ldx $10
 	sta sprite_data,x
-le90f:  jmp le86d
+le90f:  jmp mmloop
 le912:  lda $35
 	clc
 	adc #$01
@@ -1421,7 +1429,7 @@ le920:  sta $35
 le922:  rts
 ; -------------------------------------------------------------------------------------------------
 ; $e923
-Table16:
+SpritePosTable:
 	!byte $00, $02, $04, $06, $08, $0a, $0c, $0e
 ; $e92b
 Table17:
@@ -1433,7 +1441,7 @@ Table17:
 ; 
 le944:  lda $1e
 	bmi le95b
-	lda $2a
+	lda timer2
 	and #$1f
 	bne le95b
 	ldx #$01
@@ -1485,7 +1493,7 @@ le999:  iny
 	dec $4a
 	dec $4b
 le9a7:  lda #$01
-	sta $29
+	sta state
 le9ab:  tya
 	pha
 	txa
@@ -1497,7 +1505,7 @@ le9ab:  tya
 	tax
 	lda TableX,x
 	sta VIC64,y
-	lda $2a
+	lda timer2
 	lsr
 	lsr
 	lsr
@@ -1528,7 +1536,7 @@ le9e5:  pla
 	lda Table09,y
 	sta sprite_data,x
 	sta SpritePointer,x
-	lda StartScreenMonsterColors,y
+	lda MonsterColorTable,y
 	sta VIC64+MOBCOL,x
 	lda bits,x
 	ora VIC64+MOBENA
@@ -1538,7 +1546,7 @@ le9e5:  pla
 ; $ea08
 Table07:  
 	!byte $00, $05, $0a, $0f, $14
-StartScreenMonsterColors:
+MonsterColorTable:
 	!byte BLUE, YELLOW, CYAN, LIGHTGREEN, MAGENTA
 Table09:
 	!byte $ec, $f0, $f4, $f5, $fc
@@ -1651,10 +1659,10 @@ Table18:
 ; $eaef
 leaef:  lda $1e
 	bmi leb2b
-	lda $55
+	lda collision_mob
 	and #$01
 	beq leb2b
-	lda $55
+	lda collision_mob
 	and #$80
 	bne leb6f
 	ldx #$00
@@ -1692,7 +1700,7 @@ leb3c:  lda VIC64+MOBX+14
 	sta ptr1
 	lda VIC64+MOBY+14
 	sta ptr2
-	lda $55
+	lda collision_mob
 	and #$80
 	beq leb6f
 	ldx #$01
@@ -1718,7 +1726,7 @@ bits:
 	!byte $01, $02, $04, $08, $10, $20, $40, $80
 ; -------------------------------------------------------------------------------------------------
 ; $eb78
-leb78:  lda $55
+leb78:  lda collision_mob
 	and bits,x
 	bne leb82
 	jmp lebb8
@@ -1806,7 +1814,7 @@ lec03:  lda $24
 ; $
 lec08:  lda $4b
 	bmi lec13
-	lda $2a
+	lda timer2
 	and #$0f
 	beq lec13
 	rts
@@ -1889,7 +1897,7 @@ lecab:  lda $24
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $
-lecb0:  lda $56
+lecb0:  lda collision_bgr
 	and #$40
 	beq lecc3
 lecb6:  lda #$ff
