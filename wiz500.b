@@ -141,11 +141,19 @@ SH = >ScreenRAMbase			; Highbyte Screen RAM base
 !addr score		= $02		; 3bytes score
 !addr highscore		= $05		; 3bytes highscore
 !addr key		= $08		; pressed key/joystick
-!addr ptr1		= $09		; 16bit pointer
+!addr coll1_x		= $09		; 16bit pointer
 !addr ptr2		= $0b		; 16bit pointer
 !addr temp1		= $0d
 !addr temp2		= $0e
+; collision usage
+!addr coll1_x		= $09
+!addr coll1_y		= $0b
+!addr coll2_x		= $0c
+!addr coll2_y		= $0e
+
 !addr temp3		= $0f
+!addr temp4		= $10
+!addr temp5		= $11
 !addr data_ctr		= $12		; data counter
 !addr timer		= $13		; game timer - inc with every irq / CIA timer b
 !addr color		= $14
@@ -289,11 +297,11 @@ skipmm:	jsr WorriorShot			; check and move worrior shot
 	jsr MoveWorrior			; move worrior
 	jsr MoveMonsters		; move monsters
 	jsr StartMonsters		; check if monsters are off and start new monsters
-	jsr lebfe
-	jsr lecab
-	jsr CheckCollision
+	jsr MonsterShot			; start monster shot ?
+	jsr MoveMonsterShot		; move monster shot and disable if touching wall
+	jsr CheckCollision		; check for hits
 	jsr CheckExplosions		; Explosions: switch patterns, sound, score, finished ? 
-	jsr GameCycle
+	jsr UpdateSound			; update game sound
 	lda sprite_state
 	cmp #$ff
 	beq decwor			; branch if player sprite off (dead)
@@ -410,7 +418,7 @@ GameUpdate:
 	pha
 	txa
 	pha
-	jsr GameCycle
+	jsr UpdateSound
 	pla
 	tax
 	pla
@@ -456,19 +464,19 @@ chksplp:lda sprite_data-1,x
 ; $e1c0 Copies data from xy to address in first two bytes till $ff
 ;   $fe = new target address
 ScreenCopy:				; copies from .x, .y
-	stx ptr1
-	sty ptr1+1
+	stx coll1_x
+	sty coll1_x+1
 
 scrnewt: ldy #0				; set pointer1 to new target
 	sty temp2
-	lda (ptr1),y
+	lda (coll1_x),y
 	sta ptr2
 	iny
-	lda (ptr1),y
+	lda (coll1_x),y
 	sta ptr2+1
 
 scrcplp:iny
-	lda (ptr1),y			; load data byte
+	lda (coll1_x),y			; load data byte
 	cmp #$ff
 	beq scrcpyx			; $ff = end
 	cmp #$fe
@@ -489,11 +497,11 @@ scrcplp:iny
 scrtarg:iny
 	clc
 	tya
-	adc ptr1			; add counter .y to pointer 1
-	sta ptr1
-	lda ptr1+1
+	adc coll1_x			; add counter .y to pointer 1
+	sta coll1_x
+	lda coll1_x+1
 	adc #$00
-	sta ptr1+1
+	sta coll1_x+1
 	jmp scrnewt			; copy to new target address
 ; $e206	byte $fd = new line (target +40)
 scrline:clc
@@ -570,8 +578,8 @@ mzblank:inc data_ctr			; increase data pointer
 	jsr DrawMazeTile		; draw player count
 	ldx #$d0			; set screen pointer to highscore
 	ldy #SH+3
-	stx ptr1
-	sty ptr1+1
+	stx coll1_x
+	sty coll1_x+1
 	ldx #$03
 	jsr PrintScore			; print highscore (score+3)
 	rts
@@ -715,7 +723,7 @@ SetupWorrior:
 	sta $54
 	ldx #$ff
 	stx sprite_state+7
-	stx $24
+	stx sprite_state+6
 	inx
 	stx sprite_state
 	stx $2d
@@ -768,8 +776,8 @@ newhisc:lda score			; store new highscore
 	sta highscore+2
 	ldx #$d0			; set screen ptr to highscore
 	ldy #SH+3
-	stx ptr1
-	sty ptr1+1
+	stx coll1_x
+	sty coll1_x+1
 	ldx #3
 	jsr PrintScore
 
@@ -799,8 +807,8 @@ AddScore:
 	cld
 	ldx #$c4			; set screen pointer to score
 	ldy #SH+3
-	stx ptr1
-	sty ptr1+1
+	stx coll1_x
+	sty coll1_x+1
 	ldx #0				; print score
 
 PrintScore:
@@ -809,7 +817,7 @@ pslp:	lda score,x
 	and #$0f			; clear hinibble
 	clc
 	adc #1
-	sta (ptr1),y
+	sta (coll1_x),y
 	dey
 	lda score,x
 	lsr
@@ -818,7 +826,7 @@ pslp:	lda score,x
 	lsr
 	clc
 	adc #1
-	sta (ptr1),y
+	sta (coll1_x),y
 	inx
 	dey
 	bpl pslp
@@ -977,7 +985,7 @@ WorriorSpriteTable:
 MoveSprite:
 	ldx sprite_xreg
 	lda #$00
-	sta ptr1
+	sta coll1_x
 	jsr le65d
 	lda sprite_xmsb
 	sta move_xmsb
@@ -1004,11 +1012,11 @@ le5a0:  beq le5b6
 	beq le5b6
 	cmp #$00
 	bcc le5c3
-	inc ptr1
+	inc coll1_x
 	sec
 	sbc #$03
 	jmp le5a0
-le5b6:  ldx ptr1
+le5b6:  ldx coll1_x
 	lda Table14+13,x
 	ldx sprite_xreg
 	sta VIC64+MOBY,x
@@ -1029,11 +1037,11 @@ le5d5:  beq le5eb
 	beq le5eb
 	cmp #$00
 	bcc le5c3
-	inc ptr1
+	inc coll1_x
 	sec
 	sbc #$03
 	jmp le5d5
-le5eb:  ldx ptr1
+le5eb:  ldx coll1_x
 	cpx #$0a
 	bne le5f9
 	lda sprite_xmsb
@@ -1347,11 +1355,11 @@ MoveMonsters:
 	rts
 ; $e865
 +	ldx #1
-	stx $10
+	stx temp4
 -	lda sprite_state,x
 	bpl +
-mmloop:	inc $10
-	ldx $10
+mmloop:	inc temp4
+	ldx temp4
 	cpx #6
 	bne -
 	rts
@@ -1404,7 +1412,7 @@ le8df:  lda SID64+RANDOM
 	and #$03
 	beq le8da
 le8e6:  lda #$01
-le8e8:  ldx $10
+le8e8:  ldx temp4
 	sta sprite_dir
 	lda $67,x
 	sta $35
@@ -1412,7 +1420,7 @@ le8e8:  ldx $10
 	lda sprite_dir
 	bne le8fa
 	jsr le912
-le8fa:  ldx $10
+le8fa:  ldx temp4
 	lda $35
 	sta $67,x
 	clc
@@ -1421,7 +1429,7 @@ le8fa:  ldx $10
 	lda Table17,x
 	bne le90b
 	beq le90f
-le90b:  ldx $10
+le90b:  ldx temp4
 	sta sprite_data,x
 le90f:  jmp mmloop
 le912:  lda $35
@@ -1693,16 +1701,16 @@ ccchklp:inx				; start with monster sprite 1
 	lda sprite_state,x
 	bmi ccchklp			; next sprite, if off
 	lda VIC64+MOBX
-	sta ptr1			; store player x in ptr1
+	sta coll1_x			; store player x in coll1_x
 	lda #$00
-	sta ptr1+1
+	sta coll1_x+1
 	lda #$01			; player sprite
 	and VIC64+MOBMSB		; isolate x msb bit
 	beq +
-	inc ptr1+1			; inc ptr1 hi if msb set
+	inc coll1_x+1			; inc coll1_x hi if msb set
 +	lda VIC64+MOBY
-	sta ptr2			; store player y to ptr2
-	jsr leb78
+	sta coll1_y			; store player y to coll1_y
+	jsr Collision
 	bcc ccchklp			; next sprite if c=0
 	lda #$80
 	sta sprite_state		; store state=$80 player shot down
@@ -1711,25 +1719,25 @@ ccchklp:inx				; start with monster sprite 1
 ccmonst:lda sprite_state+7
 	bmi ccx				; player shot active ?
 	lda #$00
-	sta ptr1+1
+	sta coll1_x+1
 	lda #$80			; player shot sprite
 	and VIC64+MOBMSB		; isolate x msb
 	beq +
-	inc ptr1+1			; inc ptr1 hi if msb set
+	inc coll1_x+1			; inc coll1_x hi if msb set
 +	lda VIC64+MOBX+14
-	sta ptr1			; store player shot x in ptr1
+	sta coll1_x			; store player shot x in coll1_x
 	lda VIC64+MOBY+14
-	sta ptr2			; store player shot y in ptr2
+	sta coll1_y			; store player shot y in coll1_y
 	lda collision_mob
 	and #$80
 	beq ccx				; exit if not collision with player shot
 	ldx #$01			; check all monsters
 ccmonlp:lda sprite_state,x
 	bmi ccnxmon			; skip if monster off
-	jsr leb78
+	jsr Collision
 	bcc ccnxmon			; next monster if c=0
 	lda #$ff
-	sta sprite_state+7				; clear player shot
+	sta sprite_state+7		; reset player shot state
 	lda #$7f
 	and VIC64+MOBENA
 	sta VIC64+MOBENA		; disable player shot sprite 7
@@ -1745,85 +1753,88 @@ ccx:	rts
 BitTable:  
 	!byte $01, $02, $04, $08, $10, $20, $40, $80
 ; -------------------------------------------------------------------------------------------------
-; $eb78
-leb78:  lda collision_mob
-	and BitTable,x
-	bne leb82
-	jmp lebb8
-leb82:  txa
-	asl
+; $eb78 x=sprite, coll1_x, coll1_y = partners
+Collision:
+	lda collision_mob
+	and BitTable,x			; isolate collision sprite bit
+	bne ccoll
+	jmp collx0			; exit if no collision
+ccoll:  txa
+	asl				; x2 calc x-reg
 	tay
-	lda VIC64,y
-	sta ptr2+1
+	lda VIC64+MOBX,y		; store x to coll2
+	sta coll2_x
 	lda VIC64+MOBY,y
-	sta temp2
+	sta coll2_y			; store y to coll2
 	lda #$00
-	sta temp1
+	sta coll2_x+1
 	lda VIC64+MOBMSB
-leb96:  and BitTable,x
-	beq leb9d
-	inc temp1
-leb9d:  lda #$0e
+leb96:  and BitTable,x			; isolate x-msb
+	beq +
+	inc coll2_x+1			; inc coll2 x-hi
++	lda #14
 	sta temp3
-	lda #$0e
-	sta $10
-	lda #$0b
-	sta $11
-	lda #$17
+	lda #14
+	sta temp4
+	lda #11
+	sta temp5
+	lda #23
 	sta data_ctr
-	jsr +
-	bcc lebb9
+	jsr cchkhit
+	bcc collx
 	lda #$80
-	sta sprite_state,x
-	bne lebb9
-lebb8:  clc
-lebb9:  rts
-; $ebba
-+	sec
-	lda temp2
+	sta sprite_state,x		; set status dead
+	bne collx
+collx0:	clc				; exit no hit c=0
+collx:  rts
+; $ebba check hit
+cchkhit:sec
+	lda coll2_y
 	sbc temp3
-	cmp ptr2
-	bcs lebfc
+	cmp coll1_y
+	bcs collx00
 	clc
-	lda temp2
-	adc $10
-	cmp ptr2
-	bcc lebfc
+	lda coll2_y
+	adc temp4
+	cmp coll1_y
+	bcc collx00
 	sec
-	lda ptr2+1
-	sbc $11
-	sta ptr2+1
-	lda temp1
+	lda coll2_x
+	sbc temp5
+	sta coll2_x
+	lda coll2_x+1
 	sbc #$00
-	sta temp1
+	sta coll2_x+1
 	sec
-	lda ptr2+1
-	sbc ptr1
-	lda temp1
-	sbc ptr1+1
-	bcs lebfc
-	lda ptr2+1
+	lda coll2_x
+	sbc coll1_x
+	lda coll2_x+1
+	sbc coll1_x+1
+	bcs collx00
+	lda coll2_x
 	adc data_ctr
-	sta ptr2+1
-	lda temp1
+	sta coll2_x
+	lda coll2_x+1
 	adc #$00
-	sta temp1
+	sta coll2_x+1
 	sec
-	lda ptr2+1
-	sbc ptr1
-	lda temp1
-	sbc ptr1+1
-	bcc lebfc
-	rts
-; $
-lebfc:  clc
-	rts
-; $ebfe
-lebfe:  lda sprite_state
-	bpl +
+	lda coll2_x
+	sbc coll1_x
+	lda coll2_x+1
+	sbc coll1_x+1
+	bcc collx00
+	rts				; return hit with c=1
+
+collx00:clc
+	rts				; return no hit c=0
+; -------------------------------------------------------------------------------------------------
+; $ebfe start monster shot
+MonsterShot:
+	lda sprite_state
+	bpl +				; branch if player sprite on
 	rts
 ; $ec03
-+	lda $24
++	lda sprite_state+6		; branch if monster shot on
 	bne +
 	rts
 ; $ec08
@@ -1833,28 +1844,26 @@ lebfe:  lda sprite_state
 	and #$0f
 	beq +
 	rts
-; -------------------------------------------------------------------------------------------------
 ; $
-+	ldx #$01
++	ldx #1				; check all monsters
 -	lda sprite_state,x
-	bpl +
+	bpl +				; branch if monster on
 lec19:  inx
-	cpx #$06
-	bne -
+	cpx #6
+	bne -				; neext monster
 	rts
-; -------------------------------------------------------------------------------------------------
 ; $ec1f
 +	txa
 	asl
 	tay
-	lda VIC64
-	cmp VIC64,y
+	lda VIC64+MOBX
+	cmp VIC64+MOBX,y
 	beq lec65
 	lda VIC64+MOBY
 	cmp VIC64+MOBY,y
 	bne lec19
-	lda VIC64
-	cmp VIC64,y
+	lda VIC64+MOBX
+	cmp VIC64+MOBX,y
 	lda VIC64+MOBMSB
 	and #$01
 	bne lec49
@@ -1885,8 +1894,8 @@ lec71:  sta $77
 	lda #$fe
 	sta $53
 lec77:  lda #$00
-	sta $24
-	lda VIC64,y
+	sta sprite_state+6
+	lda VIC64+MOBX,y
 	sta VIC64+MOBX+12
 	lda VIC64+MOBY,y
 	sta VIC64+MOBY+12
@@ -1901,37 +1910,39 @@ lec96:  lda VIC64+MOBMSB
 lec9b:  sta VIC64+MOBMSB
 	lda VIC64+MOBENA
 	ora #$40
-	sta VIC64+MOBENA
+	sta VIC64+MOBENA		; enable monster shot
 	lda $77
 	sta $67,x
 	rts
 ; -------------------------------------------------------------------------------------------------
-; $ecab
-lecab:  lda $24
-	bpl +
+; $ecab move monster shot and disable if reaching wall
+MoveMonsterShot:
+	lda sprite_state+6
+	bpl msactiv			; branch if monster shot on
 	rts
-; $ecb0
-+	lda collision_bgr
-	and #$40
-	beq +
-lecb6:  lda #$ff
-	sta $24
+; $ecb0 disable monster shot if reaching background
+msactiv:lda collision_bgr
+	and #$40			; isloate monster shot collision bit
+	beq +				; branch if no bgr-collision
+; disable monster shot
+msdisab:lda #$ff
+	sta sprite_state+6		; disable monster shot
 	lda VIC64+MOBENA
 	and #$bf
-	sta VIC64+MOBENA
+	sta VIC64+MOBENA		; disable sprite 6
 	rts
 ; -------------------------------------------------------------------------------------------------
-; $ecc3
+; $ecc3 move monster shot
 +	lda VIC64+MOBMSB
 	and #$40
 	bne +
 	lda VIC64+MOBX+12
 	cmp #$14
-	bcc lecb6
+	bcc msdisab
 	bcs lecda
 +	lda VIC64+MOBX+12
 	cmp #$42
-	bcs lecb6
+	bcs msdisab
 lecda:  lda $77
 	cmp #$03
 	bcc led0e
@@ -1955,7 +1966,6 @@ lecda:  lda $77
 	ora #$40
 	sta VIC64+MOBMSB
 	rts
-; -------------------------------------------------------------------------------------------------
 ; $
 led0e:  cmp #$01
 	bne +
@@ -1965,7 +1975,6 @@ led0e:  cmp #$01
 	cmp #$2a
 	bcc ++
 	rts
-; -------------------------------------------------------------------------------------------------
 ; $ed20
 +	inc VIC64+MOBY+12
 	inc VIC64+MOBY+12
@@ -1973,9 +1982,8 @@ led0e:  cmp #$01
 	cmp #$ca
 	bcs ++
 led2d:  rts
-; -------------------------------------------------------------------------------------------------
-; $ed2e
-++	jmp lecb6
+
+++	jmp msdisab
 ; -------------------------------------------------------------------------------------------------
 ; $ed31 play sound no. x
 PlaySound:
@@ -2062,8 +2070,8 @@ pls08:  cmp #8
 	rts
 plsx:	rts
 ; -------------------------------------------------------------------------------------------------
-; $edc3
-GameCycle:
+; $edc3 update game sound
+UpdateSound:
 	lda $74
 	beq ledd6
 	asl
