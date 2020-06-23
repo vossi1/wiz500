@@ -291,8 +291,8 @@ skipmm:	jsr WorriorShot			; check and move worrior shot
 	jsr StartMonsters		; check if monsters are off and start new monsters
 	jsr lebfe
 	jsr lecab
-	jsr leaef
-	jsr Explosions			; Explosions: switch patterns, sound, score, finished ? 
+	jsr CheckCollision
+	jsr CheckExplosions		; Explosions: switch patterns, sound, score, finished ? 
 	jsr GameCycle
 	lda sprite_state
 	cmp #$ff
@@ -714,7 +714,7 @@ SetupWorrior:
 	lda #$fd
 	sta $54
 	ldx #$ff
-	stx $25
+	stx sprite_state+7
 	stx $24
 	inx
 	stx sprite_state
@@ -1214,14 +1214,14 @@ drawmz:	sta draw_ptr			; store draw ptr lo
 ; -------------------------------------------------------------------------------------------------
 ; $e754 Move Worrior Shot
 WorriorShot:
-	lda $25
+	lda sprite_state+7
 	bpl +
 	jmp le7fc
 +	lda collision_bgr
 	and #$80
 	beq +
 colllp:	lda #$ff
-	sta $25
+	sta sprite_state+7
 	lda #$7f
 	and VIC64+MOBENA
 	sta VIC64+MOBENA
@@ -1330,7 +1330,7 @@ le848:  lda #$80
 	ora VIC64+MOBENA
 	sta VIC64+MOBENA
 	lda #$00
-	sta $25
+	sta sprite_state+7
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $e855 MoveMonsters
@@ -1558,7 +1558,7 @@ MonsterTypeTable:
 	!byte $ec, $f0, $f4, $f5, $fc
 ; -------------------------------------------------------------------------------------------------
 ; $ea17 Explosions: switch patterns, sound, score, finished ? 
-Explosions:
+CheckExplosions:
 	ldx #7				; all sprites
 exloop:	lda sprite_state,x
 	bmi exspdis			; branch if state neg
@@ -1675,69 +1675,71 @@ notfin:	jmp exnext
 ScoreTablex100:  
 	!byte 1, 2, 3, 4, 5, 5, 5, 5
 ; -------------------------------------------------------------------------------------------------
-; $eaef
-leaef:  lda sprite_state
-	bmi leb2b
+; $eaef check collision
+CheckCollision:
+	lda sprite_state
+	bmi ccmonst			; skip if player off
 	lda collision_mob
-	and #$01
-	beq leb2b
+	and #$01			; isolate collison player bit
+	beq ccmonst			; skip if not player
 	lda collision_mob
 	and #$80
-	bne leb6f
-	ldx #$00
-leb01:  inx
-	cpx #$07
-	beq leb2b
+	bne ccx				; exit if collision with player shot
+	ldx #0
+; check collision partner
+ccchklp:inx				; start with monster sprite 1
+	cpx #7
+	beq ccmonst			; branch if player shot to check monster hit
 	lda sprite_state,x
-	bmi leb01
-	lda VIC64
-	sta ptr1
+	bmi ccchklp			; next sprite, if off
+	lda VIC64+MOBX
+	sta ptr1			; store player x in ptr1
 	lda #$00
 	sta ptr1+1
-	lda #$01
-	and VIC64+MOBMSB
-	beq leb1c
-	inc ptr1+1
-leb1c:  lda VIC64+MOBY
-	sta ptr2
+	lda #$01			; player sprite
+	and VIC64+MOBMSB		; isolate x msb bit
+	beq +
+	inc ptr1+1			; inc ptr1 hi if msb set
++	lda VIC64+MOBY
+	sta ptr2			; store player y to ptr2
 	jsr leb78
-	bcc leb01
+	bcc ccchklp			; next sprite if c=0
 	lda #$80
-	sta sprite_state
+	sta sprite_state		; store state=$80 player shot down
 	rts
-; $eb2b
-leb2b:  lda $25
-	bmi leb6f
+; $eb2b check monster/monster-shot hit
+ccmonst:lda sprite_state+7
+	bmi ccx				; player shot active ?
 	lda #$00
 	sta ptr1+1
-	lda #$80
-	and VIC64+MOBMSB
-	beq leb3c
-	inc ptr1+1
-leb3c:  lda VIC64+MOBX+14
-	sta ptr1
+	lda #$80			; player shot sprite
+	and VIC64+MOBMSB		; isolate x msb
+	beq +
+	inc ptr1+1			; inc ptr1 hi if msb set
++	lda VIC64+MOBX+14
+	sta ptr1			; store player shot x in ptr1
 	lda VIC64+MOBY+14
-	sta ptr2
+	sta ptr2			; store player shot y in ptr2
 	lda collision_mob
 	and #$80
-	beq leb6f
-	ldx #$01
-leb4e:  lda sprite_state,x
-	bmi leb6a
+	beq ccx				; exit if not collision with player shot
+	ldx #$01			; check all monsters
+ccmonlp:lda sprite_state,x
+	bmi ccnxmon			; skip if monster off
 	jsr leb78
-	bcc leb6a
+	bcc ccnxmon			; next monster if c=0
 	lda #$ff
-	sta $25
+	sta sprite_state+7				; clear player shot
 	lda #$7f
 	and VIC64+MOBENA
-	sta VIC64+MOBENA
+	sta VIC64+MOBENA		; disable player shot sprite 7
 	lda #$80
-	sta sprite_state,x
-	jmp leb6f
-leb6a:  inx
-	cpx #$07
-	bne leb4e
-leb6f:  rts
+	sta sprite_state,x		; set player shot state to $80=dead
+	jmp ccx				; exit
+ccnxmon:inx
+	cpx #7
+	bne ccmonlp			; next monster/monster-shot
+ccx:	rts
 ; -------------------------------------------------------------------------------------------------
 ; $
 BitTable:  
