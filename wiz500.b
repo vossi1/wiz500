@@ -149,7 +149,7 @@ SH = >ScreenRAMbase			; Highbyte Screen RAM base
 !addr data_ctr		= $12		; data counter
 !addr timer		= $13		; game timer - inc with every irq / CIA timer b
 !addr color		= $14
-!addr sprite_state	= $1e		; 8 bytes state: $ff=off, $00=on, $80=?
+!addr sprite_state	= $1e		; 8 bytes state: $ff=off, $00=on, $80-$d0 player explosion
 					; start-screen: monster direction
 !addr finished		= $26		; sum of all targets to go: 0 = level finished
 !addr ttarget		= $27		; targets
@@ -178,6 +178,7 @@ SH = >ScreenRAMbase			; Highbyte Screen RAM base
 !addr sprite_data	= $4d		; 8 bytes sprite data
 !addr collision_mob	= $55		; mob-mob collision
 !addr collision_bgr	= $56		; mob-bgr collision
+!addr monster_value	= $57		; 5 bytes monster values
 !addr sound_ptr		= $70		; pointer to sound data
 ; ***************************************** VARIABLES *********************************************
 ; ************************************** P500 ZERO PAGE *******************************************
@@ -291,7 +292,7 @@ skipmm:	jsr WorriorShot			; check and move worrior shot
 	jsr lebfe
 	jsr lecab
 	jsr leaef
-	jsr lea17
+	jsr Explosions			; Explosions: switch patterns, sound, score, finished ? 
 	jsr GameCycle
 	lda sprite_state
 	cmp #$ff
@@ -1357,7 +1358,7 @@ mmloop:	inc $10
 ; $e876
 +	lda SpritePosTable,x
 	sta sprite_xreg
-	lda bits,x
+	lda BitTable,x
 	sta sprite_xmsb
 	dec $5f,x
 	dec $5f,x
@@ -1370,13 +1371,13 @@ le88b:  lda #$17
 	lda SID64+RANDOM
 	and #$01
 	beq le8cb
-	lda bits,x
+	lda BitTable,x
 	ora #$01
 	and VIC64+MOBMSB
 	beq le8ab
 	cmp #$01
 	beq le8b3
-	cmp bits,x
+	cmp BitTable,x
 	beq le8bf
 le8ab:  lda VIC64
 	cmp VIC64+MOBX,x
@@ -1415,7 +1416,7 @@ le8fa:  ldx $10
 	lda $35
 	sta $67,x
 	clc
-	adc $56,x
+	adc monster_value-1,x
 	tax
 	lda Table17,x
 	bne le90b
@@ -1536,129 +1537,143 @@ le9e5:  pla
 	pla
 	tay
 	inc sprite_state,x
-	lda Table07,y
-	sta $56,x
-	lda Table09,y
+	lda MonsterValueTable,y
+	sta monster_value-1,x
+	lda MonsterTypeTable,y
 	sta sprite_data,x
 	sta SpritePointer,x
 	lda MonsterColorTable,y
 	sta VIC64+MOBCOL,x
-	lda bits,x
+	lda BitTable,x
 	ora VIC64+MOBENA
 	sta VIC64+MOBENA
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $ea08
-Table07:  
-	!byte $00, $05, $0a, $0f, $14
+MonsterValueTable:  
+	!byte 0, 5, 10, 15, 20
 MonsterColorTable:
 	!byte BLUE, YELLOW, CYAN, LIGHTGREEN, MAGENTA
-Table09:
+MonsterTypeTable:
 	!byte $ec, $f0, $f4, $f5, $fc
 ; -------------------------------------------------------------------------------------------------
-; 
-lea17:  ldx #7
-lea19:  lda sprite_state,x
-	bmi +
-lea1d:  dex
-	bpl lea19
+; $ea17 Explosions: switch patterns, sound, score, finished ? 
+Explosions:
+	ldx #7				; all sprites
+exloop:	lda sprite_state,x
+	bmi exspdis			; branch if state neg
+exnext:	dex
+	bpl exloop			; next sprite
 	rts
 ; $ea21
-+	cmp #$ff
-	beq lea1d
+exspdis:cmp #$ff
+	beq exnext			; next sprite, if off
+
 	inc sprite_state,x
 	txa
-	bne lea77
+	bne exnotpl			; branch if not worrior
+; player sprite, state neg.
 	lda sprite_state,x
 	cmp #$81
-	bne lea3c
+	bne expl1			; branch if explosion in progress
+; start player explosion
 	lda #$f6
-	sta sprite_data
+	sta sprite_data			; explosion pattern 1
 	lda #6
-	jsr PlaySound
-	jmp lea1d
-lea3c:  cmp #$90
-	bne lea47
+	jsr PlaySound			; start explosion sound 6
+	jmp exnext			; switch next sprite pattern
+
+expl1:	cmp #$90			; explosion movie ;)
+	bne expl2
 	lda #$f7
 	sta sprite_data
-	jmp lea1d
-lea47:  cmp #$a0
-	bne lea52
+	jmp exnext
+
+expl2:	cmp #$a0
+	bne expl3
 	lda #$f6
 	sta sprite_data
-	jmp lea1d
-lea52:  cmp #$b0
-	bne lea5d
+	jmp exnext
+
+expl3:	cmp #$b0
+	bne expl4
 	lda #$f7
 	sta sprite_data
-	jmp lea1d
-lea5d:  cmp #$c0
-	bne lea68
+	jmp exnext
+
+expl4:	cmp #$c0
+	bne expl5
 	lda #$f8
 	sta sprite_data
-	jmp lea1d
-lea68:  cmp #$d0
-	bne lea74
+	jmp exnext
+
+expl5:	cmp #$d0
+	bne explx
 	lda VIC64+MOBENA
-	and #$fe
-	sta VIC64+MOBENA
-lea74:  jmp lea1d
-lea77:  lda sprite_state,x
+	and #$ff-1
+	sta VIC64+MOBENA		; disable player sprite
+explx:	jmp exnext
+; state neg, but not player sprite
+exnotpl:lda sprite_state,x
 	cmp #$81
-	bne leaa6
+	bne exmon1			; branch if explosion in progress
 	lda #$f6
-	sta sprite_data,x
-	cpx #$06
-	beq lea9e
-	lda $56,x
+	sta sprite_data,x		; explosion pattern 1
+	cpx #6
+	beq spshot			; no score for shot-sprites
+	lda monster_value-1,x		; load monster value
 	lsr
 	lsr
-	and #$07
+	and #$07			; calc final value
 	tay
-	lda Table18,y
-	cmp #$05
-	bne lea9b
+	lda ScoreTablex100,y		; load monster score
+	cmp #5
+	bne spadsco			; skip if not max score 5
 	lda SID64+RANDOM
-	and #$30
+	and #$30			; calc special score
 	clc
 	adc #$10
-lea9b:  jsr AddScore
-lea9e:  lda #5
-	jsr PlaySound
-	jmp lea1d
-leaa6:  cmp #$90
-	bne leab1
+spadsco:jsr AddScore			; add and print score
+spshot:	lda #5
+	jsr PlaySound			; start explosion sound 5
+	jmp exnext			; switch next sprite pattern
+
+exmon1:	cmp #$90
+	bne exmon2
 	lda #$f7
 	sta sprite_data,x
-	jmp lea1d
-leab1:  cmp #$a0
-	bne leabc
+	jmp exnext
+
+exmon2:	cmp #$a0
+	bne exmon3
 	lda #$f8
 	sta sprite_data,x
-	jmp lea1d
-leabc:  cmp #$b0
-	bne leace
-	lda bits,x
+	jmp exnext
+
+exmon3:	cmp #$b0
+	bne exmon4
+	lda BitTable,x			; load monster bit
 	eor #$ff
 	and VIC64+MOBENA
-	sta VIC64+MOBENA
-	jmp lea1d
-leace:  cpx #$06
-	beq leae4
+	sta VIC64+MOBENA		; disable monster sprite
+	jmp exnext
+; check if level finished - all targets destroyed
+exmon4:	cpx #6
+	beq notfin			; skip finished check, if shot sprite
 	cmp #$fe
-	bne leae4
+	bne notfin
 	lda ttarget
 	ora target
 	ora target+1
 	ora target+2
 	ora target+3
-	bne leae4
-	sta finished
-leae4:  jmp lea1d
+	bne notfin
+	sta finished			; store finished var (0=finished)
+notfin:	jmp exnext
 ; -------------------------------------------------------------------------------------------------
-; $eae7
-Table18:  
-	!byte $01, $02, $03, $04, $05, $05, $05, $05
+; $eae7 Monster scores (x100)
+ScoreTablex100:  
+	!byte 1, 2, 3, 4, 5, 5, 5, 5
 ; -------------------------------------------------------------------------------------------------
 ; $eaef
 leaef:  lda sprite_state
@@ -1690,8 +1705,7 @@ leb1c:  lda VIC64+MOBY
 	lda #$80
 	sta sprite_state
 	rts
-; -------------------------------------------------------------------------------------------------
-; $
+; $eb2b
 leb2b:  lda $25
 	bmi leb6f
 	lda #$00
@@ -1726,12 +1740,12 @@ leb6a:  inx
 leb6f:  rts
 ; -------------------------------------------------------------------------------------------------
 ; $
-bits:  
+BitTable:  
 	!byte $01, $02, $04, $08, $10, $20, $40, $80
 ; -------------------------------------------------------------------------------------------------
 ; $eb78
 leb78:  lda collision_mob
-	and bits,x
+	and BitTable,x
 	bne leb82
 	jmp lebb8
 leb82:  txa
@@ -1744,7 +1758,7 @@ leb82:  txa
 	lda #$00
 	sta temp1
 	lda VIC64+MOBMSB
-leb96:  and bits,x
+leb96:  and BitTable,x
 	beq leb9d
 	inc temp1
 leb9d:  lda #$0e
@@ -1843,11 +1857,11 @@ lec19:  inx
 	and #$01
 	bne lec49
 	lda VIC64+MOBMSB
-	and bits,x
+	and BitTable,x
 	bne lec51
 	beq lec57
 lec49:  lda VIC64+MOBMSB
-	and bits,x
+	and BitTable,x
 	bne lec57
 lec51:  bcc lec56
 	clc
@@ -1875,7 +1889,7 @@ lec77:  lda #$00
 	lda VIC64+MOBY,y
 	sta VIC64+MOBY+12
 	lda VIC64+MOBMSB
-	and bits,x
+	and BitTable,x
 	beq lec96
 	lda VIC64+MOBMSB
 	ora #$40
@@ -2014,7 +2028,7 @@ pls05:  cmp #5
 	lda #$81
 	sta SID64+V3CTRL
 	rts
-; $ed8b
+; $ed8b Player explosion
 pls06:  cmp #6
 	bne pls07
 	lda #$3f
