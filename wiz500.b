@@ -149,7 +149,10 @@ SH = >ScreenRAMbase			; Highbyte Screen RAM base
 !addr data_ctr		= $12		; data counter
 !addr timer		= $13		; game timer - inc with every irq / CIA timer b
 !addr color		= $14
-!addr monster_dir	= $1f		; 5 bytes start screen monster x pos
+!addr sprite_state	= $1e		; 8 bytes state: $ff=off, $00=on, $80=?
+					; start-screen: monster direction
+!addr finished		= $26		; sum of all targets to go: 0 = level finished
+!addr ttarget		= $27		; targets
 !addr players		= $28		; lives
 !addr state		= $29		; state 0=new level, neg.=player died
 !addr timer2		= $2a
@@ -170,6 +173,7 @@ SH = >ScreenRAMbase			; Highbyte Screen RAM base
 !addr move_xmsb		= $41		; sprite mov sub xmsb
 !addr mazedata_ptr	= $44		; pointer to mazedata
 !addr worrior_dir	= $46		; worrior direction after joy/key check
+!addr target		= $47		; 4 bytes targets to destroy
 !addr move		= $4c		; movement 0=none, 1=up, 2=down, 3=left, 4=right
 !addr sprite_data	= $4d		; 8 bytes sprite data
 !addr collision_mob	= $55		; mob-mob collision
@@ -279,28 +283,28 @@ GameLoop:
 nosound:lda delay
 	cmp #$10
 	bcc skipmm
-	jsr MoveMonster			; move monsteras
+	jsr MoveMonsters		; move monsters
 skipmm:	jsr WorriorShot			; check and move worrior shot
 	jsr MoveWorrior			; move worrior
-	jsr MoveMonster			; move monsters
-	jsr le944
+	jsr MoveMonsters		; move monsters
+	jsr StartMonsters		; check if monsters are off and start new monsters
 	jsr lebfe
 	jsr lecab
 	jsr leaef
 	jsr lea17
 	jsr GameCycle
-	lda $1e
+	lda sprite_state
 	cmp #$ff
-	beq decwor
-	lda $26
-	bne GameLoop
+	beq decwor			; branch if player sprite off (dead)
+	lda finished			; level finished ? (0=finished)
+	bne GameLoop			; branch if not
 
-	lda $1e
-	bmi decwor
-	jmp LevelFinished
+	lda sprite_state
+	bmi decwor			; branch if player sprite off (dead)
+	jmp LevelFinished		; level finished
 
 decwor:	dec players			; decrease lives
-	bne TryAgain
+	bne TryAgain			; next try if live > 0
 
 	jmp GameOver			; game over
 ; -------------------------------------------------------------------------------------------------
@@ -628,7 +632,7 @@ mzhvtil:jsr mzhtile			; draw 3x horizontal line
 	jsr DrawMazeTile		; draw low-left corner 'L'-tile
 	rts
 ; -------------------------------------------------------------------------------------------------
-; $e2f5 inits some vars and sprite colors
+; $e2f5 Inits some vars and sprite colors
 InitGame:
 	ldy #0
 	sty score
@@ -647,15 +651,15 @@ incollp:sta VIC64+MOBCOL,x
 
 	rts
 ; -------------------------------------------------------------------------------------------------
-; $e310
+; $e310 Setup game states, targets
 SetupGame:
 	ldx #$00
 	stx VIC64+MOBENA		; disable sprites
 
 sg1elp:	lda #$ff
-	sta $1e,x			; set $1e- 8 vars to $ff 
+	sta sprite_state,x		; clear state for all sprites
 	inx
-	cpx #$08
+	cpx #8
 	bne sg1elp
 
 	ldy #$00			; clear some vars
@@ -668,24 +672,24 @@ sg1elp:	lda #$ff
 	cpx #4				; maximum 4
 	bcc levmax4
 	ldx #4
-levmax4:lda MonsterSpeedTable-1,x	; setup monster speeds?
-	sta $27
-	lda MonsterSpeedTable-1+4,x
-	sta $47
-	lda MonsterSpeedTable-1+8,x
-	sta $48
-	lda MonsterSpeedTable-1+12,x
-	sta $49
-	lda MonsterSpeedTable-1+16,x
-	sta $4a
-	lda MonsterSpeedTable-1+20,x
-	sta $26
+levmax4:lda TargetTable-1,x		; setup targets
+	sta ttarget
+	lda TargetTable-1+4,x
+	sta target
+	lda TargetTable-1+8,x
+	sta target+1
+	lda TargetTable-1+12,x
+	sta target+2
+	lda TargetTable-1+16,x
+	sta target+3
+	lda TargetTable-1+20,x
+	sta finished
 	lda #$00
 	sta $4b
 	rts
 ; -------------------------------------------------------------------------------------------------
-; speeds 1-4
-MonsterSpeedTable:
+; targets 1-4
+TargetTable:
 	!byte $04, $05, $06, $06
 	!byte $03, $04, $05, $06
 	!byte $02, $04, $06, $06
@@ -712,7 +716,7 @@ SetupWorrior:
 	stx $25
 	stx $24
 	inx
-	stx $1e
+	stx sprite_state
 	stx $2d
 	lda VIC64+MOBENA
 	ora #$01			; enable worrior sprite
@@ -831,7 +835,7 @@ pslp:	lda score,x
 	jsr PlaySound			; play bonus sound
 psx:	rts
 ; -------------------------------------------------------------------------------------------------
-; $e474
+; $e474 start screen sub
 StartScreen:
 	lda #$00
 	sta VIC64+MOBENA		; disable all sprites
@@ -850,7 +854,7 @@ ssinspr:txa
 	asl
 	tay
 	lda #$d7			; sprite start h pos
-	sta monster_dir,x		; set right direction = $d7
+	sta sprite_state+1,x		; set right direction = $d7
 	sta VIC64+MOBX+2,y		; setup monsters sprites 1-5
 	lda StartScreenMonsterVpos,x
 	sta VIC64+MOBY+2,y
@@ -879,14 +883,14 @@ sswait	lda timer
 ssright:tya			
 	asl
 	tax
-	lda monster_dir,y
+	lda sprite_state+1,y
 	beq ssleft
 	inc VIC64+MOBX+2,x		; move monsters right
 	lda VIC64+MOBX+2,x
 	cmp StartScreenMonsterRLimit,y	; check if right limit
 	bcc ssnxspr
 	lda #$00
-	sta monster_dir,y		; set left direction
+	sta sprite_state+1,y		; set left direction
 	cpy #$03
 	beq ssnxspr			; skip if monster #3 (unidir monster)
 	tya
@@ -897,7 +901,7 @@ ssleft:	dec VIC64+MOBX+2,x		; move monster left
 	lda VIC64+MOBX+2,x
 	cmp #$d7
 	bcs ssnxspr			; skip if left limit not reached
-	sta monster_dir,y		; set right dir
+	sta sprite_state+1,y		; set right dir
 	cpy #$03
 	beq ssnxspr			; skip if monster #3 (unidir monster)
 	tya
@@ -915,7 +919,7 @@ sschkf1:jsr CheckF1Key			; check f1 key pressed
 	sta VIC64+EXTCOL
 	rts
 ; -------------------------------------------------------------------------------------------------
-; $e51a
+; $e51a start screen tables
 StartScreenMonsterVpos:
 	!byte $52, $6a, $82, $9a, $b2
 StartScreenMonsterData:
@@ -940,7 +944,7 @@ MoveWorrior:
 	beq +
 	rts
 ; $e53c
-+	lda $1e
++	lda sprite_state
 	bpl +
 	rts
 ; $e541
@@ -980,11 +984,11 @@ MoveSprite:
 	sta move_x
 	lda VIC64+MOBY,x
 	sta move_y
-	jsr le709
+	jsr CalcScreenPosition		; calc sprite screen position (char based)
 	lda sprite_dir
-	bne le590
+	bne msdirok
 	jmp le6b3
-le590:  lda $35
+msdirok:lda $35
 	cmp #$03
 	bcs le5ca
 	lda sprite_dir
@@ -1082,7 +1086,7 @@ le65d:  lda VIC64+MOBX,x
 	sta move_y
 	lda sprite_xmsb
 	sta move_xmsb
-	jsr le709
+	jsr CalcScreenPosition
 	lda sprite_dir
 	beq le6b2
 	cmp #$03
@@ -1153,31 +1157,32 @@ Table14:!byte $19, $31, $49, $61, $79, $91, $a9, $c1
 Table15:
 	!byte $33, $4b, $63, $7b, $93, $ab, $c3
 ; -------------------------------------------------------------------------------------------------
-; 
-le709:  lda move_y
+; e709 Calc sprite screen position
+CalcScreenPosition:
+	lda move_y
 	sec
-	sbc #$26
+	sbc #38				; sub upper offset
+	lsr				; ...and divide by 8
 	lsr
 	lsr
-	lsr
-	sta move_y
+	sta move_y			; store screen y
 	lda move_x
 	sec
-	sbc #$0b
-	bcs +
+	sbc #11				; sub left offset
+	bcs cspmsb
 	clc
-	bcc le728
-+	pha
+	bcc cspdivx
+cspmsb:	pha				; remember x
 	lda move_xmsb
-	and VIC64+MOBMSB
+	and VIC64+MOBMSB		; load and isolate x-msb
 	clc
-	beq +
-	sec
-+	pla
-le728:  ror
+	beq cspnmsb			; skip if msb not set
+	sec				; set c
+cspnmsb:pla
+cspdivx:ror				; divide by 8 (with carry if msb set)
 	lsr
 	lsr
-	sta move_x
+	sta move_x			; store screen x
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $e72e Calc screen position and draw maze tile
@@ -1287,7 +1292,7 @@ le7fb:  rts
 ; $e7fc
 le7fc:  cmp #$ff
 	bne +
-	lda $1e
+	lda sprite_state
 	bpl chkshot
 +	rts
 ; $e805 check fire pressed
@@ -1327,8 +1332,8 @@ le848:  lda #$80
 	sta $25
 	rts
 ; -------------------------------------------------------------------------------------------------
-; $e855 MoveMonster
-MoveMonster:
+; $e855 MoveMonsters
+MoveMonsters:
 	lda state
 	bne +
 	lda timer2
@@ -1336,13 +1341,13 @@ MoveMonster:
 	bne +
 	rts
 ; $e860
-+	lda $1e
++	lda sprite_state
 	bpl +
 	rts
 ; $e865
 +	ldx #1
 	stx $10
--	lda $1e,x
+-	lda sprite_state,x
 	bpl +
 mmloop:	inc $10
 	ldx $10
@@ -1438,61 +1443,61 @@ Table17:
 	!byte $f5, $f5, $f5, $f5, $fc, $fc, $fb, $fa
 	!byte $f9
 ; -------------------------------------------------------------------------------------------------
-; 
-le944:  lda $1e
-	bmi le95b
+; $e944 check monster state and start new monster if needed
+StartMonsters:
+	lda sprite_state
+	bmi smx
 	lda timer2
 	and #$1f
-	bne le95b
-	ldx #$01
-le950:  lda $1e,x
+	bne smx
+	ldx #1
+smchklp:lda sprite_state,x
 	cmp #$ff
 	beq le95c
 	inx
-	cpx #$06
-	bne le950
-le95b:  rts
-; -------------------------------------------------------------------------------------------------
-; $
+	cpx #6
+	bne smchklp
+smx:	rts
+; $e95c
 le95c:  ldy #$00
-	lda $27
+	lda ttarget
 	beq le967
-	dec $27
+	dec ttarget
 	jmp le9ab
 le967:  iny
-	lda $47
+	lda target
 	beq le971
-	dec $47
+	dec target
 	jmp le9ab
 le971:  iny
-	lda $48
+	lda target+1
 	beq le97b
-	dec $48
+	dec target+1
 	jmp le9ab
 le97b:  iny
-	ldx #$01
+	ldx #1
 	lda #$ff
-le980:  and $1e,x
-	and monster_dir,x
+le980:  and sprite_state,x
+	and sprite_state+1,x
 	inx
 	inx
-	cpx #$07
+	cpx #7
 	bne le980
 	cmp #$ff
-	bne le95b
-	ldx #$01
-	lda $49
+	bne smx
+	ldx #1
+	lda target+2
 	beq le999
-	dec $49
+	dec target+2
 	jmp le9a7
 le999:  iny
-	lda $4a
-	beq le95b
+	lda target+3
+	beq smx
 	lda #3
 	jsr PlaySound
-	dec $4a
+	dec target+3
 	dec $4b
-le9a7:  lda #$01
+le9a7:  lda #1
 	sta state
 le9ab:  tya
 	pha
@@ -1504,7 +1509,7 @@ le9ab:  tya
 	and #$07
 	tax
 	lda TableX,x
-	sta VIC64,y
+	sta VIC64+MOBX,y
 	lda timer2
 	lsr
 	lsr
@@ -1530,7 +1535,7 @@ le9e5:  pla
 	tax
 	pla
 	tay
-	inc $1e,x
+	inc sprite_state,x
 	lda Table07,y
 	sta $56,x
 	lda Table09,y
@@ -1552,20 +1557,19 @@ Table09:
 	!byte $ec, $f0, $f4, $f5, $fc
 ; -------------------------------------------------------------------------------------------------
 ; 
-lea17:  ldx #$07
-lea19:  lda $1e,x
-	bmi lea21
+lea17:  ldx #7
+lea19:  lda sprite_state,x
+	bmi +
 lea1d:  dex
 	bpl lea19
 	rts
-; -------------------------------------------------------------------------------------------------
-; $
-lea21:  cmp #$ff
+; $ea21
++	cmp #$ff
 	beq lea1d
-	inc $1e,x
+	inc sprite_state,x
 	txa
 	bne lea77
-	lda $1e,x
+	lda sprite_state,x
 	cmp #$81
 	bne lea3c
 	lda #$f6
@@ -1599,7 +1603,7 @@ lea68:  cmp #$d0
 	and #$fe
 	sta VIC64+MOBENA
 lea74:  jmp lea1d
-lea77:  lda $1e,x
+lea77:  lda sprite_state,x
 	cmp #$81
 	bne leaa6
 	lda #$f6
@@ -1643,13 +1647,13 @@ leace:  cpx #$06
 	beq leae4
 	cmp #$fe
 	bne leae4
-	lda $27
-	ora $47
-	ora $48
-	ora $49
-	ora $4a
+	lda ttarget
+	ora target
+	ora target+1
+	ora target+2
+	ora target+3
 	bne leae4
-	sta $26
+	sta finished
 leae4:  jmp lea1d
 ; -------------------------------------------------------------------------------------------------
 ; $eae7
@@ -1657,7 +1661,7 @@ Table18:
 	!byte $01, $02, $03, $04, $05, $05, $05, $05
 ; -------------------------------------------------------------------------------------------------
 ; $eaef
-leaef:  lda $1e
+leaef:  lda sprite_state
 	bmi leb2b
 	lda collision_mob
 	and #$01
@@ -1669,7 +1673,7 @@ leaef:  lda $1e
 leb01:  inx
 	cpx #$07
 	beq leb2b
-	lda $1e,x
+	lda sprite_state,x
 	bmi leb01
 	lda VIC64
 	sta ptr1
@@ -1684,7 +1688,7 @@ leb1c:  lda VIC64+MOBY
 	jsr leb78
 	bcc leb01
 	lda #$80
-	sta $1e
+	sta sprite_state
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $
@@ -1704,7 +1708,7 @@ leb3c:  lda VIC64+MOBX+14
 	and #$80
 	beq leb6f
 	ldx #$01
-leb4e:  lda $1e,x
+leb4e:  lda sprite_state,x
 	bmi leb6a
 	jsr leb78
 	bcc leb6a
@@ -1714,7 +1718,7 @@ leb4e:  lda $1e,x
 	and VIC64+MOBENA
 	sta VIC64+MOBENA
 	lda #$80
-	sta $1e,x
+	sta sprite_state,x
 	jmp leb6f
 leb6a:  inx
 	cpx #$07
@@ -1751,16 +1755,15 @@ leb9d:  lda #$0e
 	sta $11
 	lda #$17
 	sta data_ctr
-	jsr lebba
+	jsr +
 	bcc lebb9
 	lda #$80
-	sta $1e,x
+	sta sprite_state,x
 	bne lebb9
 lebb8:  clc
 lebb9:  rts
-; -------------------------------------------------------------------------------------------------
-; $
-lebba:  sec
+; $ebba
++	sec
 	lda temp2
 	sbc temp3
 	cmp ptr2
@@ -1796,40 +1799,36 @@ lebba:  sec
 	sbc ptr1+1
 	bcc lebfc
 	rts
-; -------------------------------------------------------------------------------------------------
 ; $
 lebfc:  clc
 	rts
-; -------------------------------------------------------------------------------------------------
-; $
-lebfe:  lda $1e
-	bpl lec03
+; $ebfe
+lebfe:  lda sprite_state
+	bpl +
 	rts
-; -------------------------------------------------------------------------------------------------
-; $
-lec03:  lda $24
-	bne lec08
+; $ec03
++	lda $24
+	bne +
 	rts
-; -------------------------------------------------------------------------------------------------
-; $
-lec08:  lda $4b
-	bmi lec13
+; $ec08
++	lda $4b
+	bmi +
 	lda timer2
 	and #$0f
-	beq lec13
+	beq +
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $
-lec13:  ldx #$01
-lec15:  lda $1e,x
-	bpl lec1f
++	ldx #$01
+-	lda sprite_state,x
+	bpl +
 lec19:  inx
 	cpx #$06
-	bne lec15
+	bne -
 	rts
 ; -------------------------------------------------------------------------------------------------
-; $
-lec1f:  txa
+; $ec1f
++	txa
 	asl
 	tay
 	lda VIC64
@@ -1891,15 +1890,14 @@ lec9b:  sta VIC64+MOBMSB
 	sta $67,x
 	rts
 ; -------------------------------------------------------------------------------------------------
-; $
+; $ecab
 lecab:  lda $24
-	bpl lecb0
+	bpl +
 	rts
-; -------------------------------------------------------------------------------------------------
-; $
-lecb0:  lda collision_bgr
+; $ecb0
++	lda collision_bgr
 	and #$40
-	beq lecc3
+	beq +
 lecb6:  lda #$ff
 	sta $24
 	lda VIC64+MOBENA
@@ -1907,21 +1905,21 @@ lecb6:  lda #$ff
 	sta VIC64+MOBENA
 	rts
 ; -------------------------------------------------------------------------------------------------
-; $
-lecc3:  lda VIC64+MOBMSB
+; $ecc3
++	lda VIC64+MOBMSB
 	and #$40
-	bne lecd3
+	bne +
 	lda VIC64+MOBX+12
 	cmp #$14
 	bcc lecb6
 	bcs lecda
-lecd3:  lda VIC64+MOBX+12
++	lda VIC64+MOBX+12
 	cmp #$42
 	bcs lecb6
 lecda:  lda $77
 	cmp #$03
 	bcc led0e
-	bne lecf8
+	bne +
 	dec VIC64+MOBX+12
 	dec VIC64+MOBX+12
 	lda VIC64+MOBX+12
@@ -1931,9 +1929,8 @@ lecda:  lda $77
 	and #$bf
 	sta VIC64+MOBMSB
 	rts
-; -------------------------------------------------------------------------------------------------
-; $
-lecf8:  inc VIC64+MOBX+12
+; $ecf8
++	inc VIC64+MOBX+12
 	inc VIC64+MOBX+12
 	lda VIC64+MOBX+12
 	cmp #$02
@@ -1945,24 +1942,24 @@ lecf8:  inc VIC64+MOBX+12
 ; -------------------------------------------------------------------------------------------------
 ; $
 led0e:  cmp #$01
-	bne led20
+	bne +
 	dec VIC64+MOBY+12
 	dec VIC64+MOBY+12
 	lda VIC64+MOBY+12
 	cmp #$2a
-	bcc led2e
+	bcc ++
 	rts
 ; -------------------------------------------------------------------------------------------------
-; $
-led20:  inc VIC64+MOBY+12
+; $ed20
++	inc VIC64+MOBY+12
 	inc VIC64+MOBY+12
 	lda VIC64+MOBY+12
 	cmp #$ca
-	bcs led2e
+	bcs ++
 led2d:  rts
 ; -------------------------------------------------------------------------------------------------
 ; $ed2e
-led2e:  jmp lecb6
+++	jmp lecb6
 ; -------------------------------------------------------------------------------------------------
 ; $ed31 play sound no. x
 PlaySound:
@@ -2049,7 +2046,7 @@ pls08:  cmp #8
 	rts
 plsx:	rts
 ; -------------------------------------------------------------------------------------------------
-; $
+; $edc3
 GameCycle:
 	lda $74
 	beq ledd6
