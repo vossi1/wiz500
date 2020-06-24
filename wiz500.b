@@ -965,14 +965,14 @@ irqx:	pla
 MoveWorrior:
 	lda timer2
 	and #$01
-	beq +
+	beq mw10
 	rts
 ; $e53c
-+	lda sprite_state
-	bpl +
+mw10:	lda sprite_state
+	bpl mw20
 	rts
 ; $e541
-+	jsr CheckJoyKey			; check movement
+mw20:	jsr CheckJoyKey			; check movement
 	lda #$00
 	sta sprite_xreg			; store xregs for worrior sprite
 	lda #$01
@@ -986,10 +986,10 @@ MoveWorrior:
 	sta unknown4
 	ldx sprite_dir
 	lda WorriorSpriteTable,x
-	bne +
+	bne mw30
 	ldx unknown4
 	lda WorriorSpriteTable,x
-+	sta sprite_data
+mw30:	sta sprite_data
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $e56a
@@ -1001,7 +1001,7 @@ MoveSprite:
 	ldx sprite_xreg
 	lda #$00
 	sta coll1_x
-	jsr le65d
+	jsr ms130
 	lda sprite_xmsb
 	sta move_xmsb
 	lda VIC64+MOBX,x
@@ -1011,98 +1011,98 @@ MoveSprite:
 	jsr CalcScreenPosition		; calc sprite screen position (char based)
 	lda sprite_dir
 	bne msdirok
-	jmp le6b3
+	jmp ms200
 msdirok:lda unknown2
 	cmp #$03
-	bcs le5ca
+	bcs ms040
 	lda sprite_dir
 	cmp #$03
-	bcc le601
+	bcc ms080
 	dec move_y
 	lda move_y
-le5a0:  beq le5b6
+ms010:	beq ms020
 	cmp #$01
-	beq le5b6
+	beq ms020
 	cmp #$ff
-	beq le5b6
+	beq ms020
 	cmp #$00
-	bcc le5c3
+	bcc ms030
 	inc coll1_x
 	sec
 	sbc #$03
-	jmp le5a0
-le5b6:  ldx coll1_x
+	jmp ms010
+ms020:	ldx coll1_x
 	lda Table14+13,x
 	ldx sprite_xreg
 	sta VIC64+MOBY,x
-	jmp le601
-le5c3:  lda #$00
+	jmp ms080
+ms030:	lda #$00
 	sta sprite_dir
-	jmp le6b3
-le5ca:  lda sprite_dir
+	jmp ms200
+ms040:	lda sprite_dir
 	cmp #$03
-	bcs le601
+	bcs ms080
 	lda move_x
 	sec
 	sbc #$01
-le5d5:  beq le5eb
+ms050:	beq ms060
 	cmp #$01
-	beq le5eb
+	beq ms060
 	cmp #$ff
-	beq le5eb
+	beq ms060
 	cmp #$00
-	bcc le5c3
+	bcc ms030
 	inc coll1_x
 	sec
 	sbc #$03
-	jmp le5d5
-le5eb:  ldx coll1_x
+	jmp ms050
+ms060:	ldx coll1_x
 	cpx #$0a
-	bne le5f9
+	bne ms070
 	lda sprite_xmsb
 	ora VIC64+MOBMSB
 	sta VIC64+MOBMSB
-le5f9:  lda Table14,x
+ms070:	lda Table14,x
 	ldx sprite_xreg
 	sta VIC64+MOBX,x
-le601:  lda sprite_dir
+ms080:	lda sprite_dir
 	sta unknown2
 	ldx sprite_xreg
 	lda sprite_dir
 	cmp #$01
-	bne le616
+	bne ms090
 	dec VIC64+MOBY,x
 	dec VIC64+MOBY,x
-	jmp le6b3
-le616:  cmp #$02
-	bne le623
+	jmp ms200
+ms090:	cmp #$02
+	bne ms100
 	inc VIC64+MOBY,x
 	inc VIC64+MOBY,x
-	jmp le6b3
-le623:  cmp #$03
-	bne le641
+	jmp ms200
+ms100:  cmp #$03
+	bne ms120
 	dec VIC64+MOBX,x
 	dec VIC64+MOBX,x
 	lda VIC64+MOBX,x
 	cmp #$fe
-	bcc le63e
+	bcc ms110
 	lda sprite_xmsb
 	eor #$ff
 	and VIC64+MOBMSB
 	sta VIC64+MOBMSB
-le63e:  jmp le6b3
-le641:  cmp #$04
-	bne le6b3
+ms110:  jmp ms200
+ms120:  cmp #$04
+	bne ms200
 	inc VIC64+MOBX,x
 	inc VIC64+MOBX,x
 	lda VIC64+MOBX,x
 	cmp #$02
-	bcs le6b3
+	bcs ms200
 	lda sprite_xmsb
 	ora VIC64+MOBMSB
 	sta VIC64+MOBMSB
-	jmp le6b3
-le65d:  lda VIC64+MOBX,x
+	jmp ms200
+ms130:  lda VIC64+MOBX,x
 	sta move_x
 	lda VIC64+MOBY,x
 	clc
@@ -1112,44 +1112,44 @@ le65d:  lda VIC64+MOBX,x
 	sta move_xmsb
 	jsr CalcScreenPosition
 	lda sprite_dir
-	beq le6b2
+	beq msx
 	cmp #$03
-	bcc le685
-	beq le680
+	bcc ms150
+	beq ms140
 	inc move_x
-	jmp le690
-le680:  dec move_x
-	jmp le690
-le685:  cmp #$01
-	bne le68e
+	jmp ms170
+ms140:  dec move_x
+	jmp ms170
+ms150:  cmp #$01
+	bne ms160
 	dec move_y
-	jmp le690
-le68e:  inc move_y
-le690:  lda #$04
+	jmp ms170
+ms160:  inc move_y
+ms170:  lda #$04
 	sta draw_ptr+1
 	lda move_x
-le696:  ldy move_y
-	beq le6a6
+ms180:  ldy move_y
+	beq ms190
 	dec move_y
 	clc
 	adc #$28
-	bcc le696
+	bcc ms180
 	inc draw_ptr+1
-	jmp le696
-le6a6:  sta draw_ptr
+	jmp ms180
+ms190:  sta draw_ptr
 	ldy #$00
 	lda (draw_ptr),y
-	beq le6b2
+	beq msx
 	lda #$00
 	sta sprite_dir
-le6b2:  rts
+msx:	rts
 ; $e6b3
-le6b3:  lda sprite_xmsb
+ms200:  lda sprite_xmsb
 	and VIC64+MOBMSB
-	bne le6cf
+	bne ms210
 	lda VIC64+MOBX,x
 	cmp #$16
-	bcs le6e7
+	bcs ms220
 	lda sprite_xmsb
 	ora VIC64+MOBMSB
 	sta VIC64+MOBMSB
@@ -1157,22 +1157,22 @@ le6b3:  lda sprite_xmsb
 	sta VIC64+MOBX,x
 	rts
 ; $e6cf
-le6cf:  beq le6e7
+ms210:  beq ms220
 	lda VIC64+MOBX,x
 	cmp #$42
-	bcc le6e7
+	bcc ms220
 	lda sprite_xmsb
 	eor #$ff
 	and VIC64+MOBMSB
 	sta VIC64+MOBMSB
 	lda #$18
 	sta VIC64+MOBX,x
-le6e7:  lda VIC64+MOBY,x
+ms220:  lda VIC64+MOBY,x
 	cmp #$31
-	bcs +
+	bcs msx2
 	inc VIC64+MOBY,x
 	inc VIC64+MOBY,x
-+	rts
+msx2:	rts
 ; -------------------------------------------------------------------------------------------------
 ; $e6f5
 Table14:!byte $19, $31, $49, $61, $79, $91, $a9, $c1
@@ -1238,11 +1238,11 @@ drawmz:	sta draw_ptr			; store draw ptr lo
 ; $e754 Move Worrior Shot
 WorriorShot:
 	lda sprite_state+7
-	bpl +
-	jmp le7fc
-+	lda collision_bgr
+	bpl ws010
+	jmp ws090
+ws010:	lda collision_bgr
 	and #$80
-	beq +
+	beq ws020
 colllp:	lda #$ff
 	sta sprite_state+7
 	lda #$7f
@@ -1253,72 +1253,72 @@ colllp:	lda #$ff
 	sta VIC64+MOBMSB
 	rts
 ;$ e776
-+	lda VIC64+MOBMSB
+ws020:	lda VIC64+MOBMSB
 	and #$80
-	bne le786
+	bne ws030
 	lda VIC64+MOBX+14
 	cmp #$14
 	bcc colllp
 
-	bcs le78d
-le786:  lda VIC64+MOBX+14
+	bcs ws040
+ws030:  lda VIC64+MOBX+14
 	cmp #$42
 	bcs colllp
 ; $e78d
-le78d:  lda unknown3
+ws040:  lda unknown3
 	cmp #$03
-	bcc le7cd
-	bne le7b1
+	bcc ws060
+	bne ws050
 	dec VIC64+MOBX+14
 	dec VIC64+MOBX+14
 	dec VIC64+MOBX+14
 	dec VIC64+MOBX+14
 	lda VIC64+MOBX+14
 	cmp #$fc
-	bcc le7b0
+	bcc wsx
 	lda #$7f
 	and VIC64+MOBMSB
 	sta VIC64+MOBMSB
-le7b0:  rts
+wsx:	rts
 ; $e7b1
-le7b1:  inc VIC64+MOBX+14
+ws050:  inc VIC64+MOBX+14
 	inc VIC64+MOBX+14
 	inc VIC64+MOBX+14
 	inc VIC64+MOBX+14
 	lda VIC64+MOBX+14
 	cmp #$04
-	bcs le7b0
+	bcs wsx
 	lda #$80
 	ora VIC64+MOBMSB
 	sta VIC64+MOBMSB
 	rts
 ; $e7cd
-le7cd:  cmp #$01
-	bne le7e5
+ws060:  cmp #$01
+	bne ws070
 	dec VIC64+MOBY+14
 	dec VIC64+MOBY+14
 	dec VIC64+MOBY+14
 	dec VIC64+MOBY+14
 	lda VIC64+MOBY+14
 	cmp #$2a
-	bcc le7f8
+	bcc ws080
 	rts
 ; $e7e5
-le7e5:  inc VIC64+MOBY+14
+ws070:  inc VIC64+MOBY+14
 	inc VIC64+MOBY+14
 	inc VIC64+MOBY+14
 	inc VIC64+MOBY+14
 	lda VIC64+MOBY+14
 	cmp #$ca
-	bcc le7fb
-le7f8:  jmp colllp
-le7fb:  rts
+	bcc wsx2
+ws080:  jmp colllp
+wsx2:	rts
 ; $e7fc
-le7fc:  cmp #$ff
-	bne +
+ws090:  cmp #$ff
+	bne ws100
 	lda sprite_state
 	bpl chkshot
-+	rts
+ws100	rts
 ; $e805 check fire pressed
 chkshot:lda fire
 	bmi shoot
@@ -1332,24 +1332,24 @@ shoot:	lda #4
 	sta VIC64+MOBY+14
 	lda VIC64+MOBMSB
 	and #$01
-	beq le82d
+	beq ws110
 	lda #$80
 	ora VIC64+MOBMSB
 	sta VIC64+MOBMSB
-	jmp le835
-le82d:  lda #$7f
+	jmp ws120
+ws110:  lda #$7f
 	and VIC64+MOBMSB
 	sta VIC64+MOBMSB
-le835:  lda unknown4
+ws120:  lda unknown4
 	sta unknown3
 	cmp #$03
-	bcc le844
+	bcc ws130
 	lda #$fd
 	sta unknown5
-	jmp le848
-le844:  lda #$fe
+	jmp ws140
+ws130:  lda #$fe
 	sta unknown5
-le848:  lda #$80
+ws140:  lda #$80
 	ora VIC64+MOBENA
 	sta VIC64+MOBENA
 	lda #$00
@@ -1359,103 +1359,103 @@ le848:  lda #$80
 ; $e855 MoveMonsters
 MoveMonsters:
 	lda state
-	bne +
+	bne mm010
 	lda timer2
 	and #$01
-	bne +
+	bne mm010
 	rts
 ; $e860
-+	lda sprite_state
-	bpl +
+mm010:	lda sprite_state
+	bpl mm020
 	rts
 ; $e865
-+	ldx #1
+mm020:	ldx #1
 	stx temp4
--	lda sprite_state,x
-	bpl +
+mmlp1:	lda sprite_state,x
+	bpl mm030
 mmloop:	inc temp4
 	ldx temp4
 	cpx #6
-	bne -
+	bne mmlp1
 	rts
 ; $e876
-+	lda SpritePosTable,x
+mm030:	lda SpritePosTable,x
 	sta sprite_xreg
 	lda BitTable,x
 	sta sprite_xmsb
 	dec monster1,x
 	dec monster1,x
-	bmi le88b
+	bmi mm040
 	lda monster2,x
-	jmp le8e8
-le88b:  lda #$17
+	jmp mm140
+mm040:  lda #$17
 	sta monster1,x
 	ldx sprite_xreg
 	lda SID64+RANDOM
 	and #$01
-	beq le8cb
+	beq mm100
 	lda BitTable,x
 	ora #$01
 	and VIC64+MOBMSB
-	beq le8ab
+	beq mm050
 	cmp #$01
-	beq le8b3
+	beq mm060
 	cmp BitTable,x
-	beq le8bf
-le8ab:  lda VIC64
+	beq mm080
+mm050:  lda VIC64
 	cmp VIC64+MOBX,x
-	bcc le8bf
-le8b3:  lda SID64+RANDOM
+	bcc mm080
+mm060:  lda SID64+RANDOM
 	and #$03
-	beq le8c6
-le8ba:  lda #$04
-	jmp le8e8
-le8bf:  lda SID64+RANDOM
+	beq mm090
+mm070:  lda #$04
+	jmp mm140
+mm080:  lda SID64+RANDOM
 	and #$03
-	beq le8ba
-le8c6:  lda #$03
-	jmp le8e8
-le8cb:  lda VIC64+MOBY
+	beq mm070
+mm090:  lda #$03
+	jmp mm140
+mm100:  lda VIC64+MOBY
 	cmp VIC64+MOBY,x
-	bcc le8df
+	bcc mm120
 	lda SID64+RANDOM
 	and #$03
-	beq le8e6
-le8da:  lda #$02
-	jmp le8e8
-le8df:  lda SID64+RANDOM
+	beq mm130
+mm110:  lda #$02
+	jmp mm140
+mm120:  lda SID64+RANDOM
 	and #$03
-	beq le8da
-le8e6:  lda #$01
-le8e8:  ldx temp4
+	beq mm110
+mm130:  lda #$01
+mm140:  ldx temp4
 	sta sprite_dir
 	lda monster2,x
 	sta unknown2
 	jsr MoveSprite
 	lda sprite_dir
-	bne le8fa
-	jsr le912
-le8fa:  ldx temp4
+	bne mm150
+	jsr mm180
+mm150:  ldx temp4
 	lda unknown2
 	sta monster2,x
 	clc
 	adc monster_value-1,x
 	tax
 	lda Table17,x
-	bne le90b
-	beq le90f
-le90b:  ldx temp4
+	bne mm160
+	beq mm170
+mm160:  ldx temp4
 	sta sprite_data,x
-le90f:  jmp mmloop
-le912:  lda unknown2
+mm170:  jmp mmloop
+mm180:  lda unknown2
 	clc
 	adc #$01
 	cmp #$04
-	bcc le920
+	bcc mm190
 	lda SID64+RANDOM
 	and #$03
-le920:  sta unknown2
-le922:  rts
+mm190:  sta unknown2
+mmx:	rts
 ; -------------------------------------------------------------------------------------------------
 ; $e923
 SpritePosTable:
@@ -1477,53 +1477,53 @@ StartMonsters:
 	ldx #1
 smchklp:lda sprite_state,x
 	cmp #$ff
-	beq le95c
+	beq sm10
 	inx
 	cpx #6
 	bne smchklp
 smx:	rts
 ; $e95c
-le95c:  ldy #$00
+sm10:	ldy #$00
 	lda ttarget
-	beq le967
+	beq sm20
 	dec ttarget
-	jmp le9ab
-le967:  iny
+	jmp sm80
+sm20:	iny
 	lda target
-	beq le971
+	beq sm30
 	dec target
-	jmp le9ab
-le971:  iny
+	jmp sm80
+sm30:	iny
 	lda target+1
-	beq le97b
+	beq sm40
 	dec target+1
-	jmp le9ab
-le97b:  iny
+	jmp sm80
+sm40:	iny
 	ldx #1
 	lda #$ff
-le980:  and sprite_state,x
+sm50:	and sprite_state,x
 	and sprite_state+1,x
 	inx
 	inx
 	cpx #7
-	bne le980
+	bne sm50
 	cmp #$ff
 	bne smx
 	ldx #1
 	lda target+2
-	beq le999
+	beq sm60
 	dec target+2
-	jmp le9a7
-le999:  iny
+	jmp sm70
+sm60:	iny
 	lda target+3
 	beq smx
 	lda #3
 	jsr PlaySound
 	dec target+3
 	dec unknown1
-le9a7:  lda #1
+sm70:	lda #1
 	sta state
-le9ab:  tya
+sm80:	tya
 	pha
 	txa
 	pha
@@ -1547,15 +1547,15 @@ le9ab:  tya
 	clc
 	adc #$18
 	cmp VIC64+MOBY
-	bcs le9e5
+	bcs sm90
 	sec
 	sbc #$30
 	cmp VIC64+MOBY
-	bcc le9e5
+	bcc sm90
 	lda VIC64+MOBY
 	sbc #$24
 	sta VIC64+MOBY,y
-le9e5:  pla
+sm90:	pla
 	tax
 	pla
 	tay
@@ -1721,9 +1721,9 @@ ccchklp:inx				; start with monster sprite 1
 	sta coll1_x+1
 	lda #$01			; player sprite
 	and VIC64+MOBMSB		; isolate x msb bit
-	beq +
+	beq cc10
 	inc coll1_x+1			; inc coll1_x hi if msb set
-+	lda VIC64+MOBY
+cc10:	lda VIC64+MOBY
 	sta coll1_y			; store player y to coll1_y
 	jsr Collision
 	bcc ccchklp			; next sprite if c=0
@@ -1737,9 +1737,9 @@ ccmonst:lda sprite_state+7
 	sta coll1_x+1
 	lda #$80			; player shot sprite
 	and VIC64+MOBMSB		; isolate x msb
-	beq +
+	beq cc20
 	inc coll1_x+1			; inc coll1_x hi if msb set
-+	lda VIC64+MOBX+14
+cc20:	lda VIC64+MOBX+14
 	sta coll1_x			; store player shot x in coll1_x
 	lda VIC64+MOBY+14
 	sta coll1_y			; store player shot y in coll1_y
@@ -1784,10 +1784,10 @@ ccoll:  txa
 	lda #$00
 	sta coll2_x+1
 	lda VIC64+MOBMSB
-leb96:  and BitTable,x			; isolate x-msb
-	beq +
+	and BitTable,x			; isolate x-msb
+	beq co10
 	inc coll2_x+1			; inc coll2 x-hi
-+	lda #14
+co10:	lda #14
 	sta temp3
 	lda #14
 	sta temp4
@@ -1846,34 +1846,34 @@ collx00:clc
 ; $ebfe start monster shot
 MonsterShot:
 	lda sprite_state
-	bpl +				; branch if player sprite on
+	bpl sh010			; branch if player sprite on
 	rts
 ; $ec03
-+	lda sprite_state+6		; branch if monster shot on
-	bne +
+sh010:	lda sprite_state+6		; branch if monster shot on
+	bne sh020
 	rts
 ; $ec08
-+	lda unknown1
-	bmi +
+sh020:	lda unknown1
+	bmi sh030
 	lda timer2
 	and #$0f
-	beq +
+	beq sh030
 	rts
-; $
-+	ldx #1				; check all monsters
--	lda sprite_state,x
-	bpl +				; branch if monster on
+
+sh030:	ldx #1				; check all monsters
+shlp1:	lda sprite_state,x
+	bpl sh040			; branch if monster on
 lec19:  inx
 	cpx #6
-	bne -				; neext monster
+	bne shlp1			; neext monster
 	rts
 ; $ec1f
-+	txa
+sh040:	txa
 	asl
 	tay
 	lda VIC64+MOBX
 	cmp VIC64+MOBX,y
-	beq lec65
+	beq sh100
 	lda VIC64+MOBY
 	cmp VIC64+MOBY,y
 	bne lec19
@@ -1881,34 +1881,34 @@ lec19:  inx
 	cmp VIC64+MOBX,y
 	lda VIC64+MOBMSB
 	and #$01
-	bne lec49
+	bne sh050
 	lda VIC64+MOBMSB
 	and BitTable,x
-	bne lec51
-	beq lec57
-lec49:  lda VIC64+MOBMSB
+	bne sh060
+	beq sh080
+sh050:  lda VIC64+MOBMSB
 	and BitTable,x
-	bne lec57
-lec51:  bcc lec56
+	bne sh080
+sh060:  bcc sh070
 	clc
-	bcc lec57
-lec56:  sec
-lec57:  lda #$04
-	bcs lec5d
+	bcc sh080
+sh070:  sec
+sh080:  lda #$04
+	bcs sh090
 	lda #$03
-lec5d:  sta unknown7
+sh090:  sta unknown7
 	lda #$fd
 	sta unknown6
-	bne lec77
-lec65:  lda VIC64+MOBY
+	bne sh120
+sh100:  lda VIC64+MOBY
 	cmp VIC64+MOBY,y
 	lda #$02
-	bcs lec71
+	bcs sh110
 	lda #$01
-lec71:  sta unknown7
+sh110:  sta unknown7
 	lda #$fe
 	sta unknown6
-lec77:  lda #$00
+sh120:  lda #$00
 	sta sprite_state+6
 	lda VIC64+MOBX,y
 	sta VIC64+MOBX+12
@@ -1916,13 +1916,13 @@ lec77:  lda #$00
 	sta VIC64+MOBY+12
 	lda VIC64+MOBMSB
 	and BitTable,x
-	beq lec96
+	beq sh130
 	lda VIC64+MOBMSB
 	ora #$40
-	bne lec9b
-lec96:  lda VIC64+MOBMSB
+	bne sh140
+sh130:  lda VIC64+MOBMSB
 	and #$bf
-lec9b:  sta VIC64+MOBMSB
+sh140:  sta VIC64+MOBMSB
 	lda VIC64+MOBENA
 	ora #$40
 	sta VIC64+MOBENA		; enable monster shot
@@ -1938,7 +1938,7 @@ MoveMonsterShot:
 ; $ecb0 disable monster shot if reaching background
 msactiv:lda collision_bgr
 	and #$40			; isloate monster shot collision bit
-	beq +				; branch if no bgr-collision
+	beq mms10				; branch if no bgr-collision
 ; disable monster shot
 msdisab:lda #$ff
 	sta sprite_state+6		; disable monster shot
@@ -1946,59 +1946,58 @@ msdisab:lda #$ff
 	and #$bf
 	sta VIC64+MOBENA		; disable sprite 6
 	rts
-; -------------------------------------------------------------------------------------------------
 ; $ecc3 move monster shot
-+	lda VIC64+MOBMSB
+mms10:	lda VIC64+MOBMSB
 	and #$40
-	bne +
+	bne mms20
 	lda VIC64+MOBX+12
 	cmp #$14
 	bcc msdisab
-	bcs lecda
-+	lda VIC64+MOBX+12
+	bcs mms30
+mms20:	lda VIC64+MOBX+12
 	cmp #$42
 	bcs msdisab
-lecda:  lda unknown7
+mms30:  lda unknown7
 	cmp #$03
-	bcc led0e
-	bne +
+	bcc mms50
+	bne mms40
 	dec VIC64+MOBX+12
 	dec VIC64+MOBX+12
 	lda VIC64+MOBX+12
 	cmp #$fe
-	bcc led2d
+	bcc mmsx
 	lda VIC64+MOBMSB
 	and #$bf
 	sta VIC64+MOBMSB
 	rts
 ; $ecf8
-+	inc VIC64+MOBX+12
+mms40:	inc VIC64+MOBX+12
 	inc VIC64+MOBX+12
 	lda VIC64+MOBX+12
 	cmp #$02
-	bcs led2d
+	bcs mmsx
 	lda VIC64+MOBMSB
 	ora #$40
 	sta VIC64+MOBMSB
 	rts
 ; $
-led0e:  cmp #$01
-	bne +
+mms50:  cmp #$01
+	bne mms60
 	dec VIC64+MOBY+12
 	dec VIC64+MOBY+12
 	lda VIC64+MOBY+12
 	cmp #$2a
-	bcc ++
+	bcc mms70
 	rts
 ; $ed20
-+	inc VIC64+MOBY+12
+mms60:	inc VIC64+MOBY+12
 	inc VIC64+MOBY+12
 	lda VIC64+MOBY+12
 	cmp #$ca
-	bcs ++
-led2d:  rts
+	bcs mms70
+mmsx:	rts
 
-++	jmp msdisab
+mms70:	jmp msdisab
 ; -------------------------------------------------------------------------------------------------
 ; $ed31 play sound no. x
 PlaySound:
@@ -2088,27 +2087,27 @@ plsx:	rts
 ; $edc3 update game sound
 UpdateSound:
 	lda sound3
-	beq ledd6
+	beq us10
 	asl
 	asl
 	asl
 	sta SID64+V2HI
 	dec sound3
-	bne ledd6
+	bne us10
 	lda #$80
 	sta SID64+V2CTRL
-ledd6:  lda sound4
-	beq ledea
+us10:	lda sound4
+	beq us20
 	asl
 	asl
 	adc #$07
 	sta SID64+V3HI
 	dec sound4
-	bne ledea
+	bne us20
 	lda #$80
 	sta SID64+V3CTRL
-ledea:  lda sound2
-	beq lee04
+us20:	lda sound2
+	beq us30
 	lda sound2
 	lsr
 	lsr
@@ -2117,11 +2116,11 @@ ledea:  lda sound2
 	lda Sound1,x
 	sta SID64+V2HI
 	dec sound2
-	bne lee04
+	bne us30
 	lda #$20
 	sta SID64+V2CTRL
-lee04:  dec sound1
-	bne lee42
+us30:	dec sound1
+	bne usx
 	clc
 	lda sound_ptr
 	adc #$02
@@ -2131,17 +2130,17 @@ lee04:  dec sound1
 	sta sound_ptr+1
 	ldy #$00
 	lda (sound_ptr),y
-	bne lee2e
+	bne us60
 	lda sound_no
 	cmp #$01
-	bne lee24
+	bne us40
 	jmp PlaySound
 
-lee24:  cmp #2
-	bne lee2b
+us40:	cmp #2
+	bne us50
 	jmp pls02
-lee2b:  jmp pls03
-lee2e:  sta sound1
+us50:	jmp pls03
+us60:	sta sound1
 	ldy #$01
 	lda (sound_ptr),y
 	asl
@@ -2150,7 +2149,7 @@ lee2e:  sta sound1
 	sta SID64+V1LO
 	lda Notes+1,x
 	sta SID64+V1HI
-lee42:  rts
+usx:	rts
 ; ***************************************** ZONE NOTES ********************************************
 !zone notes
 ; $ee43
