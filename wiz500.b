@@ -166,13 +166,16 @@ SH = >ScreenRAMbase			; Highbyte Screen RAM base
 !addr timer2		= $2a
 !addr delay		= $2b		; delay for monster movment on satrt screen
 !addr fire		= $2c		; fire pressed bit#7=1
+!addr unknown3		= $2d
+!addr unknown4		= $2e
 !addr sprite_xreg	= $30		; actual sprite x register
 !addr sprite_xmsb	= $31		; actual sprite x-msb
 !addr sprite_dir	= $32		; actual sprite direction 1-4
-!addr draw_ptr		= $39		; pointer to print maze on screen
+!addr unknown2		= $35
 !addr draw_column	= $36		; draw column
 !addr draw_line		= $37		; draw line
 !addr draw_char		= $38		; draw char/tile
+!addr draw_ptr		= $39		; pointer to print maze on screen
 !addr level		= $3b		; level 1-4
 !addr maze_column	= $3c		; actual maze column
 !addr maze_line		= $3d		; actual maze line
@@ -182,12 +185,24 @@ SH = >ScreenRAMbase			; Highbyte Screen RAM base
 !addr mazedata_ptr	= $44		; pointer to mazedata
 !addr worrior_dir	= $46		; worrior direction after joy/key check
 !addr target		= $47		; 4 bytes targets to destroy
+!addr unknown1		= $4b
 !addr move		= $4c		; movement 0=none, 1=up, 2=down, 3=left, 4=right
 !addr sprite_data	= $4d		; 8 bytes sprite data
+!addr unknown6		= $53
+!addr unknown5		= $54
 !addr collision_mob	= $55		; mob-mob collision
 !addr collision_bgr	= $56		; mob-bgr collision
 !addr monster_value	= $57		; 5 bytes monster values
+!addr monster1		= $5f		; 6 bytes unknown monster var
+!addr monster2		= $67		; 6 bytes unknown monster var
+!addr sound_no		= $6f
 !addr sound_ptr		= $70		; pointer to sound data
+!addr sound1		= $72
+!addr sound2		= $73
+!addr sound3		= $74
+!addr sound4		= $75
+!addr bonus_player	= $76
+!addr unknown7		= $77
 ; ***************************************** VARIABLES *********************************************
 ; ************************************** P500 ZERO PAGE *******************************************
 !addr ColorRAM0         = $e6
@@ -257,9 +272,9 @@ clramlp:sta $02,x
 	cli				; enable irq
 StartNew:
 	jsr StartScreen			; shows start screen and waits for F1
-	jsr InitGame			; reset score, init lives and sprite colors
+	jsr InitGame			; reset score, level, init lives and sprite colors
 NextLevel:
-	jsr SetupGame			; increase + init new level, state=0
+	jsr SetupGame			; inc level, setup targets, init sprite states, state = 0
 TryAgain:
 	jsr SetupGameScreen		; draw game screen
 	jsr SetupWorrior		; setup player sprite
@@ -267,10 +282,10 @@ TryAgain:
 	sta SID64+MODVOL		; full volume, filter low pass
 	ldx #1
 	lda state
-	bpl newlev			; start with sound 1, if new level (state=0)
+	bpl newlev			; start sound 1, if new level (state=0)
 	ldx #2				; if not, start with sound 2
 newlev:	txa
-	jsr PlaySound
+	jsr PlaySound			; play start sound
 GameLoop:
 	lda timer
 	bne GameLoop			; wait 1 inc of timer
@@ -288,7 +303,7 @@ GameLoop:
 	bne nosound			; skip if not time for sound
 	lda #2
 	jsr PlaySound			; Play sound 2
-	dec state			; state=neg for sound 2 
+	dec state			; state = neg for sound 2 
 nosound:lda delay
 	cmp #$10
 	bcc skipmm
@@ -298,7 +313,7 @@ skipmm:	jsr WorriorShot			; check and move worrior shot
 	jsr MoveMonsters		; move monsters
 	jsr StartMonsters		; check if monsters are off and start new monsters
 	jsr MonsterShot			; start monster shot ?
-	jsr MoveMonsterShot		; move monster shot and disable if touching wall
+	jsr MoveMonsterShot		; move monster shot and disable if reaching wall
 	jsr CheckCollision		; check for hits
 	jsr CheckExplosions		; Explosions: switch patterns, sound, score, finished ? 
 	jsr UpdateSound			; update game sound
@@ -306,7 +321,7 @@ skipmm:	jsr WorriorShot			; check and move worrior shot
 	cmp #$ff
 	beq decwor			; branch if player sprite off (dead)
 	lda finished			; level finished ? (0=finished)
-	bne GameLoop			; branch if not
+	bne GameLoop			; next cycle
 
 	lda sprite_state
 	bmi decwor			; branch if player sprite off (dead)
@@ -648,7 +663,7 @@ InitGame:
 	sty score+1
 	sty score+2
 	sty level			; reset level
-	sty $76
+	sty bonus_player		; clear bonus player
 	lda #LIVES			; 3 lives
 	sta players
 
@@ -660,7 +675,7 @@ incollp:sta VIC64+MOBCOL,x
 
 	rts
 ; -------------------------------------------------------------------------------------------------
-; $e310 Setup game states, targets
+; $e310 Inc level, setup targets, init sprite states
 SetupGame:
 	ldx #$00
 	stx VIC64+MOBENA		; disable sprites
@@ -671,10 +686,10 @@ sg1elp:	lda #$ff
 	cpx #8
 	bne sg1elp
 
-	ldy #$00			; clear some vars
+	ldy #$00			; clear timer
 	sty delay
 	sty timer2
-	sty state
+	sty state			; state = 0
 
 	inc level			; raise level (1-4)
 	ldx level
@@ -694,7 +709,7 @@ levmax4:lda TargetTable-1,x		; setup targets
 	lda TargetTable-1+20,x
 	sta finished
 	lda #$00
-	sta $4b
+	sta unknown1
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; targets 1-4
@@ -712,7 +727,7 @@ SetupWorrior:
 	sta sprite_data
 	sta SpritePointer
 	lda #$03
-	sta $2e
+	sta unknown4
 	lda #$01			; set worrior start position
 	sta VIC64+MOBMSB
 	lda #$37
@@ -720,16 +735,16 @@ SetupWorrior:
 	lda #$ab
 	sta VIC64+MOBY
 	lda #$fd
-	sta $54
+	sta unknown5
 	ldx #$ff
-	stx sprite_state+7
+	stx sprite_state+7		; shot sprites off
 	stx sprite_state+6
 	inx
-	stx sprite_state
-	stx $2d
+	stx sprite_state		; player sprite on
+	stx unknown3
 	lda VIC64+MOBENA
 	ora #$01			; enable worrior sprite
-	and #$7f			; disable sprite #7
+	and #$7f			; disable player shot
 	sta VIC64+MOBENA
 	rts
 ; -------------------------------------------------------------------------------------------------
@@ -834,9 +849,9 @@ pslp:	lda score,x
 	lda score+2
 	cmp #2				; check score
 	bcc psx				; not enough
-	lda $76
+	lda bonus_player
 	bne psx				; already bonus player
-	inc $76
+	inc bonus_player
 	inc players
 	ldx players
 	stx ScreenRAMbase+$03de		; print bonus player
@@ -964,15 +979,15 @@ MoveWorrior:
 	sta sprite_xmsb
 	lda worrior_dir
 	sta sprite_dir
-	lda $2e
-	sta $35
+	lda unknown4
+	sta unknown2
 	jsr MoveSprite
-	lda $35
-	sta $2e
+	lda unknown2
+	sta unknown4
 	ldx sprite_dir
 	lda WorriorSpriteTable,x
 	bne +
-	ldx $2e
+	ldx unknown4
 	lda WorriorSpriteTable,x
 +	sta sprite_data
 	rts
@@ -997,7 +1012,7 @@ MoveSprite:
 	lda sprite_dir
 	bne msdirok
 	jmp le6b3
-msdirok:lda $35
+msdirok:lda unknown2
 	cmp #$03
 	bcs le5ca
 	lda sprite_dir
@@ -1051,7 +1066,7 @@ le5f9:  lda Table14,x
 	ldx sprite_xreg
 	sta VIC64+MOBX,x
 le601:  lda sprite_dir
-	sta $35
+	sta unknown2
 	ldx sprite_xreg
 	lda sprite_dir
 	cmp #$01
@@ -1250,7 +1265,7 @@ le786:  lda VIC64+MOBX+14
 	cmp #$42
 	bcs colllp
 ; $e78d
-le78d:  lda $2d
+le78d:  lda unknown3
 	cmp #$03
 	bcc le7cd
 	bne le7b1
@@ -1325,15 +1340,15 @@ shoot:	lda #4
 le82d:  lda #$7f
 	and VIC64+MOBMSB
 	sta VIC64+MOBMSB
-le835:  lda $2e
-	sta $2d
+le835:  lda unknown4
+	sta unknown3
 	cmp #$03
 	bcc le844
 	lda #$fd
-	sta $54
+	sta unknown5
 	jmp le848
 le844:  lda #$fe
-	sta $54
+	sta unknown5
 le848:  lda #$80
 	ora VIC64+MOBENA
 	sta VIC64+MOBENA
@@ -1368,13 +1383,13 @@ mmloop:	inc temp4
 	sta sprite_xreg
 	lda BitTable,x
 	sta sprite_xmsb
-	dec $5f,x
-	dec $5f,x
+	dec monster1,x
+	dec monster1,x
 	bmi le88b
-	lda $67,x
+	lda monster2,x
 	jmp le8e8
 le88b:  lda #$17
-	sta $5f,x
+	sta monster1,x
 	ldx sprite_xreg
 	lda SID64+RANDOM
 	and #$01
@@ -1414,15 +1429,15 @@ le8df:  lda SID64+RANDOM
 le8e6:  lda #$01
 le8e8:  ldx temp4
 	sta sprite_dir
-	lda $67,x
-	sta $35
+	lda monster2,x
+	sta unknown2
 	jsr MoveSprite
 	lda sprite_dir
 	bne le8fa
 	jsr le912
 le8fa:  ldx temp4
-	lda $35
-	sta $67,x
+	lda unknown2
+	sta monster2,x
 	clc
 	adc monster_value-1,x
 	tax
@@ -1432,14 +1447,14 @@ le8fa:  ldx temp4
 le90b:  ldx temp4
 	sta sprite_data,x
 le90f:  jmp mmloop
-le912:  lda $35
+le912:  lda unknown2
 	clc
 	adc #$01
 	cmp #$04
 	bcc le920
 	lda SID64+RANDOM
 	and #$03
-le920:  sta $35
+le920:  sta unknown2
 le922:  rts
 ; -------------------------------------------------------------------------------------------------
 ; $e923
@@ -1505,7 +1520,7 @@ le999:  iny
 	lda #3
 	jsr PlaySound
 	dec target+3
-	dec $4b
+	dec unknown1
 le9a7:  lda #1
 	sta state
 le9ab:  tya
@@ -1838,7 +1853,7 @@ MonsterShot:
 	bne +
 	rts
 ; $ec08
-+	lda $4b
++	lda unknown1
 	bmi +
 	lda timer2
 	and #$0f
@@ -1881,18 +1896,18 @@ lec56:  sec
 lec57:  lda #$04
 	bcs lec5d
 	lda #$03
-lec5d:  sta $77
+lec5d:  sta unknown7
 	lda #$fd
-	sta $53
+	sta unknown6
 	bne lec77
 lec65:  lda VIC64+MOBY
 	cmp VIC64+MOBY,y
 	lda #$02
 	bcs lec71
 	lda #$01
-lec71:  sta $77
+lec71:  sta unknown7
 	lda #$fe
-	sta $53
+	sta unknown6
 lec77:  lda #$00
 	sta sprite_state+6
 	lda VIC64+MOBX,y
@@ -1911,8 +1926,8 @@ lec9b:  sta VIC64+MOBMSB
 	lda VIC64+MOBENA
 	ora #$40
 	sta VIC64+MOBENA		; enable monster shot
-	lda $77
-	sta $67,x
+	lda unknown7
+	sta monster2,x
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $ecab move monster shot and disable if reaching wall
@@ -1943,7 +1958,7 @@ msdisab:lda #$ff
 +	lda VIC64+MOBX+12
 	cmp #$42
 	bcs msdisab
-lecda:  lda $77
+lecda:  lda unknown7
 	cmp #$03
 	bcc led0e
 	bne +
@@ -1990,7 +2005,7 @@ PlaySound:
 	cmp #1
 	bne pls02
 ; start sound
-	sta $6f
+	sta sound_no
 	lda #<Sound1
 	sta sound_ptr
 	lda #>Sound1
@@ -1998,35 +2013,35 @@ PlaySound:
 	lda #$21
 	sta SID64+V1CTRL
 	lda #$01
-	sta $72
+	sta sound1
 	rts
 ; $ed49 alternative start sound
 pls02:  cmp #2
 	bne pls03
-	sta $6f
+	sta sound_no
 	lda #<Sound2
 	sta sound_ptr
 	lda #>Sound2
 	sta sound_ptr+1
 	lda #$01
-	sta $72
+	sta sound1
 	rts
 ; $ed5c
 pls03:  cmp #3
 	bne pls04
-	sta $6f
+	sta sound_no
 	lda #<Sound3
 	sta sound_ptr
 	lda #>Sound3
 	sta sound_ptr+1
 	lda #$01
-	sta $72
+	sta sound1
 	rts
 ; $ed6f Shoot sound
 pls04:  cmp #4
 	bne pls05
 	lda #$0f
-	sta $74
+	sta sound3
 	lda #$81
 	sta SID64+V2CTRL
 	rts
@@ -2034,7 +2049,7 @@ pls04:  cmp #4
 pls05:  cmp #5
 	bne pls06
 	lda #$0f
-	sta $75
+	sta sound4
 	lda #$81
 	sta SID64+V3CTRL
 	rts
@@ -2042,8 +2057,8 @@ pls05:  cmp #5
 pls06:  cmp #6
 	bne pls07
 	lda #$3f
-	sta $75
-	sta $74
+	sta sound4
+	sta sound3
 	lda #$81
 	sta SID64+V2CTRL
 	sta SID64+V3CTRL
@@ -2052,19 +2067,19 @@ pls06:  cmp #6
 pls07:  cmp #7
 	bne pls08
 	lda #$3f
-	sta $73
+	sta sound2
 	asl
 	sta SID64+V2HI
 	lda #$21
 	sta SID64+V2CTRL
 	lda #$00
-	sta $74
+	sta sound3
 	rts
 ; $edb4
 pls08:  cmp #8
 	bne plsx
 	lda #$07
-	sta $73
+	sta sound2
 	lda #$21
 	sta SID64+V2CTRL
 	rts
@@ -2072,40 +2087,40 @@ plsx:	rts
 ; -------------------------------------------------------------------------------------------------
 ; $edc3 update game sound
 UpdateSound:
-	lda $74
+	lda sound3
 	beq ledd6
 	asl
 	asl
 	asl
 	sta SID64+V2HI
-	dec $74
+	dec sound3
 	bne ledd6
 	lda #$80
 	sta SID64+V2CTRL
-ledd6:  lda $75
+ledd6:  lda sound4
 	beq ledea
 	asl
 	asl
 	adc #$07
 	sta SID64+V3HI
-	dec $75
+	dec sound4
 	bne ledea
 	lda #$80
 	sta SID64+V3CTRL
-ledea:  lda $73
+ledea:  lda sound2
 	beq lee04
-	lda $73
+	lda sound2
 	lsr
 	lsr
 	and #$01
 	tax
 	lda Sound1,x
 	sta SID64+V2HI
-	dec $73
+	dec sound2
 	bne lee04
 	lda #$20
 	sta SID64+V2CTRL
-lee04:  dec $72
+lee04:  dec sound1
 	bne lee42
 	clc
 	lda sound_ptr
@@ -2117,7 +2132,7 @@ lee04:  dec $72
 	ldy #$00
 	lda (sound_ptr),y
 	bne lee2e
-	lda $6f
+	lda sound_no
 	cmp #$01
 	bne lee24
 	jmp PlaySound
@@ -2126,7 +2141,7 @@ lee24:  cmp #2
 	bne lee2b
 	jmp pls02
 lee2b:  jmp pls03
-lee2e:  sta $72
+lee2e:  sta sound1
 	ldy #$01
 	lda (sound_ptr),y
 	asl
