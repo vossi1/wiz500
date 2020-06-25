@@ -25,9 +25,9 @@ SYSTEMBANK	= $f	; systembank
 
 LIVES		= 3	; start lives
 ; table codes
-ADR	= $fe	; new target address follows
-LIN	= $fd	; new line (target +40)
-END	= $ff	; end of data
+ADR		= $fe	; new target address follows
+LIN		= $fd	; new line (target +40)
+END		= $ff	; end of data
 ; color codes
 BLACK		= $00
 WHITE		= $01
@@ -47,25 +47,25 @@ LIGHTBLUE	= $0e
 GRAY3		= $0f
 MCM		= $08	; bit#3 for multicolor character
 ; game
-; ************************************** P500 REGISTER ********************************************
+; ***************************************** REGISTER **********************************************
 ; vic
-MOBX		= $00
+MOBX		= $00	; mob pos
 MOBY		= $01
 MOBMSB		= $10
-MODEY		= $11
+MODEY		= $11	; mode
 RASTER		= $12
 MOBENA		= $15
 MCMCSX		= $16
 MOBYEX		= $17
 MEMPT		= $18
-IRQ		= $19
+IRQ		= $19	; irq
 EIRQ		= $1a
-MOBPRI		= $1b
+MOBPRI		= $1b	; mob
 MOBMC		= $1c
 MOBXEX		= $1d
 MOBMOB		= $1e
 MOBBGR		= $1f
-EXTCOL		= $20
+EXTCOL		= $20	; colors
 BGRCOL		= $21
 BGRCO1		= $22
 BGRCO2		= $23
@@ -74,26 +74,26 @@ MOBMC0		= $25
 MOBMC1		= $26
 MOBCOL		= $27
 ; sid
-V1LO		= $00
+V1LO		= $00	; osc1
 V1HI		= $01
 V1CTRL		= $04
 V1AD		= $05
 V1SR		= $06
-V2LO		= $07
+V2LO		= $07	; osc2
 V2HI		= $08
 V2CTRL		= $0b
 V2AD		= $0c
 V2SR		= $0d
-V3LO		= $0e
+V3LO		= $0e	; osc3
 V3HI		= $0f
 V3CTRL		= $12
 V3AD		= $13
 V3SR		= $14
-FCLO		= $15
+FCLO		= $15	; filter
 FCHI		= $16
 RESFIL		= $17
-MODVOL		= $18
-RANDOM		= $1b
+MODVOL		= $18	; mode / volume
+RANDOM		= $1b	; osc3 out
 ENV3		= $1c
 ; cia
 PRA		= $0	; Data reg A
@@ -143,7 +143,7 @@ SH = >ScreenRAMbase			; Highbyte Screen RAM base
 !addr ptr2		= $0b		; 16bit pointer
 !addr temp1		= $0d
 !addr temp2		= $0e
-; collision usage
+; double usage: collision
 !addr coll1_x		= $09
 !addr coll1_y		= $0b
 !addr coll2_x		= $0c
@@ -1299,13 +1299,13 @@ wsbgr:	lda VIC64+MOBMSB
 wswallr:lda VIC64+MOBX+14
 	cmp #$42
 	bcs wsdisab			; ...reached - shot off
-; $e78d
+; $e78d move shot
 wsmove:	lda worrior_shot_dir
 	cmp #$03
 	bcc wsverti			; branch to vertical shot move
 	bne wsright			; branch to shot right
 ; move shot left
-	dec VIC64+MOBX+14		; left 5 steps
+	dec VIC64+MOBX+14		; left 4 steps
 	dec VIC64+MOBX+14
 	dec VIC64+MOBX+14
 	dec VIC64+MOBX+14
@@ -1317,7 +1317,7 @@ wsmove:	lda worrior_shot_dir
 	sta VIC64+MOBMSB
 wsx:	rts
 ; $e7b1 move shot right
-wsright:inc VIC64+MOBX+14		; right 5 steps
+wsright:inc VIC64+MOBX+14		; right 4 steps
 	inc VIC64+MOBX+14
 	inc VIC64+MOBX+14
 	inc VIC64+MOBX+14
@@ -1331,7 +1331,7 @@ wsright:inc VIC64+MOBX+14		; right 5 steps
 ; $e7cd move shot up
 wsverti:cmp #$01
 	bne wsdown
-	dec VIC64+MOBY+14		; up 5 steps
+	dec VIC64+MOBY+14		; up 4 steps
 	dec VIC64+MOBY+14
 	dec VIC64+MOBY+14
 	dec VIC64+MOBY+14
@@ -1340,7 +1340,7 @@ wsverti:cmp #$01
 	bcc wswallv			; branch if upper maze limit reached
 	rts
 ; $e7e5 move shot down
-wsdown:	inc VIC64+MOBY+14		; down 5 steps
+wsdown:	inc VIC64+MOBY+14		; down 4 steps
 	inc VIC64+MOBY+14
 	inc VIC64+MOBY+14
 	inc VIC64+MOBY+14
@@ -1980,71 +1980,75 @@ shenabl:sta VIC64+MOBMSB
 ; $ecab move monster shot and disable if reaching wall
 MoveMonsterShot:
 	lda sprite_state+6
-	bpl msactiv			; branch if monster shot on
+	bpl mssshot			; shot in progress
 	rts
-; $ecb0 disable monster shot if reaching background
-msactiv:lda collision_bgr
-	and #$40			; isloate monster shot collision bit
-	beq mms10				; branch if no bgr-collision
-; disable monster shot
+; $ecb0 check collision
+mssshot:lda collision_bgr
+	and #$40
+	beq mmsbgr			; no collision, check maze limits
+; collison with bgr - disable monster shot
 msdisab:lda #$ff
-	sta sprite_state+6		; disable monster shot
+	sta sprite_state+6		; state off
 	lda VIC64+MOBENA
 	and #$bf
-	sta VIC64+MOBENA		; disable sprite 6
+	sta VIC64+MOBENA		; disable sprite
 	rts
-; $ecc3 move monster shot
-mms10:	lda VIC64+MOBMSB
+; $ecc3 check maze limits
+mmsbgr:	lda VIC64+MOBMSB
 	and #$40
-	bne mms20
+	bne mmswalr			; branch if x msb set
+; check left maze limit
 	lda VIC64+MOBX+12
-	cmp #$14
-	bcc msdisab
-	bcs mms30
-mms20:	lda VIC64+MOBX+12
+	cmp #$14			; check left limit
+	bcc msdisab			; ...reached - shot off
+	bcs mmsmove			; always
+; check maze right limit
+mmswalr:lda VIC64+MOBX+12
 	cmp #$42
-	bcs msdisab
-mms30:  lda monster_shot_dir
+	bcs msdisab			; ...reached - shot off
+; move shot
+mmsmove:lda monster_shot_dir
 	cmp #$03
-	bcc mms50
-	bne mms40
-	dec VIC64+MOBX+12
+	bcc mmsvert			; branch to vertical shot move
+	bne mmsrigt			; branch to shot right
+; move shot left
+	dec VIC64+MOBX+12		; left 2 steps
 	dec VIC64+MOBX+12
 	lda VIC64+MOBX+12
-	cmp #$fe
+	cmp #$fe			; check x byte max limit
 	bcc mmsx
 	lda VIC64+MOBMSB
 	and #$bf
-	sta VIC64+MOBMSB
+	sta VIC64+MOBMSB		; clear x msb bit#6
 	rts
-; $ecf8
-mms40:	inc VIC64+MOBX+12
+; $ecf8 move shot right
+mmsrigt:inc VIC64+MOBX+12		; right 2 steps
 	inc VIC64+MOBX+12
 	lda VIC64+MOBX+12
-	cmp #$02
+	cmp #$02			; check x byte min limit
 	bcs mmsx
 	lda VIC64+MOBMSB
 	ora #$40
-	sta VIC64+MOBMSB
+	sta VIC64+MOBMSB		; set x msb bit#6
 	rts
-; $
-mms50:  cmp #$01
-	bne mms60
-	dec VIC64+MOBY+12
+; $ move shot up
+mmsvert:cmp #$01
+	bne mmsdown
+	dec VIC64+MOBY+12		; up 2 steps
 	dec VIC64+MOBY+12
 	lda VIC64+MOBY+12
 	cmp #$2a
-	bcc mms70
+	bcc mmswall			; branch if upper maze limit reached
 	rts
-; $ed20
-mms60:	inc VIC64+MOBY+12
+; $ed20 move shot down
+mmsdown:inc VIC64+MOBY+12		; down 2 steps
 	inc VIC64+MOBY+12
 	lda VIC64+MOBY+12
 	cmp #$ca
-	bcs mms70
+	bcs mmswall			; branch if lower maze limit reached
 mmsx:	rts
 
-mms70:	jmp msdisab
+mmswall:jmp msdisab			; shot off
 ; -------------------------------------------------------------------------------------------------
 ; $ed31 play sound no. x
 PlaySound:
