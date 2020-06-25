@@ -1,14 +1,12 @@
 ; Disassembled by Vossi 05/2020
 ; Prepared for ACME reassembling
-; Comments by Vossi 05/2020
-; Converted for P500 by Vossi 05/2020
+; Comments, Labels by Vossi 06/2020
+; Converted for P500 by Vossi 06/2020
 !cpu 6502
 ; switches
-;P500 = 1       ; P500 bank 0 file
 ;CRT = 1        ; CRT header for VICE
-!ifdef  P500{!to "wiz500.prg", cbm
-} else  { !ifdef CRT {!to "wiz500.crt", plain
-	} else{ !to "wiz500.rom", plain }}
+!ifdef CRT {!to "wiz500.crt", plain
+} else{ !to "wiz500.rom", plain }
 !cpu 6502
 ; ########################################### TODO ################################################
 ;
@@ -166,12 +164,12 @@ SH = >ScreenRAMbase			; Highbyte Screen RAM base
 !addr timer2		= $2a
 !addr delay		= $2b		; delay for monster movment on satrt screen
 !addr fire		= $2c		; fire pressed bit#7=1
-!addr unknown3		= $2d
-!addr unknown4		= $2e
+!addr worrior_shot_dir	= $2d
+!addr worrior_dir	= $2e
 !addr sprite_xreg	= $30		; actual sprite x register
 !addr sprite_xmsb	= $31		; actual sprite x-msb
 !addr sprite_dir	= $32		; actual sprite direction 1-4
-!addr unknown2		= $35
+!addr move_dir		= $35
 !addr draw_column	= $36		; draw column
 !addr draw_line		= $37		; draw line
 !addr draw_char		= $38		; draw char/tile
@@ -183,18 +181,16 @@ SH = >ScreenRAMbase			; Highbyte Screen RAM base
 !addr move_y		= $40		; sprite mov sub y
 !addr move_xmsb		= $41		; sprite mov sub xmsb
 !addr mazedata_ptr	= $44		; pointer to mazedata
-!addr worrior_dir	= $46		; worrior direction after joy/key check
+!addr joykey_dir	= $46		; worrior direction after joy/key check
 !addr target		= $47		; 4 bytes targets to destroy
-!addr unknown1		= $4b
+!addr hit_target3	= $4b		; neg after hit target 3
 !addr move		= $4c		; movement 0=none, 1=up, 2=down, 3=left, 4=right
 !addr sprite_data	= $4d		; 8 bytes sprite data
-!addr unknown6		= $53
-!addr unknown5		= $54
 !addr collision_mob	= $55		; mob-mob collision
 !addr collision_bgr	= $56		; mob-bgr collision
 !addr monster_value	= $57		; 5 bytes monster values
-!addr monster1		= $5f		; 6 bytes unknown monster var
-!addr monster2		= $67		; 6 bytes unknown monster var
+!addr monster_cnt	= $60		; 5 bytes monster counter
+!addr monster_dir	= $68		; 5 bytes monster directions
 !addr sound_no		= $6f
 !addr sound_ptr		= $70		; pointer to sound data
 !addr sound1		= $72
@@ -202,7 +198,7 @@ SH = >ScreenRAMbase			; Highbyte Screen RAM base
 !addr sound3		= $74
 !addr sound4		= $75
 !addr bonus_player	= $76
-!addr unknown7		= $77
+!addr monster_shot_dir	= $77
 ; ***************************************** VARIABLES *********************************************
 ; ************************************** P500 ZERO PAGE *******************************************
 !addr ColorRAM0         = $e6
@@ -238,27 +234,32 @@ SH = >ScreenRAMbase			; Highbyte Screen RAM base
 !zone code
 !initmem FILL
 *= $e000
+; init
 start:	sei				; disable interrupts
 	cld
 	ldx #$ff			; init stack
 	txs
-	ldx #$2e			; init vic regs
+; init vic regs
+	ldx #$2e
 viclp:	lda VICRegs,x
 	sta VIC64+MOBX,x
 	dex
 	bpl viclp
-	ldx #$18			; init sid regs
+; init sid regs
+	ldx #$18
 sidlp:	lda SIDRegs,x
 	sta SID64,x
 	dex
 	bpl sidlp
-	ldx #$00			; clear RAM
+; clear ram
+	ldx #$00
 	txa
-clramlp:sta $02,x
-	sta $0200,x
-	sta $0300,x
+clramlp:sta $02,x			; zp
+	sta $0200,x			; page 2
+	sta $0300,x			; page 3
 	inx
 	bne clramlp
+; init i/o
 	lda #$1f
 	sta CIA64+ICR			; clear all irq
 	lda #$82
@@ -266,15 +267,18 @@ clramlp:sta $02,x
 	lda #$01
 	sta CIA64+CRB			; timer b phi2, cont, start
 	lda #$38
-	sta CIA64+TBLO			; timer b = 56
+	sta CIA64+TBLO			; timer b prescaler = 56
 	lda #$00
 	sta CIA64+TBHI
 	cli				; enable irq
+
 StartNew:
 	jsr StartScreen			; shows start screen and waits for F1
 	jsr InitGame			; reset score, level, init lives and sprite colors
+
 NextLevel:
 	jsr SetupGame			; inc level, setup targets, init sprite states, state = 0
+
 TryAgain:
 	jsr SetupGameScreen		; draw game screen
 	jsr SetupWorrior		; setup player sprite
@@ -286,6 +290,7 @@ TryAgain:
 	ldx #2				; if not, start with sound 2
 newlev:	txa
 	jsr PlaySound			; play start sound
+
 GameLoop:
 	lda timer
 	bne GameLoop			; wait 1 inc of timer
@@ -347,7 +352,7 @@ CheckF1Key:
 	iny				; returns 1 if F1 pressed
 chkf1x:	rts
 ; -------------------------------------------------------------------------------------------------
-; $e0db check joystick and keyboard movement/fire
+; $e0db Check joystick and keyboard movement/fire
 CheckJoyKey:
 	ldx #$ff
 	stx CIA64+DDRA			; port a output
@@ -422,26 +427,30 @@ jkright:tya
 	and #$08			; check right
 	bne jkx
 	ldx #4
-jkx:	stx worrior_dir				; store move direction
+jkx:	stx joykey_dir			; store move direction
 	rts
 ; -------------------------------------------------------------------------------------------------
-; $e170 Game Cycle
+; $e170 Game Cycle: do .x cycles
 GameUpdate:
 	lda timer
-	bne GameUpdate
-	tya
+	bne GameUpdate			; wait timer
+
+	tya				; save regs
 	pha
 	txa
 	pha
-	jsr UpdateSound
-	pla
+	jsr UpdateSound			; update sound
+	pla				; restore regs
 	tax
 	pla
 	tay
-waitcyc:lda timer
-	bne waitcyc
+
+guwait:	lda timer
+	bne guwait			; wait timer
+
 	dex
-	bne GameUpdate
+	bne GameUpdate			; next cyle if .x > 0
+
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $e187 Clears screen with color
@@ -461,28 +470,30 @@ clscrlp:lda color			; color
 	bne clscrlp
 	rts
 ; -------------------------------------------------------------------------------------------------
-; $e1a9 copies all sprites data pointers to the vic pointers
+; $e1a9 Copies all sprites data pointers to the vic pointers
 CopySpritePointer:
-	ldx #8
+	ldx #8				; 8 sprites
 cpsprlp:lda sprite_data-1,x
-	sta SpritePointer-1,x
+	sta SpritePointer-1,x		; store pointer
 	dex
 	bne cpsprlp
-	ldx #8
+; check pointers
+	ldx #8				; 8 sprites
 chksplp:lda sprite_data-1,x
 	cmp SpritePointer-1,x
-	bne CopySpritePointer
+	bne CopySpritePointer		; copy again if not copied
 	dex
-	bne chksplp
+	bne chksplp			; check next
+
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $e1c0 Copies data from xy to address in first two bytes till $ff
-;   $fe = new target address
+;   $fd = new line, $fe = new target address, $ff = end
 ScreenCopy:				; copies from .x, .y
 	stx coll1_x
 	sty coll1_x+1
 
-scrnewt: ldy #0				; set pointer1 to new target
+scrnewt:ldy #0				; set pointer1 to new target
 	sty temp2
 	lda (coll1_x),y
 	sta ptr2
@@ -529,6 +540,7 @@ scrline:clc
 	lda #$00
 	sta temp2
 	beq scrcplp			; always next
+
 scrcpyx:lda #0
 	sta move			; store no movement
 	rts
@@ -554,6 +566,7 @@ SetupGameScreen:
 	sta data_ctr			; reset data counter
 	sta maze_line			; reset screen line
 	sta maze_column			; reset screem column
+
 mazelp:	ldy data_ctr
 	lda (mazedata_ptr),y		; load data byte
 	cmp #$19
@@ -581,9 +594,10 @@ mzblank:inc data_ctr			; increase data pointer
 	sta maze_line
 	cmp #21
 	bne mazelp			; repeat if < line 21
-
+; print score
 	lda #$00
 	jsr AddScore			; print zero score
+; print players
 	ldx players
 	stx draw_char			; store player char
 	lda #30
@@ -591,6 +605,7 @@ mzblank:inc data_ctr			; increase data pointer
 	lda #24
 	sta draw_line
 	jsr DrawMazeTile		; draw player count
+; print highscore
 	ldx #$d0			; set screen pointer to highscore
 	ldy #SH+3
 	stx coll1_x
@@ -599,7 +614,7 @@ mzblank:inc data_ctr			; increase data pointer
 	jsr PrintScore			; print highscore (score+3)
 	rts
 ; -------------------------------------------------------------------------------------------------
-; $e29b Table with maze addresses
+; $e29b Maze addresses level 1 - 4
 MazePointer:
 	!word Maze1
 	!word Maze2
@@ -622,6 +637,7 @@ mzhlp:	lda maze_line
 	inx
 	cpx #3
 	bne mzhlp			; print 3 column
+
 	lda #$05
 	rts
 ; -------------------------------------------------------------------------------------------------
@@ -639,6 +655,7 @@ mzvlp:	lda maze_column			; load actual column
 	inx
 	cpx #3
 	bne mzvlp			; print 3 lines
+
 	lda #$05
 	rts
 ; -------------------------------------------------------------------------------------------------
@@ -656,7 +673,7 @@ mzhvtil:jsr mzhtile			; draw 3x horizontal line
 	jsr DrawMazeTile		; draw low-left corner 'L'-tile
 	rts
 ; -------------------------------------------------------------------------------------------------
-; $e2f5 Inits some vars and sprite colors
+; $e2f5 Reset score, level, init lives and sprite colors
 InitGame:
 	ldy #0
 	sty score
@@ -709,10 +726,10 @@ levmax4:lda TargetTable-1,x		; setup targets
 	lda TargetTable-1+20,x
 	sta finished
 	lda #$00
-	sta unknown1
+	sta hit_target3
 	rts
 ; -------------------------------------------------------------------------------------------------
-; targets 1-4
+; Targets level 1-4
 TargetTable:
 	!byte $04, $05, $06, $06
 	!byte $03, $04, $05, $06
@@ -721,13 +738,13 @@ TargetTable:
 	!byte $00, $01, $00, $02
 	!byte $0a, $10, $14, $18
 ; -------------------------------------------------------------------------------------------------
-; $e36b setup worrior sprite
+; $e36b Setup worrior sprite
 SetupWorrior:
 	lda #$e6			; init worrior sprite
 	sta sprite_data
 	sta SpritePointer
 	lda #$03
-	sta unknown4
+	sta worrior_dir
 	lda #$01			; set worrior start position
 	sta VIC64+MOBMSB
 	lda #$37
@@ -735,24 +752,24 @@ SetupWorrior:
 	lda #$ab
 	sta VIC64+MOBY
 	lda #$fd
-	sta unknown5
+	sta sprite_data+7		; set shot horizontal pattern
 	ldx #$ff
 	stx sprite_state+7		; shot sprites off
 	stx sprite_state+6
 	inx
 	stx sprite_state		; player sprite on
-	stx unknown3
+	stx worrior_shot_dir		; clear worrior shot dir
 	lda VIC64+MOBENA
 	ora #$01			; enable worrior sprite
 	and #$7f			; disable player shot
 	sta VIC64+MOBENA
 	rts
 ; -------------------------------------------------------------------------------------------------
-; $e39f
-TableX:  
+; $e39f Monster start positions
+MonsterStartX:  
 	!byte $35, $4d, $65, $7d, $95, $ad, $c5, $f5
 ; $e3a7
-TableY:
+MonsterStartY:
 	!byte $7b, $63, $7b, $93, $ab, $c3, $7b, $ab
 ; -------------------------------------------------------------------------------------------------
 ; $e3af Level finished
@@ -766,14 +783,15 @@ LevelFinished:
 	jsr PlaySound			; play bonus sound
 	lda #$30
 	jsr AddScore
-	ldx #$00
-	jsr GameUpdate
+	ldx #0
+	jsr GameUpdate			; 1 game update
 	jmp NextLevel
 
 TextBonus3000:
 !byte $24, $05, $0c, $19, $18, $1e, $1c, $00	; 'BONUS 3000'
 !byte $04, $01, $01, $01, $ff
 
+; Game over
 GameOver:
 	ldx #2
 chkhisc:lda highscore,x
@@ -782,7 +800,7 @@ chkhisc:lda highscore,x
 	bne nohisc
 	dex
 	bpl chkhisc
-
+; new highscore
 newhisc:lda score			; store new highscore
 	sta highscore
 	lda score+1
@@ -795,22 +813,22 @@ newhisc:lda score			; store new highscore
 	sty coll1_x+1
 	ldx #3
 	jsr PrintScore
-
+; game over - no highscore
 nohisc:	lda #$00
 	sta SID64+MODVOL		; sound off
 	inc move
 	ldx #<TextGameOver
 	ldy #>TextGameOver
 	jsr ScreenCopy			; print 'G A M E  O V E R'
-	ldx #$50
-	jsr GameUpdate
+	ldx #80
+	jsr GameUpdate			; do 80 Game updates
 	jmp StartNew			; start new
 
 TextGameOver:
 	!byte $24,SH+1, $11, $00, $0b, $00, $17, $00
 	!byte $0f, $00, $00, $19, $00, $1f, $00, $0f
 	!byte $00, $1b, END
-; add and print score
+; Add and print score
 AddScore:
 	clc
 	sed
@@ -825,7 +843,7 @@ AddScore:
 	stx coll1_x
 	sty coll1_x+1
 	ldx #0				; print score
-
+; Print score
 PrintScore:
 	ldy #5
 pslp:	lda score,x
@@ -859,7 +877,7 @@ pslp:	lda score,x
 	jsr PlaySound			; play bonus sound
 psx:	rts
 ; -------------------------------------------------------------------------------------------------
-; $e474 start screen sub
+; $e474 Start screen - exit with F1 only
 StartScreen:
 	lda #$00
 	sta VIC64+MOBENA		; disable all sprites
@@ -902,8 +920,8 @@ sswait	lda timer
 	lda delay
 	and #$1f			; delay next movement
 	bne sschkf1
-
-	ldy #$04			; move 5 monsters
+; move monsters
+	ldy #4				; move 5 monsters
 ssright:tya			
 	asl
 	tax
@@ -915,7 +933,7 @@ ssright:tya
 	bcc ssnxspr
 	lda #$00
 	sta sprite_state+1,y		; set left direction
-	cpy #$03
+	cpy #3
 	beq ssnxspr			; skip if monster #3 (unidir monster)
 	tya
 	tax
@@ -926,7 +944,7 @@ ssleft:	dec VIC64+MOBX+2,x		; move monster left
 	cmp #$d7
 	bcs ssnxspr			; skip if left limit not reached
 	sta sprite_state+1,y		; set right dir
-	cpy #$03
+	cpy #3
 	beq ssnxspr			; skip if monster #3 (unidir monster)
 	tya
 	tax
@@ -936,14 +954,14 @@ ssnxspr:dey
 sschkf1:jsr CheckF1Key			; check f1 key pressed
 	cpy #$00
 	beq sssprlp			; continue movement, if not F1 pressed
-
+; game screen colors
 	lda #BLACK			; set game bgr+ext colors
 	sta VIC64+BGRCOL
 	lda #BLUE
 	sta VIC64+EXTCOL
 	rts
 ; -------------------------------------------------------------------------------------------------
-; $e51a start screen tables
+; $e51a Start screen tables
 StartScreenMonsterVpos:
 	!byte $52, $6a, $82, $9a, $b2
 StartScreenMonsterData:
@@ -951,7 +969,7 @@ StartScreenMonsterData:
 StartScreenMonsterRLimit:
 	!byte $db, $dc, $db, $dc, $db
 ; -------------------------------------------------------------------------------------------------
-; $e529 interrupt
+; $e529 interrupt handler
 Interrupt:
 	pha
 	lda CIA64+ICR			; load irq-reg
@@ -961,67 +979,69 @@ Interrupt:
 irqx:	pla
 	rti
 ; -------------------------------------------------------------------------------------------------
-; $e535 move worrior sprite
+; $e535 Move worrior sprite
 MoveWorrior:
 	lda timer2
 	and #$01
-	beq mw10
+	beq mwtime			; time to move worrior
 	rts
-; $e53c
-mw10:	lda sprite_state
-	bpl mw20
+; $e53c time for worrior
+mwtime:	lda sprite_state		; worrior state
+	bpl mwon			; branch if worrior on (not dead)
 	rts
-; $e541
-mw20:	jsr CheckJoyKey			; check movement
+; $e541 move worrior
+mwon:	jsr CheckJoyKey			; check movement
 	lda #$00
 	sta sprite_xreg			; store xregs for worrior sprite
 	lda #$01
 	sta sprite_xmsb
+	lda joykey_dir
+	sta sprite_dir			; store joystick direction
 	lda worrior_dir
-	sta sprite_dir
-	lda unknown4
-	sta unknown2
-	jsr MoveSprite
-	lda unknown2
-	sta unknown4
+	sta move_dir			; save old worrior dir
+	jsr MoveSprite			; move sprite
+
+	lda move_dir
+	sta worrior_dir			; restore old worrior dir
 	ldx sprite_dir
+	lda WorriorSpriteTable,x	; load worrior pattern
+	bne mwstpat			; skip if dir > 0 (no wall)
+	ldx worrior_dir			; load old pattern if wall
 	lda WorriorSpriteTable,x
-	bne mw30
-	ldx unknown4
-	lda WorriorSpriteTable,x
-mw30:	sta sprite_data
+mwstpat:sta sprite_data			; store sprite pattern
 	rts
 ; -------------------------------------------------------------------------------------------------
-; $e56a
+; $e56a Worrior patterns for direction 0 - 4
 WorriorSpriteTable:  
 	!byte $00, $e8, $e7, $e6, $e5
 ; -------------------------------------------------------------------------------------------------
-; $e56f move sprite (sprite_xreg, _xmsb, _dir)
+; $e56f Move sprite (sprite_xreg, _xmsb, _dir)
 MoveSprite:
 	ldx sprite_xreg
 	lda #$00
 	sta coll1_x
-	jsr ms130
+	jsr msmove			; move sprite (sprite dir = 0 -> wall reached!)
 	lda sprite_xmsb
 	sta move_xmsb
-	lda VIC64+MOBX,x
+	lda VIC64+MOBX,x		; set new position to vic
 	sta move_x
 	lda VIC64+MOBY,x
 	sta move_y
 	jsr CalcScreenPosition		; calc sprite screen position (char based)
 	lda sprite_dir
-	bne msdirok
-	jmp ms200
-msdirok:lda unknown2
-	cmp #$03
+	bne msdirok			; move sprite
+	jmp mstunn			; check tunnel
+
+msdirok:lda move_dir
+	cmp #3
 	bcs ms040
 	lda sprite_dir
-	cmp #$03
+	cmp #3
 	bcc ms080
 	dec move_y
 	lda move_y
 ms010:	beq ms020
-	cmp #$01
+	cmp #1
 	beq ms020
 	cmp #$ff
 	beq ms020
@@ -1031,16 +1051,18 @@ ms010:	beq ms020
 	sec
 	sbc #$03
 	jmp ms010
+
 ms020:	ldx coll1_x
 	lda Table14+13,x
 	ldx sprite_xreg
 	sta VIC64+MOBY,x
 	jmp ms080
+
 ms030:	lda #$00
 	sta sprite_dir
-	jmp ms200
+	jmp mstunn
 ms040:	lda sprite_dir
-	cmp #$03
+	cmp #3
 	bcs ms080
 	lda move_x
 	sec
@@ -1066,19 +1088,19 @@ ms070:	lda Table14,x
 	ldx sprite_xreg
 	sta VIC64+MOBX,x
 ms080:	lda sprite_dir
-	sta unknown2
+	sta move_dir
 	ldx sprite_xreg
 	lda sprite_dir
 	cmp #$01
 	bne ms090
 	dec VIC64+MOBY,x
 	dec VIC64+MOBY,x
-	jmp ms200
+	jmp mstunn
 ms090:	cmp #$02
 	bne ms100
 	inc VIC64+MOBY,x
 	inc VIC64+MOBY,x
-	jmp ms200
+	jmp mstunn
 ms100:  cmp #$03
 	bne ms120
 	dec VIC64+MOBX,x
@@ -1090,88 +1112,98 @@ ms100:  cmp #$03
 	eor #$ff
 	and VIC64+MOBMSB
 	sta VIC64+MOBMSB
-ms110:  jmp ms200
+ms110:  jmp mstunn
 ms120:  cmp #$04
-	bne ms200
+	bne mstunn
 	inc VIC64+MOBX,x
 	inc VIC64+MOBX,x
 	lda VIC64+MOBX,x
 	cmp #$02
-	bcs ms200
+	bcs mstunn
 	lda sprite_xmsb
 	ora VIC64+MOBMSB
 	sta VIC64+MOBMSB
-	jmp ms200
-ms130:  lda VIC64+MOBX,x
-	sta move_x
+	jmp mstunn
+; move sprite
+msmove:	lda VIC64+MOBX,x
+	sta move_x			; store x
 	lda VIC64+MOBY,x
 	clc
-	sbc #$06
-	sta move_y
+	sbc #6
+	sta move_y			; store y-6
 	lda sprite_xmsb
-	sta move_xmsb
-	jsr CalcScreenPosition
+	sta move_xmsb			; store msb
+	jsr CalcScreenPosition		; calc char position
 	lda sprite_dir
 	beq msx
-	cmp #$03
-	bcc ms150
-	beq ms140
+	cmp #3				; check dirs and move x, y
+	bcc msverti
+	beq msleft
+; move right
 	inc move_x
-	jmp ms170
-ms140:  dec move_x
-	jmp ms170
-ms150:  cmp #$01
-	bne ms160
+	jmp msmvscr
+; move left
+msleft:	dec move_x
+	jmp msmvscr
+
+msverti:cmp #1
+	bne msdown
+; move up
 	dec move_y
-	jmp ms170
-ms160:  inc move_y
-ms170:  lda #$04
-	sta draw_ptr+1
+	jmp msmvscr
+; move down
+msdown:	inc move_y
+; calc screen pointer to new position
+msmvscr:lda #SH
+	sta draw_ptr+1			; set screen address hi
 	lda move_x
-ms180:  ldy move_y
-	beq ms190
-	dec move_y
+mslinlp:ldy move_y
+	beq mschkwa			; exit f all lines added
+	dec move_y			; dec line
 	clc
-	adc #$28
-	bcc ms180
-	inc draw_ptr+1
-	jmp ms180
-ms190:  sta draw_ptr
-	ldy #$00
-	lda (draw_ptr),y
-	beq msx
+	adc #40				; add 40 for each line to screen ptr lo
+	bcc mslinlp			; next line
+	inc draw_ptr+1			; inc ptr hi
+	jmp mslinlp			; next line
+; check if wall = dir not allowe
+mschkwa:sta draw_ptr
+	ldy #0
+	lda (draw_ptr),y		; load char
+	beq msx				; return if no wall
 	lda #$00
-	sta sprite_dir
+	sta sprite_dir			; clear sprite dir if dir not allowed
 msx:	rts
-; $e6b3
-ms200:  lda sprite_xmsb
+; $e6b3 tunnel
+mstunn:	lda sprite_xmsb
 	and VIC64+MOBMSB
-	bne ms210
+	bne msckrig			; branch if x msb set
 	lda VIC64+MOBX,x
-	cmp #$16
-	bcs ms220
+	cmp #$16			; left tunnel reached?
+	bcs mstuckv			; not...skip
+; tunnel left
 	lda sprite_xmsb
 	ora VIC64+MOBMSB
-	sta VIC64+MOBMSB
+	sta VIC64+MOBMSB		; set x msb
 	lda #$40
-	sta VIC64+MOBX,x
+	sta VIC64+MOBX,x		; set x to tunnel right
 	rts
-; $e6cf
-ms210:  beq ms220
+; $e6cf tunnel right
+msckrig:beq mstuckv			; skip if .a = 0
 	lda VIC64+MOBX,x
-	cmp #$42
-	bcc ms220
+	cmp #$42			; check tunnel reached
+	bcc mstuckv			; not...skip
 	lda sprite_xmsb
-	eor #$ff
+	eor #$ff			; xor x msb for and operation
 	and VIC64+MOBMSB
-	sta VIC64+MOBMSB
+	sta VIC64+MOBMSB		; clear x msb
 	lda #$18
-	sta VIC64+MOBX,x
-ms220:  lda VIC64+MOBY,x
+	sta VIC64+MOBX,x		; set x to tunnel left
+; check tunnel vertical position
+mstuckv:lda VIC64+MOBY,x
 	cmp #$31
-	bcs msx2
+	bcs msx2			; skip if not exactly tunnel v pos
 	inc VIC64+MOBY,x
-	inc VIC64+MOBY,x
+	inc VIC64+MOBY,x		; inc vpos +2 for exactly tunnel v pos
 msx2:	rts
 ; -------------------------------------------------------------------------------------------------
 ; $e6f5
@@ -1238,125 +1270,130 @@ drawmz:	sta draw_ptr			; store draw ptr lo
 ; $e754 Move Worrior Shot
 WorriorShot:
 	lda sprite_state+7
-	bpl ws010
-	jmp ws090
-ws010:	lda collision_bgr
+	bpl wsshot			; shot in progress
+	jmp wscksht			; check for new shot
+; check collision
+wsshot:	lda collision_bgr
 	and #$80
-	beq ws020
-colllp:	lda #$ff
-	sta sprite_state+7
+	beq wsbgr			; no collision, check maze limits
+; collison with bgr - disbale worrior shot
+wsdisab:lda #$ff
+	sta sprite_state+7		; state off
 	lda #$7f
-	and VIC64+MOBENA
+	and VIC64+MOBENA		; disable sprite
 	sta VIC64+MOBENA
 	lda #$7f
-	and VIC64+MOBMSB
+	and VIC64+MOBMSB		; clear x msb
 	sta VIC64+MOBMSB
 	rts
-;$ e776
-ws020:	lda VIC64+MOBMSB
+; $e776 check maze limits
+wsbgr:	lda VIC64+MOBMSB
 	and #$80
-	bne ws030
+	bne wswallr			; branch if x msb set
+; check left maze limit
 	lda VIC64+MOBX+14
-	cmp #$14
-	bcc colllp
-
-	bcs ws040
-ws030:  lda VIC64+MOBX+14
+	cmp #$14			; check left limit
+	bcc wsdisab			; ...reached - shot off
+	bcs wsmove			; always
+; check maze right limit
+wswallr:lda VIC64+MOBX+14
 	cmp #$42
-	bcs colllp
+	bcs wsdisab			; ...reached - shot off
 ; $e78d
-ws040:  lda unknown3
+wsmove:	lda worrior_shot_dir
 	cmp #$03
-	bcc ws060
-	bne ws050
-	dec VIC64+MOBX+14
+	bcc wsverti			; branch to vertical shot move
+	bne wsright			; branch to shot right
+; move shot left
+	dec VIC64+MOBX+14		; left 5 steps
 	dec VIC64+MOBX+14
 	dec VIC64+MOBX+14
 	dec VIC64+MOBX+14
 	lda VIC64+MOBX+14
-	cmp #$fc
+	cmp #$fc			; check x byte max limit
 	bcc wsx
 	lda #$7f
-	and VIC64+MOBMSB
+	and VIC64+MOBMSB		; clear x msb bit#7
 	sta VIC64+MOBMSB
 wsx:	rts
-; $e7b1
-ws050:  inc VIC64+MOBX+14
+; $e7b1 move shot right
+wsright:inc VIC64+MOBX+14		; right 5 steps
 	inc VIC64+MOBX+14
 	inc VIC64+MOBX+14
 	inc VIC64+MOBX+14
 	lda VIC64+MOBX+14
-	cmp #$04
+	cmp #$04			; check x byte min limit
 	bcs wsx
 	lda #$80
-	ora VIC64+MOBMSB
+	ora VIC64+MOBMSB		; set x msb bit#7
 	sta VIC64+MOBMSB
 	rts
-; $e7cd
-ws060:  cmp #$01
-	bne ws070
-	dec VIC64+MOBY+14
+; $e7cd move shot up
+wsverti:cmp #$01
+	bne wsdown
+	dec VIC64+MOBY+14		; up 5 steps
 	dec VIC64+MOBY+14
 	dec VIC64+MOBY+14
 	dec VIC64+MOBY+14
 	lda VIC64+MOBY+14
 	cmp #$2a
-	bcc ws080
+	bcc wswallv			; branch if upper maze limit reached
 	rts
-; $e7e5
-ws070:  inc VIC64+MOBY+14
+; $e7e5 move shot down
+wsdown:	inc VIC64+MOBY+14		; down 5 steps
 	inc VIC64+MOBY+14
 	inc VIC64+MOBY+14
 	inc VIC64+MOBY+14
 	lda VIC64+MOBY+14
 	cmp #$ca
-	bcc wsx2
-ws080:  jmp colllp
+	bcc wsx2			; branch if lower maze limit reached
+wswallv:jmp wsdisab			; shot off
 wsx2:	rts
-; $e7fc
-ws090:  cmp #$ff
-	bne ws100
+; $e7fc check worrior ready for shot
+wscksht:cmp #$ff
+	bne wsx3			; exit if shot in pgrogress
 	lda sprite_state
-	bpl chkshot
-ws100	rts
+	bpl chkshot			; branch if worrior not dead
+wsx3:	rts
 ; $e805 check fire pressed
 chkshot:lda fire
-	bmi shoot
+	bmi shoot			; branch if fire pressed
 	rts
-; $e80a shoot
+; $e80a new worrior shot
 shoot:	lda #4
 	jsr PlaySound			; play shoot sound
-	lda VIC64
-	sta VIC64+MOBX+14
+	lda VIC64+MOBX
+	sta VIC64+MOBX+14		; set shot position
 	lda VIC64+MOBY
 	sta VIC64+MOBY+14
 	lda VIC64+MOBMSB
 	and #$01
-	beq ws110
+	beq nsnomsb			; skip if not worrior x msb
 	lda #$80
 	ora VIC64+MOBMSB
-	sta VIC64+MOBMSB
-	jmp ws120
-ws110:  lda #$7f
+	sta VIC64+MOBMSB		; set x msb
+	jmp nsdir
+nsnomsb:lda #$7f
 	and VIC64+MOBMSB
-	sta VIC64+MOBMSB
-ws120:  lda unknown4
-	sta unknown3
+	sta VIC64+MOBMSB		; clear x msb
+nsdir:  lda worrior_dir
+	sta worrior_shot_dir
 	cmp #$03
-	bcc ws130
+	bcc nsverti			; branch if vertiacl worrior direction
 	lda #$fd
-	sta unknown5
-	jmp ws140
-ws130:  lda #$fe
-	sta unknown5
-ws140:  lda #$80
+	sta sprite_data+7		; sprite pattern horizontal
+	jmp nsenabl
+nsverti:lda #$fe
+	sta sprite_data+7		; sprite pattern vertical
+; enable worrior shot
+nsenabl:lda #$80
 	ora VIC64+MOBENA
-	sta VIC64+MOBENA
+	sta VIC64+MOBENA		; enable sprite
 	lda #$00
-	sta sprite_state+7
+	sta sprite_state+7		; set state
 	rts
 ; -------------------------------------------------------------------------------------------------
-; $e855 MoveMonsters
+; $e855 Move monsters
 MoveMonsters:
 	lda state
 	bne mm010
@@ -1383,13 +1420,15 @@ mm030:	lda SpritePosTable,x
 	sta sprite_xreg
 	lda BitTable,x
 	sta sprite_xmsb
-	dec monster1,x
-	dec monster1,x
+	dec monster_cnt-1,x
+	dec monster_cnt-1,x
 	bmi mm040
-	lda monster2,x
+	lda monster_dir-1,x
 	jmp mm140
+
+
 mm040:  lda #$17
-	sta monster1,x
+	sta monster_cnt-1,x
 	ldx sprite_xreg
 	lda SID64+RANDOM
 	and #$01
@@ -1429,45 +1468,46 @@ mm120:  lda SID64+RANDOM
 mm130:  lda #$01
 mm140:  ldx temp4
 	sta sprite_dir
-	lda monster2,x
-	sta unknown2
+	lda monster_dir-1,x
+	sta move_dir
 	jsr MoveSprite
 	lda sprite_dir
 	bne mm150
 	jsr mm180
 mm150:  ldx temp4
-	lda unknown2
-	sta monster2,x
+	lda move_dir
+	sta monster_dir-1,x
 	clc
 	adc monster_value-1,x
 	tax
-	lda Table17,x
+	lda MonsterPatternTable,x
 	bne mm160
 	beq mm170
 mm160:  ldx temp4
 	sta sprite_data,x
 mm170:  jmp mmloop
-mm180:  lda unknown2
+mm180:  lda move_dir
 	clc
 	adc #$01
 	cmp #$04
 	bcc mm190
 	lda SID64+RANDOM
 	and #$03
-mm190:  sta unknown2
+mm190:  sta move_dir
 mmx:	rts
 ; -------------------------------------------------------------------------------------------------
-; $e923
+; $e923 Postions of sprite x,y regs
 SpritePosTable:
 	!byte $00, $02, $04, $06, $08, $0a, $0c, $0e
-; $e92b
-Table17:
-	!byte $ec, $ec, $eb, $ea, $e9, $f0, $f0, $ef
-	!byte $ee, $ed, $f4, $f4, $f3, $f2, $f1, $f5
-	!byte $f5, $f5, $f5, $f5, $fc, $fc, $fb, $fa
-	!byte $f9
+; $e92b Sprite patterns for dir 0 - 4
+MonsterPatternTable:
+	!byte $ec, $ec, $eb, $ea, $e9	; Burwor
+	!byte $f0, $f0, $ef, $ee, $ed	; Gorwor
+	!byte $f4, $f4, $f3, $f2, $f1	; Thorwor
+	!byte $f5, $f5, $f5, $f5, $f5	; Worlok
+	!byte $fc, $fc, $fb, $fa, $f9	; Wizard of Wor
 ; -------------------------------------------------------------------------------------------------
-; $e944 check monster state and start new monster if needed
+; $e944 Check monster state and decide to start new monster
 StartMonsters:
 	lda sprite_state
 	bmi smx
@@ -1520,7 +1560,7 @@ sm60:	iny
 	lda #3
 	jsr PlaySound
 	dec target+3
-	dec unknown1
+	dec hit_target3
 sm70:	lda #1
 	sta state
 sm80:	tya
@@ -1532,7 +1572,7 @@ sm80:	tya
 	lda SID64+RANDOM
 	and #$07
 	tax
-	lda TableX,x
+	lda MonsterStartX,x
 	sta VIC64+MOBX,y
 	lda timer2
 	lsr
@@ -1542,7 +1582,7 @@ sm80:	tya
 	lsr
 	and #$07
 	tax
-	lda TableY,x
+	lda MonsterStartY,x
 	sta VIC64+MOBY,y
 	clc
 	adc #$18
@@ -1572,7 +1612,7 @@ sm90:	pla
 	sta VIC64+MOBENA
 	rts
 ; -------------------------------------------------------------------------------------------------
-; $ea08
+; $ea08 Monster tables
 MonsterValueTable:  
 	!byte 0, 5, 10, 15, 20
 MonsterColorTable:
@@ -1588,10 +1628,10 @@ exloop:	lda sprite_state,x
 exnext:	dex
 	bpl exloop			; next sprite
 	rts
-; $ea21
+; $ea21 check in progress
 exspdis:cmp #$ff
 	beq exnext			; next sprite, if off
-
+; ex in progress
 	inc sprite_state,x
 	txa
 	bne exnotpl			; branch if not worrior
@@ -1649,7 +1689,7 @@ exnotpl:lda sprite_state,x
 	lsr
 	and #$07			; calc final value
 	tay
-	lda ScoreTablex100,y		; load monster score
+	lda ScoreMonsterStartX100,y		; load monster score
 	cmp #5
 	bne spadsco			; skip if not max score 5
 	lda SID64+RANDOM
@@ -1695,10 +1735,10 @@ exmon4:	cpx #6
 notfin:	jmp exnext
 ; -------------------------------------------------------------------------------------------------
 ; $eae7 Monster scores (x100)
-ScoreTablex100:  
+ScoreMonsterStartX100:  
 	!byte 1, 2, 3, 4, 5, 5, 5, 5
 ; -------------------------------------------------------------------------------------------------
-; $eaef check collision
+; $eaef Check sprite collision
 CheckCollision:
 	lda sprite_state
 	bmi ccmonst			; skip if player off
@@ -1764,11 +1804,11 @@ ccnxmon:inx
 	bne ccmonlp			; next monster/monster-shot
 ccx:	rts
 ; -------------------------------------------------------------------------------------------------
-; $
+; Table for MSB
 BitTable:  
 	!byte $01, $02, $04, $08, $10, $20, $40, $80
 ; -------------------------------------------------------------------------------------------------
-; $eb78 x=sprite, coll1_x, coll1_y = partners
+; $eb78 Collision; x=sprite, coll1_x, coll1_y = partners
 Collision:
 	lda collision_mob
 	and BitTable,x			; isolate collision sprite bit
@@ -1843,91 +1883,98 @@ cchkhit:sec
 collx00:clc
 	rts				; return no hit c=0
 ; -------------------------------------------------------------------------------------------------
-; $ebfe start monster shot
+; $ebfe Start monster shot
 MonsterShot:
 	lda sprite_state
-	bpl sh010			; branch if player sprite on
+	bpl shplok			; branch if player sprite on
 	rts
 ; $ec03
-sh010:	lda sprite_state+6		; branch if monster shot on
-	bne sh020
+shplok:	lda sprite_state+6
+	bne shshot			; branch if no shot in progress
 	rts
 ; $ec08
-sh020:	lda unknown1
-	bmi sh030
+shshot:	lda hit_target3
+	bmi shcheck			; check monsters
 	lda timer2
 	and #$0f
-	beq sh030
+	beq shcheck			; check monsters
 	rts
-
-sh030:	ldx #1				; check all monsters
+; check monster on?
+shcheck:ldx #1				; check all monsters
 shlp1:	lda sprite_state,x
-	bpl sh040			; branch if monster on
-lec19:  inx
-	cpx #6
-	bne shlp1			; neext monster
+	bpl shmonon			; branch if monster on
+shnextm:inx
+	cpx #6				; last monster ?
+	bne shlp1			; next monster
 	rts
-; $ec1f
-sh040:	txa
-	asl
+; $ec1f check if same x or y pos with worrior
+shmonon:txa
+	asl				; cal x pos for monster
 	tay
 	lda VIC64+MOBX
-	cmp VIC64+MOBX,y
-	beq sh100
+	cmp VIC64+MOBX,y		; compare with worrior
+	beq shv				; if x same -> shoot vertical
+; horizontal
 	lda VIC64+MOBY
-	cmp VIC64+MOBY,y
-	bne lec19
+	cmp VIC64+MOBY,y		; compare y
+	bne shnextm			; if not same -> check next monster
+; find h direction
 	lda VIC64+MOBX
-	cmp VIC64+MOBX,y
+	cmp VIC64+MOBX,y		; compare x
 	lda VIC64+MOBMSB
-	and #$01
-	bne sh050
+	and #$01			; check worrior x msb
+	bne shwmsb			; branch if set
+; worrior x msb = 0
 	lda VIC64+MOBMSB
+	and BitTable,x			; check monster x msb 
+	bne shmmsb
+	beq shh				; both msb clear
+; worrior x msb = 1
+shwmsb:	lda VIC64+MOBMSB
 	and BitTable,x
-	bne sh060
-	beq sh080
-sh050:  lda VIC64+MOBMSB
-	and BitTable,x
-	bne sh080
-sh060:  bcc sh070
-	clc
-	bcc sh080
-sh070:  sec
-sh080:  lda #$04
-	bcs sh090
-	lda #$03
-sh090:  sta unknown7
+	bne shh				; both msb set
+; x msb's are different
+shmmsb:	bcc shright
+	clc				; C = 0 left
+	bcc shh
+shright:sec
+shh:	lda #4				; right if C = 1
+	bcs shhoriz
+	lda #3				; left
+shhoriz:sta monster_shot_dir
 	lda #$fd
-	sta unknown6
-	bne sh120
-sh100:  lda VIC64+MOBY
+	sta sprite_data+6		; set pattern horizontal
+	bne shset			; always
+; vertical
+shv:	lda VIC64+MOBY
 	cmp VIC64+MOBY,y
-	lda #$02
-	bcs sh110
-	lda #$01
-sh110:  sta unknown7
+	lda #2				; down
+	bcs shverti
+	lda #1				; up
+
+shverti:sta monster_shot_dir
 	lda #$fe
-	sta unknown6
-sh120:  lda #$00
-	sta sprite_state+6
-	lda VIC64+MOBX,y
+	sta sprite_data+6		; set pattern vertical
+shset:  lda #$00
+	sta sprite_state+6		; set state on
+	lda VIC64+MOBX,y		; set position
 	sta VIC64+MOBX+12
 	lda VIC64+MOBY,y
 	sta VIC64+MOBY+12
 	lda VIC64+MOBMSB
-	and BitTable,x
-	beq sh130
-	lda VIC64+MOBMSB
+	and BitTable,x			; check x msb
+	beq shclmsb
+	lda VIC64+MOBMSB		; set x msb
 	ora #$40
-	bne sh140
-sh130:  lda VIC64+MOBMSB
+	bne shenabl
+shclmsb:lda VIC64+MOBMSB
 	and #$bf
-sh140:  sta VIC64+MOBMSB
+shenabl:sta VIC64+MOBMSB
 	lda VIC64+MOBENA
 	ora #$40
 	sta VIC64+MOBENA		; enable monster shot
-	lda unknown7
-	sta monster2,x
+	lda monster_shot_dir
+	sta monster_dir-1,x
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $ecab move monster shot and disable if reaching wall
@@ -1957,7 +2004,7 @@ mms10:	lda VIC64+MOBMSB
 mms20:	lda VIC64+MOBX+12
 	cmp #$42
 	bcs msdisab
-mms30:  lda unknown7
+mms30:  lda monster_shot_dir
 	cmp #$03
 	bcc mms50
 	bne mms40
@@ -2395,6 +2442,7 @@ StartScreenData:
 	!byte $8a, $a0, $00, $09, $a8, $00, $08, $a8
 	!byte $00, $0a, $8a, $00, $00, $0a, $00, $00
 	!byte $0a, $00, $00, $02, $00, $00, $00, $00
+; Burwor
 ; $e9 monster 100 blue right
 	!byte $00, $a0, $00, $00, $28, $00, $a0, $2a
 	!byte $00, $a0, $ad, $80, $a0, $2d, $80, $a0
@@ -2431,6 +2479,7 @@ StartScreenData:
 	!byte $2a, $28, $0a, $a0, $08, $0a, $a0, $08
 	!byte $0a, $00, $00, $0a, $00, $00, $00, $00
 	!byte $00, $00, $00, $00, $00, $00, $00, $00
+; Gorwor
 ; $ed monster 200 yellow right
 	!byte $00, $00, $00, $00, $00, $00, $30, $0f
 	!byte $c0, $30, $0d, $c0, $30, $3d, $f0, $30
@@ -2467,6 +2516,7 @@ StartScreenData:
 	!byte $ff, $00, $03, $ff, $c0, $00, $ff, $c0
 	!byte $00, $ff, $c0, $00, $33, $f0, $ff, $30
 	!byte $f0, $00, $f0, $20, $00, $00, $00, $00
+; Thorwor
 ; $f1 monster 300 cyan right
 	!byte $00, $00, $00, $0a, $80, $a8, $0a, $80
 	!byte $a8, $08, $02, $80, $08, $02, $80, $08
@@ -2503,6 +2553,7 @@ StartScreenData:
 	!byte $aa, $00, $20, $aa, $08, $20, $aa, $08
 	!byte $20, $aa, $a8, $2a, $aa, $a8, $2a, $aa
 	!byte $00, $00, $aa, $00, $00, $28, $00, $00
+; Worlok
 ; $f5 monster 400 yellow uni
 	!byte $00, $00, $00, $0c, $00, $30, $03, $00
 	!byte $c0, $00, $c3, $00, $00, $41, $00, $01
@@ -2539,7 +2590,7 @@ StartScreenData:
 	!byte $c2, $00, $00, $00, $a0, $08, $00, $0c
 	!byte $00, $30, $00, $00, $c2, $00, $03, $00
 	!byte $00, $00, $00, $00, $00, $00, $00, $00
-; $f9 mystery right
+; $f9 Wizard of Wor right
 	!byte $00, $08, $00, $00, $28, $00, $00, $2c
 	!byte $00, $00, $2c, $00, $00, $2c, $00, $00
 	!byte $2c, $00, $00, $28, $00, $00, $aa, $50
@@ -2548,7 +2599,7 @@ StartScreenData:
 	!byte $a0, $00, $00, $a0, $00, $00, $a8, $00
 	!byte $00, $a8, $00, $00, $a8, $00, $00, $aa
 	!byte $00, $02, $aa, $80, $02, $aa, $80, $00
-; $fa mystery left
+; $fa Wizard of Wor left
 	!byte $00, $20, $00, $00, $28, $00, $00, $38
 	!byte $00, $00, $38, $00, $00, $38, $00, $00
 	!byte $38, $00, $00, $28, $00, $05, $aa, $00
@@ -2557,7 +2608,7 @@ StartScreenData:
 	!byte $0a, $00, $00, $0a, $00, $00, $2a, $00
 	!byte $00, $2a, $00, $00, $2a, $00, $00, $aa
 	!byte $00, $02, $aa, $80, $02, $aa, $80, $00
-; $fb mystery down
+; $fb Wizard of Wor down
 	!byte $00, $00, $00, $00, $00, $00, $00, $00
 	!byte $00, $00, $00, $00, $20, $00, $00, $20
 	!byte $00, $00, $2a, $a8, $00, $2a, $aa, $80
@@ -2566,7 +2617,7 @@ StartScreenData:
 	!byte $02, $00, $20, $02, $00, $20, $01, $00
 	!byte $00, $01, $00, $00, $01, $00, $00, $00
 	!byte $00, $00, $00, $00, $00, $00, $00, $00
-; $fc mystery up
+; $fc Wizard of Wor up
 	!byte $00, $00, $00, $00, $00, $00, $00, $00
 	!byte $00, $00, $40, $00, $00, $40, $00, $00
 	!byte $40, $08, $00, $80, $08, $00, $80, $08
