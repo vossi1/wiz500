@@ -2050,7 +2050,7 @@ mmsx:	rts
 
 mmswall:jmp msdisab			; shot off
 ; -------------------------------------------------------------------------------------------------
-; $ed31 play sound no. x
+; $ed31 play sound no. .x
 PlaySound:
 	cmp #1
 	bne pls02
