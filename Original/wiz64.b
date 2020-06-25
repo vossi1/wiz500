@@ -1,21 +1,12 @@
 ; Disassembled by Vossi 05/2020
 ; Prepared for ACME reassembling
 ; Comments, Labels by Vossi 06/2020
-; Converted for P500 by Vossi 06/2020
 !cpu 6502
 ; switches
-
-!to "wiz500.rom", plain
+;CRT = 1        ; CRT header for VICE
+!ifdef CRT {!to "wiz64.crt", plain
+} else{ !to "wiz64.rom", plain }
 !cpu 6502
-; ########################################### TODO ################################################
-;
-;
-; ########################################### BUGS ################################################
-;
-; ######################################### P500 MODS #############################################
-; Indirect reg standard = $15, switch only to $0 for game indirect pointer instructions 
-; ******************************************* INFO ************************************************
-; ******************************************* FONT ************************************************
 ; ***************************************** CONSTANTS *********************************************
 FILL		= $aa	; fills free memory areas with $aa
 NOPCODE		= $ea	; nop instruction for fill
@@ -111,29 +102,15 @@ SDR		= $C	; Serial data register
 ICR		= $D	; Interrupt control register
 CRA		= $E	; Control register A
 CRB		= $F	; Control register B
-; ************************************** P500 ADDRESSES *******************************************
-!addr CodeBank          = $00		; code bank register
-!addr IndirectBank      = $01		; indirect bank register
-!addr ScreenRAMbase	= $0400		; screen matrix
-!addr SpritePointer	= $07f8		; sprite data pointer
-!addr CharROMbase       = $c000		; Character ROM
-!addr ColorRAMbase      = $d400		; Color RAM
-!addr VICbase           = $d800		; VIC
-!addr SIDbase           = $da00		; SID
-!addr CIAbase           = $dc00		; CIA
-!addr TPI1base          = $de00		; TPI1
-!addr TPI2base          = $df00		; TPI2
-!addr HW_IRQ            = $fffe		; System IRQ Vector
-!addr HW_NMI            = $fffa		; System NMI Vector
-SH = >ScreenRAMbase			; Highbyte Screen RAM base
-; *************************************** C64 ADDRESSES *******************************************
+; ***************************************** ADDRESSES *********************************************
 !addr CPUPort64         = $01		; 6510 CPU port
 !addr VIC64		= $d000		; VIC
 !addr SID64		= $d400		; SID
 !addr ColorRAM64        = $d800		; Color RAM
 !addr CIA64		= $dc00		; CIA
-; ************************************** USER ADDRESSES *******************************************
-
+!addr ScreenRAMbase	= $0400		; screen matrix
+!addr SpritePointer	= $07f8		; sprite data pointer
+SH = >ScreenRAMbase			; Highbyte Screen RAM base
 ; ***************************************** ZERO PAGE *********************************************
 !addr score		= $02		; 3bytes score
 !addr highscore		= $05		; 3bytes highscore
@@ -198,22 +175,21 @@ SH = >ScreenRAMbase			; Highbyte Screen RAM base
 !addr sound4		= $75
 !addr bonus_player	= $76
 !addr monster_shot_dir	= $77
-; ***************************************** VARIABLES *********************************************
-; ************************************** P500 ZERO PAGE *******************************************
-!addr ColorRAM0         = $e6
-!addr ColorRAM1         = $e8
-!addr ColorRAM2         = $ea
-!addr ColorRAM3         = $ec
-!addr VIC               = $ee
-!addr VIC01             = $f0
-!addr VIC27             = $f2
-!addr SID               = $f4
-!addr CIA               = $f6
-!addr TPI1              = $f8
-!addr TPI2              = $fa
-!addr CharROM0          = $fc
-!addr CharROM1          = $fe
-; ****************************************** MACROS ***********************************************
+; **************************************** CRT HEADER *********************************************
+!zone crt
+!ifdef  CRT{
+*= $dfb0
+!byte $43, $36, $34, $20, $43, $41, $52, $54
+!byte $52, $49, $44, $47, $45, $20, $20, $20
+!byte $00, $00, $00, $40, $01, $00, $00, $00
+!byte $01, $00, $00, $00, $00, $00, $00, $00
+!byte $00, $00, $00, $00, $00, $00, $00, $00
+!byte $00, $00, $00, $00, $00, $00, $00, $00
+!byte $00, $00, $00, $00, $00, $00, $00, $00
+!byte $00, $00, $00, $00, $00, $00, $00, $00
+!byte $43, $48, $49, $50, $00, $00, $20, $10
+!byte $00, $00, $00, $00, $e0, $00, $20, $00
+}
 ; ***************************************** ZONE CODE *********************************************
 !zone code
 !initmem FILL

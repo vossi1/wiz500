@@ -1,0 +1,4 @@
+#!/bin/sh
+acme -v wiz64.b
+diff -s wiz64.rom /wizard.rom
+cmp wiz64.rom wizard.rom
