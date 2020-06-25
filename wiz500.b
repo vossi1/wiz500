@@ -4,8 +4,8 @@
 ; Converted for P500 by Vossi 06/2020
 !cpu 6502
 ; switches
-
-!to "wiz500.rom", plain
+!ct pet
+!to "wiz500.prg", cbm
 !cpu 6502
 ; ########################################### TODO ################################################
 ;
