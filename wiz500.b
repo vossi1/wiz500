@@ -142,7 +142,7 @@ SH = >ScreenRAMbase			; Highbyte Screen RAM base
 !addr key		= $08		; pressed key/joystick
 !addr coll1_x		= $09		; 16bit pointer
 !addr ptr2		= $0b		; 16bit pointer
-!addr temp1		= $0d
+!addr temp1		= $0d		; used in screen copy routine and for debounce
 !addr temp2		= $0e
 ; double usage: collision
 !addr coll1_x		= $09
@@ -319,24 +319,14 @@ decwor:	dec players			; decrease lives
 ; $e0c5 Checks F1 key for game start
 ;   returns .a = $01 if F1 pressed
 CheckF1Key:
-	lda #$fe
-	ldy #1
-	sta (TPI2),y			; set TPI2 port B keyboard out 0 for F1 column
-	iny
-f1deb:	lda (TPI2),y			; load TPI2 port C
-	sta temp1
-	lda (TPI2),y
-	cmp temp1
-	bne f1deb			; debounce
+	ldx #$fe
+	jsr chkkey			; output .x to keyboard 0-7 and returns input in .x
+	txa
 	and #$01			; isolate bit#1 F1
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $e0db Check joystick and keyboard movement/fire
 CheckJoyKey:
-	ldx #$ff
-	stx CIA64+DDRA			; port a output
-	inx
-	stx CIA64+DDRB			; port b input
 	lda #$1f			; init key value
 	ldx #$df
 	jsr chkkey
@@ -365,11 +355,19 @@ chkrght:ldx #$bf
 	and #$f7			; clear bit #3
 chkx:	sta key				; store key
 	jmp chkjoy
-; $e120 check cia
-chkkey:	stx CIA64+PRA
-debounc:ldx CIA64+PRB
-	cpx CIA64+PRB
-	bne debounc
+; check tpi2
+chkkey:	pha				; remember key var
+	txa				; move output key value to .a
+	ldy #1
+	sta (TPI2),y			; set TPI2 port B keyboard out 0-7
+	iny
+debounc:lda (TPI2),y			; load TPI2 port C
+	sta temp1
+	lda (TPI2),y
+	cmp temp1
+	bne debounc			; debounce
+	tax				; key input to .x
+	pla				; restore key var
 	rts
 ; $e12c check joystick
 chkjoy:	ldx #$00
@@ -960,7 +958,7 @@ sschkf1:jsr CheckF1Key			; check f1 key pressed
 	sta (VIC),y
 	rts
 ; -------------------------------------------------------------------------------------------------
-; $e51a Start screen tables
+; Start screen tables
 StartScreenMonsterVpos:
 	!byte $52, $6a, $82, $9a, $b2
 StartScreenMonsterData:
@@ -968,7 +966,7 @@ StartScreenMonsterData:
 StartScreenMonsterRLimit:
 	!byte $db, $dc, $db, $dc, $db
 ; -------------------------------------------------------------------------------------------------
-; $e529 interrupt handler
+; Interrupt handler
 Interrupt:
 	pha
 	tya
@@ -997,17 +995,17 @@ irqx:	pla
 	pla
 	rti
 ; -------------------------------------------------------------------------------------------------
-; $e535 Move worrior sprite
+; Move worrior sprite
 MoveWorrior:
 	lda timer2
 	and #$01
 	beq mwtime			; time to move worrior
 	rts
-; $e53c time for worrior
+; time for worrior
 mwtime:	lda sprite_state		; worrior state
 	bpl mwon			; branch if worrior on (not dead)
 	rts
-; $e541 move worrior
+; move worrior
 mwon:	jsr CheckJoyKey			; check movement
 	lda #$00
 	sta sprite_xreg			; store xregs for worrior sprite
@@ -1029,11 +1027,11 @@ mwon:	jsr CheckJoyKey			; check movement
 mwstpat:sta sprite_data			; store sprite pattern
 	rts
 ; -------------------------------------------------------------------------------------------------
-; $e56a Worrior patterns for direction 0 - 4
+; Worrior patterns for direction 0 - 4
 WorriorSpriteTable:  
 	!byte $00, $e8, $e7, $e6, $e5
 ; -------------------------------------------------------------------------------------------------
-; $e56f Move sprite (sprite_xreg, _xmsb, _dir)
+; Move sprite (sprite_xreg, _xmsb, _dir)
 MoveSprite:
 	ldx sprite_xreg
 	lda #$00
