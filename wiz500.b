@@ -917,35 +917,37 @@ sswait	lda timer
 	and #$1f			; delay next movement
 	bne sschkf1
 ; move monsters
-	ldy #4				; move 5 monsters
-ssright:tya			
+	ldx #4				; move 5 monsters
+ssright:txa			
 	asl
-	tax
-	lda sprite_state+1,y
+	clc
+	adc #2				; start with sprite 1
+	tay
+	lda sprite_state+1,x
 	beq ssleft
-	inc VIC64+MOBX+2,x		; move monsters right
-	lda VIC64+MOBX+2,x
-	cmp StartScreenMonsterRLimit,y	; check if right limit
+	lda (VIC),y
+	clc
+	adc #1				; move monsters right
+	sta (VIC),y
+	cmp StartScreenMonsterRLimit,x	; check if right limit
 	bcc ssnxspr
 	lda #$00
-	sta sprite_state+1,y		; set left direction
-	cpy #3
+	sta sprite_state+1,x		; set left direction
+	cpx #3
 	beq ssnxspr			; skip if monster #3 (unidir monster)
-	tya
-	tax
 	inc SpritePointer+1,x		; turn monster sprite left
 	bne ssnxspr
-ssleft:	dec VIC64+MOBX+2,x		; move monster left
-	lda VIC64+MOBX+2,x
+ssleft:	lda (VIC),y
+	sec
+	sbc #1				; move monster left
+	sta (VIC),y
 	cmp #$d7
 	bcs ssnxspr			; skip if left limit not reached
-	sta sprite_state+1,y		; set right dir
-	cpy #3
+	sta sprite_state+1,x		; set right dir
+	cpx #3
 	beq ssnxspr			; skip if monster #3 (unidir monster)
-	tya
-	tax
 	dec SpritePointer+1,x		; turn monster sprite right
-ssnxspr:dey
+ssnxspr:dex
 	bpl ssright
 sschkf1:jsr CheckF1Key			; check f1 key pressed
 	cpy #$00
@@ -984,7 +986,12 @@ Interrupt:
 	lda (CIA),y			; load irq-reg
 	and #$02
 	beq irqx			; skip if not timer b
-	inc timer			; inc timer
+	inc timer
+	inc timer
+;	lda timer			; inc timer
+;	clc
+;	adc #4
+;	sta timer
 irqx:	pla
 	sta IndirectBank
 	pla
@@ -2460,8 +2467,8 @@ iniiolp:lda IOPointerTable,x            ; copy 8 IO pointer to ZP
 	lda #$01
 	ldy #CRB
 	sta (CIA),y			; timer b phi2, cont, start
-	lda #$60
-;	lda #$38
+	lda #$70		; ***** 2 times slower because longer interrupt routine
+				; ***** compensateed with 4xinc in irq-sub
 	ldy #TBLO
 	sta (CIA),y			; timer b prescaler = 56
 	lda #$00
