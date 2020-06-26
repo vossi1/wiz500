@@ -272,7 +272,7 @@ newlev:	txa
 
 GameLoop:
 	lda timer
-	bne GameLoop			; wait 1 inc of timer
+	bne GameLoop			; wait 1 loop of timer
 	jsr CopySpritePointer		; copies all sprites data pointers to the vic pointers
 	lda VIC64+MOBMOB
 	sta collision_mob		; save mob-mob collision
@@ -317,19 +317,19 @@ decwor:	dec players			; decrease lives
 	jmp GameOver			; game over
 ; -------------------------------------------------------------------------------------------------
 ; $e0c5 Checks F1 key for game start
-;   returns .y = 1 if F1 pressed
+;   returns .a = $01 if F1 pressed
 CheckF1Key:
-	ldx #$ff
-	stx CIA64+DDRA			; port a output
-	inx
-	stx CIA64+DDRB			; port b input
-	ldy #$00			; clear .y
-	ldx #$fe
-	jsr chkkey
-	cpx #$ef
-	bne chkf1x
-	iny				; returns 1 if F1 pressed
-chkf1x:	rts
+	lda #$fe
+	ldy #1
+	sta (TPI2),y			; set TPI2 port B keyboard out 0 for F1 column
+	iny
+f1deb:	lda (TPI2),y			; load TPI2 port C
+	sta temp1
+	lda (TPI2),y
+	cmp temp1
+	bne f1deb			; debounce
+	and #$01			; isolate bit#1 F1
+	rts
 ; -------------------------------------------------------------------------------------------------
 ; $e0db Check joystick and keyboard movement/fire
 CheckJoyKey:
@@ -872,7 +872,7 @@ StartScreen:
 	ldy #EXTCOL
 	sta (VIC),y			; set ext cyan
 	lda #WHITE
-	ldy #BGRCOL
+	iny
 	sta (VIC),y			; set bgr white
 	ldy #>StartScreenData
 	ldx #<StartScreenData
@@ -910,11 +910,11 @@ ssinspr:txa
 
 sssprlp:lda timer			; wait
 	bne sssprlp
-sswait	lda timer
+sswait:	lda timer
 	bne sswait
 	inc delay
 	lda delay
-	and #$1f			; delay next movement
+	and #$3f			; delay next movement
 	bne sschkf1
 ; move monsters
 	ldx #4				; move 5 monsters
@@ -950,13 +950,14 @@ ssleft:	lda (VIC),y
 ssnxspr:dex
 	bpl ssright
 sschkf1:jsr CheckF1Key			; check f1 key pressed
-	cpy #$00
-	beq sssprlp			; continue movement, if not F1 pressed
+	bne sssprlp			; continue movement, if not F1 pressed
 ; game screen colors
-	lda #BLACK			; set game bgr+ext colors
-	sta VIC64+BGRCOL
-	lda #BLUE
-	sta VIC64+EXTCOL
+	lda #BLUE			; set game bgr+ext colors
+	ldy #EXTCOL
+	sta (VIC),y
+	lda #BLACK
+	iny
+	sta (VIC),y
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $e51a Start screen tables
@@ -981,17 +982,14 @@ Interrupt:
 	beq irqx
 	lda #$00
 	sta (TPI1),y			; pop interrupt
-;	cli
 	ldy #ICR
 	lda (CIA),y			; load irq-reg
 	and #$02
 	beq irqx			; skip if not timer b
-	inc timer
-	inc timer
-;	lda timer			; inc timer
-;	clc
-;	adc #4
-;	sta timer
+	lda timer
+	clc
+	adc #4				; timer +=4
+	sta timer
 irqx:	pla
 	sta IndirectBank
 	pla
@@ -2467,8 +2465,7 @@ iniiolp:lda IOPointerTable,x            ; copy 8 IO pointer to ZP
 	lda #$01
 	ldy #CRB
 	sta (CIA),y			; timer b phi2, cont, start
-	lda #$70		; ***** 2 times slower because longer interrupt routine
-				; ***** compensateed with 4xinc in irq-sub
+	lda #$e0	; ***** x4 slower because longer irq handler > compensated with timer +=4
 	ldy #TBLO
 	sta (CIA),y			; timer b prescaler = 56
 	lda #$00
