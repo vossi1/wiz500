@@ -863,7 +863,8 @@ psx:	rts
 ; $e474 Start screen - exit with F1 only
 StartScreen:
 	lda #$00
-	sta VIC64+MOBENA		; disable all sprites
+	ldy #MOBENA
+	sta (VIC),y			; disable all sprites
 	lda #BLUE
 	sta color
 	jsr ClearScreen			; clear screen with blue chars
@@ -880,23 +881,32 @@ StartScreen:
 	ldx #$04
 ssinspr:txa
 	asl
+	clc
+	adc #2				; start with sprite 1
 	tay
 	lda #$d7			; sprite start h pos
 	sta sprite_state+1,x		; set right direction = $d7
-	sta VIC64+MOBX+2,y		; setup monsters sprites 1-5
+	sta (VIC),y			; setup monsters sprites 1-5
 	lda StartScreenMonsterVpos,x
-	sta VIC64+MOBY+2,y
+	iny				; y pos
+	sta (VIC),y
 	lda StartScreenMonsterData,x
 	sta SpritePointer+1,x
+	txa
+	clc
+	adc #MOBCOL+1			; calc monster sprite color reg
+	tay
 	lda MonsterColorTable,x
-	sta VIC64+MOBCOL+1,x
+	sta (VIC),y
 	dex
 	bpl ssinspr			; setup next sprite
 
 	lda #$00
-	sta VIC64+MOBMSB		; clear sprite x-msb
+	ldy #MOBMSB
+	sta (VIC),y			; clear sprite x-msb
 	lda #$3e
-	sta VIC64+MOBENA		; enable monsters
+	ldy #MOBENA
+	sta (VIC),y			; enable monsters
 
 sssprlp:lda timer			; wait
 	bne sssprlp
