@@ -15,7 +15,7 @@
 ; ######################################### P500 MODS #############################################
 ; Indirect reg standard = $15, switch only to $0 for game indirect pointer instructions 
 ; ******************************************* INFO ************************************************
-; ******************************************* FONT ************************************************
+
 ; ***************************************** CONSTANTS *********************************************
 FILL		= $aa	; fills free memory areas with $aa
 NOPCODE		= $ea	; nop instruction for fill
@@ -111,11 +111,13 @@ SDR		= $C	; Serial data register
 ICR		= $D	; Interrupt control register
 CRA		= $E	; Control register A
 CRB		= $F	; Control register B
+; tpi
+AIR		= $7
 ; ************************************** P500 ADDRESSES *******************************************
 !addr CodeBank          = $00		; code bank register
 !addr IndirectBank      = $01		; indirect bank register
-!addr ScreenRAMbase	= $0400		; screen matrix
-!addr SpritePointer	= $07f8		; sprite data pointer
+!addr ScreenRAMbase	= $c400		; screen matrix
+!addr SpritePointer	= $c7f8		; sprite data pointer
 !addr CharROMbase       = $c000		; Character ROM
 !addr ColorRAMbase      = $d400		; Color RAM
 !addr VICbase           = $d800		; VIC
@@ -223,18 +225,6 @@ start:	sei				; disable interrupts
 	cld
 	ldx #$ff			; init stack
 	txs
-; init vic regs
-	ldx #$2e
-viclp:	lda VICRegs,x
-	sta VIC64+MOBX,x
-	dex
-	bpl viclp
-; init sid regs
-	ldx #$18
-sidlp:	lda SIDRegs,x
-	sta SID64,x
-	dex
-	bpl sidlp
 ; clear ram
 	ldx #$00
 	txa
@@ -243,17 +233,22 @@ clramlp:sta $02,x			; zp
 	sta $0300,x			; page 3
 	inx
 	bne clramlp
-; init i/o
-	lda #$1f
-	sta CIA64+ICR			; clear all irq
-	lda #$82
-	sta CIA64+ICR			; set irq timer b
-	lda #$01
-	sta CIA64+CRB			; timer b phi2, cont, start
-	lda #$38
-	sta CIA64+TBLO			; timer b prescaler = 56
-	lda #$00
-	sta CIA64+TBHI
+
+	jsr Init			; init IO Pointer, IO-regs
+; init vic regs
+	ldy #0
+viclp:	lda VICRegs,y
+	sta (VIC),y
+	iny
+	cpy #SIDRegs-VICRegs
+	bne viclp
+; init sid regs
+	ldy #0
+sidlp:	lda SIDRegs,y
+	sta (SID),y
+	iny
+	cpy #Maze1-SIDRegs
+	bne sidlp
 	cli				; enable irq
 
 StartNew:
@@ -956,11 +951,22 @@ StartScreenMonsterRLimit:
 ; $e529 interrupt handler
 Interrupt:
 	pha
-	lda CIA64+ICR			; load irq-reg
+	tya
+	pha
+	ldy #AIR
+	lda (TPI1),y
+	beq irqx
+	lda #$fb
+	sta (TPI1),y			; pop interrupt
+	cli
+	ldy #ICR
+	lda (CIA),y			; load irq-reg
 	and #$02
 	beq irqx			; skip if not timer b
 	inc timer			; inc timer
 irqx:	pla
+	tay
+	pla
 	rti
 ; -------------------------------------------------------------------------------------------------
 ; $e535 Move worrior sprite
@@ -2185,32 +2191,8 @@ us60:	sta sound1
 	lda Notes+1,x
 	sta SID64+V1HI
 usx:	rts
-; ***************************************** ZONE NOTES ********************************************
-!zone notes
 ; $ee43
-Sound1: !byte $30, $40, $18, $04, $18, $03, $18, $02, $18
-; $ee4c
-Sound2:	!byte $01, $00, $08, $04, $08, $19, $08, $03, $08
-; $ee55
-Sound3:	!byte $01, $00, $04, $04, $04, $19, $04, $03, $04
 
-	!byte $01, $00
-; $ee60
-Notes:
-	!byte $00, $00, $0d, $0a, $72, $0b, $20, $0c
-	!byte $d6, $0c, $9c, $0d, $65, $0e, $46, $0f
-	!byte $2f, $10, $25, $11, $2a, $12, $3f, $13
-	!byte $64, $14, $9a, $15, $e3, $16, $3f, $18
-	!byte $b1, $19, $38, $1b, $d6, $1c, $8d, $1e
-	!byte $5e, $20, $4b, $22, $55, $24, $7e, $26
-	!byte $c8, $28, $34, $2b, $c6, $2d, $7f, $30
-	!byte $61, $33, $6f, $36, $ac, $39, $1a, $3d
-	!byte $bc, $40, $95, $44, $a9, $48, $fc, $4c
-	!byte $a1, $51, $69, $56, $8c, $5b, $fe, $60
-	!byte $c2, $66, $df, $6c, $58, $73, $34, $7a
-	!byte $78, $81, $2b, $89, $53, $91, $f7, $99
-	!byte $1f, $a3
-; $eec2
 ; ***************************************** ZONE FONT *********************************************
 !zone font
 *= $f000
@@ -2267,7 +2249,7 @@ VICRegs:
 	!byte $00, $00, $00, $00, $00, $00, $00, $00
 	!byte $00, $00, $00, $00, $00, $00, $00, $00
 	!byte $00, $1b, $00, $00, $00, $00, $0b, $00	; display on, 25 rows, 40 columns
-	!byte $1d, $ff, $00, $00, $ff, $00, $00, $00	; VM = $0400, CB = $f000, multicolor sprites
+	!byte $1d, $ff, $00, $00, $ff, $00, $00, $00	; VM = $c400, CB = $f000, multicolor sprites
 	!byte $06, $00, $00, $00, $00, $02, $07, $06	; sprite_mcm_color0 = red, _color1 = yellow
 	!byte $06, $06, $06, $06, $06, $06, $06
 ; $f19f initial sid reg values
@@ -2390,7 +2372,95 @@ StartScreenData:
 	!byte $09, $02, $00, $0c, $22, $00, $0c, $0b
 	!byte $16, $16, $22, $23, $17, $13, $0e, $20
 	!byte $0b, $22, END
+; ***************************************** ZONE NOTES ********************************************
+!zone notes
 ; $f4bd
+Sound1: !byte $30, $40, $18, $04, $18, $03, $18, $02, $18
+Sound2:	!byte $01, $00, $08, $04, $08, $19, $08, $03, $08
+Sound3:	!byte $01, $00, $04, $04, $04, $19, $04, $03, $04
+
+	!byte $01, $00
+
+Notes:	!byte $00, $00, $0d, $0a, $72, $0b, $20, $0c
+	!byte $d6, $0c, $9c, $0d, $65, $0e, $46, $0f
+	!byte $2f, $10, $25, $11, $2a, $12, $3f, $13
+	!byte $64, $14, $9a, $15, $e3, $16, $3f, $18
+	!byte $b1, $19, $38, $1b, $d6, $1c, $8d, $1e
+	!byte $5e, $20, $4b, $22, $55, $24, $7e, $26
+	!byte $c8, $28, $34, $2b, $c6, $2d, $7f, $30
+	!byte $61, $33, $6f, $36, $ac, $39, $1a, $3d
+	!byte $bc, $40, $95, $44, $a9, $48, $fc, $4c
+	!byte $a1, $51, $69, $56, $8c, $5b, $fe, $60
+	!byte $c2, $66, $df, $6c, $58, $73, $34, $7a
+	!byte $78, $81, $2b, $89, $53, $91, $f7, $99
+	!byte $1f, $a3
+; ***************************************** ZONE P500 *********************************************
+!zone code500
+; $f53c	P500 I/O pointer init
+Init:
+	lda #SYSTEMBANK
+	sta IndirectBank                ; select bank 15
+	ldx #0
+iniiolp:lda IOPointerTable,x            ; copy 8 IO pointer to ZP
+	sta ColorRAM0,x
+	inx
+	cpx #IOPointerEnd-IOPointerTable; number of IO pointers
+	bne iniiolp
+	
+	ldy #$06
+	lda (TPI1),y                    ; load TRI1 control register
+	and #$0f                        ; clear CA, CB control bits#4-7 vic bank 0/15 select 
+	ora #$a0                        ; set bit#5,4=10 CA=low -> Video matrix in bank 0
+	sta (TPI1),y                    ; set bit#7,6=10 CB=high -> Characterset in bank 0 
+	ldy #$02
+	lda (TPI2),y                    ; load TPI2 port c
+	ora #$c0                        ; set bit#6,7 vic 16k select bank $c000-$ffff
+	sta (TPI2),y                    ; store to TPI2 port c
+;	lda #$1c
+;	ldy #$18                        ; VIC reg $18 memory pointers
+;	sta (VIC),y                     ; set VM13-10=$1 screen at $c400, CB13,12,11,x=1100 char at $f000
+;	lda #$7f                        ; bit#7=0 clears/mask out all 5 irq sources with bit#0-4 = 1
+;	ldy #$0d                        ; CIA interrupt control register
+;	sta (CIA),y                     ; disable all hardware interrupts
+	lda #$04
+	ldy #$05
+	sta (TPI1),y                    ; set TPI1 reg $5 interrupt mask reg = $04 - enable CIA irq
+	lda #$ff
+	ldy #$00
+	sta (TPI2),y                    ; reset TPI2 port a to no column
+
+	lda #$1f
+	ldy #ICR
+	sta (CIA),y			; clear all irq
+	lda #$82
+	sta (CIA),y			; set irq timer b
+	lda #$01
+	ldy #CRB
+	sta (CIA),y			; timer b phi2, cont, start
+	lda #$38
+	ldy #TBLO
+	sta (CIA),y			; timer b prescaler = 56
+	lda #$00
+	ldy #TBHI
+	sta (CIA),y
+	rts	
+; -------------------------------------------------------------------------------------------------
+; I/O pointer table
+IOPointerTable:
+	!word ColorRAMbase
+	!word ColorRAMbase+$100
+	!word ColorRAMbase+$200
+	!word ColorRAMbase+$300
+	!word VICbase
+	!word VICbase+1
+	!word VICbase+$27
+	!word SIDbase
+	!word CIAbase
+	!word TPI1base
+	!word TPI2base
+	!word CharROMbase
+	!word CharROMbase+$100
+IOPointerEnd:
 ; **************************************** ZONE SPRITES *******************************************
 !zone sprites ; sprite data $e5 - $fe
 *= $f940
