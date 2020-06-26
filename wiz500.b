@@ -469,6 +469,8 @@ chksplp:lda sprite_data-1,x
 ; $e1c0 Copies data from xy to address in first two bytes till $ff
 ;   $fd = new line, $fe = new target address, $ff = end
 ScreenCopy:				; copies from .x, .y
+	lda #GAMEBANK
+	sta IndirectBank
 	stx coll1_x
 	sty coll1_x+1
 
@@ -522,6 +524,8 @@ scrline:clc
 
 scrcpyx:lda #0
 	sta move			; store no movement
+	lda #SYSTEMBANK
+	sta IndirectBank
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $e21e Draw game screen
@@ -863,9 +867,12 @@ StartScreen:
 	lda #BLUE
 	sta color
 	jsr ClearScreen			; clear screen with blue chars
+	lda #CYAN
+	ldy #EXTCOL
+	sta (VIC),y			; set ext cyan
 	lda #WHITE
-	sta VIC64+BGRCOL		; set bgr+ext white
-	sta VIC64+EXTCOL
+	ldy #BGRCOL
+	sta (VIC),y			; set bgr white
 	ldy #>StartScreenData
 	ldx #<StartScreenData
 	jsr ScreenCopy			; Copies start screen
@@ -953,18 +960,24 @@ Interrupt:
 	pha
 	tya
 	pha
+	lda IndirectBank
+	pha
+	lda #SYSTEMBANK
+	sta IndirectBank
 	ldy #AIR
 	lda (TPI1),y
 	beq irqx
-	lda #$fb
+	lda #$00
 	sta (TPI1),y			; pop interrupt
-	cli
+;	cli
 	ldy #ICR
 	lda (CIA),y			; load irq-reg
 	and #$02
 	beq irqx			; skip if not timer b
 	inc timer			; inc timer
 irqx:	pla
+	sta IndirectBank
+	pla
 	tay
 	pla
 	rti
@@ -2437,7 +2450,8 @@ iniiolp:lda IOPointerTable,x            ; copy 8 IO pointer to ZP
 	lda #$01
 	ldy #CRB
 	sta (CIA),y			; timer b phi2, cont, start
-	lda #$38
+	lda #$60
+;	lda #$38
 	ldy #TBLO
 	sta (CIA),y			; timer b prescaler = 56
 	lda #$00
