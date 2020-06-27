@@ -548,6 +548,8 @@ SetupGameScreen:
 	sta maze_line			; reset screen line
 	sta maze_column			; reset screem column
 
+	lda #GAMEBANK
+	sta IndirectBank
 mazelp:	ldy data_ctr
 	lda (mazedata_ptr),y		; load data byte
 	cmp #$19
@@ -575,6 +577,9 @@ mzblank:inc data_ctr			; increase data pointer
 	sta maze_line
 	cmp #21
 	bne mazelp			; repeat if < line 21
+
+	lda #SYSTEMBANK
+	sta IndirectBank
 ; print score
 	lda #$00
 	jsr AddScore			; print zero score
