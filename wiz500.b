@@ -262,7 +262,8 @@ TryAgain:
 	jsr SetupGameScreen		; draw game screen
 	jsr SetupWorrior		; setup player sprite
 	lda #$1f
-	sta SID64+MODVOL		; full volume, filter low pass
+	ldy #MODVOL
+	sta (SID),y			; full volume, filter low pass
 	ldx #1
 	lda state
 	bpl newlev			; start sound 1, if new level (state=0)
@@ -274,9 +275,11 @@ GameLoop:
 	lda timer
 	bne GameLoop			; wait 1 loop of timer
 	jsr CopySpritePointer		; copies all sprites data pointers to the vic pointers
-	lda VIC64+MOBMOB
+	ldy #MOBMOB
+	lda (VIC),y
 	sta collision_mob		; save mob-mob collision
-	lda VIC64+MOBBGR
+	iny				; MOBBGR
+	lda (VIC),y
 	sta collision_bgr		; save mob-bgr collision
 	inc timer2			; inc timer2
 	lda timer2
