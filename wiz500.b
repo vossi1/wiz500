@@ -735,11 +735,14 @@ SetupWorrior:
 	lda #$03
 	sta worrior_dir
 	lda #$01			; set worrior start position
-	sta VIC64+MOBMSB
+	ldy #MOBMSB
+	sta (VIC),y
 	lda #$37
-	sta VIC64+MOBX
+	ldy #MOBX
+	sta (VIC),y
+	iny				; y-pos
 	lda #$ab
-	sta VIC64+MOBY
+	sta (VIC),y
 	lda #$fd
 	sta sprite_data+7		; set shot horizontal pattern
 	ldx #$ff
@@ -748,10 +751,11 @@ SetupWorrior:
 	inx
 	stx sprite_state		; player sprite on
 	stx worrior_shot_dir		; clear worrior shot dir
-	lda VIC64+MOBENA
+	ldy #MOBENA
+	lda (VIC),y
 	ora #$01			; enable worrior sprite
 	and #$7f			; disable player shot
-	sta VIC64+MOBENA
+	sta (VIC),y
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $e39f Monster start positions
