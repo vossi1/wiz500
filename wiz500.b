@@ -432,18 +432,18 @@ guwait:	lda timer
 ; -------------------------------------------------------------------------------------------------
 ; $e187 Clears screen with color
 ClearScreen:  
-	ldx #$00
+	ldy #$00
 clscrlp:lda color			; color
-	sta ColorRAM64,x
-	sta ColorRAM64+$100,x
-	sta ColorRAM64+$200,x
-	sta ColorRAM64+$2e8,x
+	sta (ColorRAM0),y
+	sta (ColorRAM1),y
+	sta (ColorRAM2),y
+	sta (ColorRAM3),y
 	lda #$00			; space
-	sta ScreenRAMbase,x
-	sta ScreenRAMbase+$100,x
-	sta ScreenRAMbase+$200,x
-	sta ScreenRAMbase+$2e8,x
-	inx
+	sta ScreenRAMbase,y
+	sta ScreenRAMbase+$100,y
+	sta ScreenRAMbase+$200,y
+	sta ScreenRAMbase+$2e8,y
+	iny
 	bne clscrlp
 	rts
 ; -------------------------------------------------------------------------------------------------
@@ -666,10 +666,11 @@ InitGame:
 	sta players
 
 	lda #BLUE			; all sprites blue
-	ldx #7
-incollp:sta VIC64+MOBCOL,x
-	dex
-	bpl incollp
+	ldy #MOBCOL
+incollp:sta (VIC),y
+	iny
+	cpy #MOBCOL+8
+	bne incollp
 
 	rts
 ; -------------------------------------------------------------------------------------------------
