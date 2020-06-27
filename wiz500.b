@@ -842,6 +842,9 @@ AddScore:
 ; Print score
 PrintScore:
 	ldy #5
+	lda #GAMEBANK
+	sta IndirectBank
+
 pslp:	lda score,x
 	and #$0f			; clear hinibble
 	clc
@@ -859,6 +862,9 @@ pslp:	lda score,x
 	inx
 	dey
 	bpl pslp
+
+	lda #SYSTEMBANK
+	sta IndirectBank
 ; check bonus player
 	lda score+2
 	cmp #2				; check score
