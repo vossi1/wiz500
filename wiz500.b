@@ -676,8 +676,10 @@ incollp:sta (VIC),y
 ; -------------------------------------------------------------------------------------------------
 ; $e310 Inc level, setup targets, init sprite states
 SetupGame:
-	ldx #$00
-	stx VIC64+MOBENA		; disable sprites
+	lda #$00
+	tax
+	ldy #MOBENA
+	sta (VIC),y			; disable sprites
 
 sg1elp:	lda #$ff
 	sta sprite_state,x		; clear state for all sprites
