@@ -271,9 +271,9 @@ GameLoop:
 	dec state			; state = neg for sound 2 
 nosound:lda delay
 	cmp #$10
-	bcc skipmm
-	jsr MoveMonsters		; move monsters
-skipmm:	jsr WorriorShot			; check and move worrior shot
+	bcc slowmon			; slow monsters
+	jsr MoveMonsters		; move monsters extra for fast-mode
+slowmon:jsr WorriorShot			; check and move worrior shot
 	jsr MoveWorrior			; move worrior
 	jsr MoveMonsters		; move monsters
 	jsr StartMonsters		; check if monsters are off and start new monsters
@@ -450,19 +450,19 @@ chksplp:lda sprite_data-1,x
 ; $e1c0 Copies data from xy to address in first two bytes till $ff
 ;   $fd = new line, $fe = new target address, $ff = end
 ScreenCopy:				; copies from .x, .y
-	stx coll1_x
-	sty coll1_x+1
+	stx ptr1
+	sty ptr1+1
 
 scrnewt:ldy #0				; set pointer1 to new target
 	sty temp2
-	lda (coll1_x),y
+	lda (ptr1),y
 	sta ptr2
 	iny
-	lda (coll1_x),y
+	lda (ptr1),y
 	sta ptr2+1
 
 scrcplp:iny
-	lda (coll1_x),y			; load data byte
+	lda (ptr1),y			; load data byte
 	cmp #$ff
 	beq scrcpyx			; $ff = end
 	cmp #$fe
@@ -483,11 +483,11 @@ scrcplp:iny
 scrtarg:iny
 	clc
 	tya
-	adc coll1_x			; add counter .y to pointer 1
-	sta coll1_x
-	lda coll1_x+1
+	adc ptr1			; add counter .y to pointer 1
+	sta ptr1
+	lda ptr1+1
 	adc #$00
-	sta coll1_x+1
+	sta ptr1+1
 	jmp scrnewt			; copy to new target address
 ; $e206	byte $fd = new line (target +40)
 scrline:clc
@@ -568,8 +568,8 @@ mzblank:inc data_ctr			; increase data pointer
 ; print highscore
 	ldx #$d0			; set screen pointer to highscore
 	ldy #SH+3
-	stx coll1_x
-	sty coll1_x+1
+	stx ptr1
+	sty ptr1+1
 	ldx #$03
 	jsr PrintScore			; print highscore (score+3)
 	rts
@@ -769,8 +769,8 @@ newhisc:lda score			; store new highscore
 	sta highscore+2
 	ldx #$d0			; set screen ptr to highscore
 	ldy #SH+3
-	stx coll1_x
-	sty coll1_x+1
+	stx ptr1
+	sty ptr1+1
 	ldx #3
 	jsr PrintScore
 ; game over - no highscore
@@ -800,8 +800,8 @@ AddScore:
 	cld
 	ldx #$c4			; set screen pointer to score
 	ldy #SH+3
-	stx coll1_x
-	sty coll1_x+1
+	stx ptr1
+	sty ptr1+1
 	ldx #0				; print score
 ; Print score
 PrintScore:
@@ -810,7 +810,7 @@ pslp:	lda score,x
 	and #$0f			; clear hinibble
 	clc
 	adc #1
-	sta (coll1_x),y
+	sta (ptr1),y
 	dey
 	lda score,x
 	lsr
@@ -819,7 +819,7 @@ pslp:	lda score,x
 	lsr
 	clc
 	adc #1
-	sta (coll1_x),y
+	sta (ptr1),y
 	inx
 	dey
 	bpl pslp
@@ -979,7 +979,7 @@ WorriorSpriteTable:
 MoveSprite:
 	ldx sprite_xreg
 	lda #$00
-	sta coll1_x
+	sta ptr1
 	jsr msmove			; move sprite (sprite dir = 0 -> wall reached!)
 	lda sprite_xmsb
 	sta move_xmsb
@@ -1007,12 +1007,12 @@ ms010:	beq ms020
 	beq ms020
 	cmp #$00
 	bcc ms030
-	inc coll1_x
+	inc ptr1
 	sec
 	sbc #$03
 	jmp ms010
 
-ms020:	ldx coll1_x
+ms020:	ldx ptr1
 	lda Table14+13,x
 	ldx sprite_xreg
 	sta VIC64+MOBY,x
@@ -1034,11 +1034,11 @@ ms050:	beq ms060
 	beq ms060
 	cmp #$00
 	bcc ms030
-	inc coll1_x
+	inc ptr1
 	sec
 	sbc #$03
 	jmp ms050
-ms060:	ldx coll1_x
+ms060:	ldx ptr1
 	cpx #$0a
 	bne ms070
 	lda sprite_xmsb

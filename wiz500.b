@@ -23,6 +23,12 @@ GAMEBANK	= 0	; Game code bank
 SYSTEMBANK	= $f	; systembank
 
 LIVES		= 3	; start lives
+; directions
+WALL		= 0
+UP		= 1
+DOWN		= 2
+LEFT		= 3
+RIGHT		= 4
 ; table codes
 ADR		= $fe	; new target address follows
 LIN		= $fd	; new line (target +40)
@@ -140,19 +146,19 @@ SH = >ScreenRAMbase			; Highbyte Screen RAM base
 !addr score		= $02		; 3bytes score
 !addr highscore		= $05		; 3bytes highscore
 !addr key		= $08		; pressed key/joystick
-!addr coll1_x		= $09		; 16bit pointer
+!addr ptr1		= $09		; 16bit pointer
 !addr ptr2		= $0b		; 16bit pointer
-!addr temp1		= $0d		; used in screen copy routine and for debounce
-!addr temp2		= $0e
+!addr temp1		= $0d		; temporary screen copy, debounce, indirect adaptation
+!addr temp2		= $0e		; temporary screen copy, indirect adaptation
 ; double usage: collision
 !addr coll1_x		= $09
 !addr coll1_y		= $0b
 !addr coll2_x		= $0c
 !addr coll2_y		= $0e
 
-!addr temp3		= $0f
-!addr temp4		= $10
-!addr temp5		= $11
+!addr temp3		= $0f		; temporary collision
+!addr temp4		= $10		; temporary collision, move monster
+!addr temp5		= $11		; temporary collision
 !addr data_ctr		= $12		; data counter
 !addr timer		= $13		; game timer - inc with every irq / CIA timer b
 !addr color		= $14
@@ -291,9 +297,9 @@ GameLoop:
 	dec state			; state = neg for sound 2 
 nosound:lda delay
 	cmp #$10
-	bcc skipmm
-	jsr MoveMonsters		; move monsters
-skipmm:	jsr WorriorShot			; check and move worrior shot
+	bcc slowmon			; slow monsters
+	jsr MoveMonsters		; move monsters extra for fast-mode
+slowmon:jsr WorriorShot			; check and move worrior shot
 	jsr MoveWorrior			; move worrior
 	jsr MoveMonsters		; move monsters
 	jsr StartMonsters		; check if monsters are off and start new monsters
@@ -468,21 +474,22 @@ chksplp:lda sprite_data-1,x
 ; $e1c0 Copies data from xy to address in first two bytes till $ff
 ;   $fd = new line, $fe = new target address, $ff = end
 ScreenCopy:				; copies from .x, .y
-	lda #GAMEBANK
-	sta IndirectBank
-	stx coll1_x
-	sty coll1_x+1
+	stx ptr1
+	sty ptr1+1
 
-scrnewt:ldy #0				; set pointer1 to new target
+scrnewt:ldy #0				; set pointer1 to new source
 	sty temp2
-	lda (coll1_x),y
+	tya				; clear .a
+	ora (ptr1),y
 	sta ptr2
+	tya				; clear .a
 	iny
-	lda (coll1_x),y
+	ora (ptr1),y
 	sta ptr2+1
 
 scrcplp:iny
-	lda (coll1_x),y			; load data byte
+	lda #$00			; clear .a
+	ora (ptr1),y			; load data byte
 	cmp #$ff
 	beq scrcpyx			; $ff = end
 	cmp #$fe
@@ -490,8 +497,19 @@ scrcplp:iny
 	cmp #$fd
 	beq scrline
 	sty temp1
-	ldy temp2
-	sta (ptr2),y
+
+	pha				; save data
+	clc
+	lda ptr2			; calc ptr2+temp2
+	adc temp2
+	sta draw_ptr
+	lda ptr2+1
+	adc #0				; add carry
+	sta draw_ptr+1
+	pla
+	ldx #0
+	sta (draw_ptr,x)
+	
 	inc temp2
 	ldy temp1
 	lda move
@@ -503,11 +521,11 @@ scrcplp:iny
 scrtarg:iny
 	clc
 	tya
-	adc coll1_x			; add counter .y to pointer 1
-	sta coll1_x
-	lda coll1_x+1
+	adc ptr1			; add counter .y to pointer 1
+	sta ptr1
+	lda ptr1+1
 	adc #$00
-	sta coll1_x+1
+	sta ptr1+1
 	jmp scrnewt			; copy to new target address
 ; $e206	byte $fd = new line (target +40)
 scrline:clc
@@ -523,8 +541,6 @@ scrline:clc
 
 scrcpyx:lda #0
 	sta move			; store no movement
-	lda #SYSTEMBANK
-	sta IndirectBank
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $e21e Draw game screen
@@ -549,10 +565,9 @@ SetupGameScreen:
 	sta maze_line			; reset screen line
 	sta maze_column			; reset screem column
 
-	lda #GAMEBANK
-	sta IndirectBank
 mazelp:	ldy data_ctr
-	lda (mazedata_ptr),y		; load data byte
+	lda #$00			; clear .a
+	ora (mazedata_ptr),y		; load data byte
 	cmp #$19
 	bne mzchkv
 	jsr mzhtile			; draw horizontal line
@@ -579,8 +594,6 @@ mzblank:inc data_ctr			; increase data pointer
 	cmp #21
 	bne mazelp			; repeat if < line 21
 
-	lda #SYSTEMBANK
-	sta IndirectBank
 ; print score
 	lda #$00
 	jsr AddScore			; print zero score
@@ -593,11 +606,11 @@ mzblank:inc data_ctr			; increase data pointer
 	sta draw_line
 	jsr DrawMazeTile		; draw player count
 ; print highscore
-	ldx #$d0			; set screen pointer to highscore
+	ldx #$d0+5			; set screen pointer to highscore
 	ldy #SH+3
-	stx coll1_x
-	sty coll1_x+1
-	ldx #$03
+	stx ptr1
+	sty ptr1+1
+	ldy #$03
 	jsr PrintScore			; print highscore (score+3)
 	rts
 ; -------------------------------------------------------------------------------------------------
@@ -801,11 +814,11 @@ newhisc:lda score			; store new highscore
 	sta highscore+1
 	lda score+2
 	sta highscore+2
-	ldx #$d0			; set screen ptr to highscore
+	ldx #$d0+5			; set screen ptr to highscore
 	ldy #SH+3
-	stx coll1_x
-	sty coll1_x+1
-	ldx #3
+	stx ptr1
+	sty ptr1+1
+	ldy #3
 	jsr PrintScore
 ; game over - no highscore
 nohisc:	lda #$00
@@ -832,39 +845,37 @@ AddScore:
 	adc #0
 	sta score+2
 	cld
-	ldx #$c4			; set screen pointer to score
+	ldx #$c4+5			; set screen pointer to score
 	ldy #SH+3
-	stx coll1_x
-	sty coll1_x+1
-	ldx #0				; print score
+	stx ptr1
+	sty ptr1+1
+	ldy #0				; print score
 ; Print score
 PrintScore:
-	ldy #5
-	lda #GAMEBANK
-	sta IndirectBank
+	ldx #0
 
-pslp:	lda score,x
+pslp:	lda score,y
 	and #$0f			; clear hinibble
 	clc
 	adc #1
-	sta (coll1_x),y
-	dey
-	lda score,x
+	sta (ptr1,x)
+	dec ptr1
+	lda score,y
 	lsr
 	lsr
 	lsr
 	lsr
 	clc
 	adc #1
-	sta (coll1_x),y
-	inx
-	dey
-	bpl pslp
-
-	lda #SYSTEMBANK
-	sta IndirectBank
+	sta (ptr1,x)
+	dec ptr1
+	iny
+	cpy #6				; end highscore
+	beq chkbon
+	cpy #3				; end score
+	bne pslp
 ; check bonus player
-	lda score+2
+chkbon:	lda score+2
 	cmp #2				; check score
 	bcc psx				; not enough
 	lda bonus_player
@@ -985,15 +996,11 @@ StartScreenMonsterData:
 StartScreenMonsterRLimit:
 	!byte $db, $dc, $db, $dc, $db
 ; -------------------------------------------------------------------------------------------------
-; Interrupt handler
+; Interrupt handler (always in system indirect bank)
 Interrupt:
 	pha
 	tya
 	pha
-	lda IndirectBank
-	pha
-	lda #SYSTEMBANK
-	sta IndirectBank
 	ldy #AIR
 	lda (TPI1),y
 	beq irqx
@@ -1008,8 +1015,6 @@ Interrupt:
 	adc #4				; timer +=4
 	sta timer
 irqx:	pla
-	sta IndirectBank
-	pla
 	tay
 	pla
 	rti
@@ -1054,7 +1059,7 @@ WorriorSpriteTable:
 MoveSprite:
 	ldy sprite_xreg
 	lda #$00
-	sta coll1_x
+	sta ptr1
 	jsr msmove			; move sprite (sprite dir = 0 -> wall reached!)
 	lda sprite_xmsb
 	sta move_xmsb
@@ -1069,26 +1074,26 @@ MoveSprite:
 	jmp mstunn			; check tunnel
 
 msdirok:lda move_dir
-	cmp #3
+	cmp #LEFT
 	bcs ms040
 	lda sprite_dir
-	cmp #3
+	cmp #LEFT
 	bcc ms080
 	dec move_y
 	lda move_y
 ms010:	beq ms020
-	cmp #1
+	cmp #UP
 	beq ms020
 	cmp #$ff
 	beq ms020
 	cmp #$00
 	bcc ms030
-	inc coll1_x
+	inc ptr1
 	sec
 	sbc #$03
 	jmp ms010
 
-ms020:	ldx coll1_x
+ms020:	ldx ptr1
 	lda Table14+13,x
 	ldy sprite_xreg
 	sta (VIC_MOBY),y
@@ -1098,23 +1103,23 @@ ms030:	lda #$00
 	sta sprite_dir
 	jmp mstunn
 ms040:	lda sprite_dir
-	cmp #3
+	cmp #LEFT
 	bcs ms080
 	lda move_x
 	sec
 	sbc #$01
 ms050:	beq ms060
-	cmp #$01
+	cmp #UP
 	beq ms060
 	cmp #$ff
 	beq ms060
 	cmp #$00
 	bcc ms030
-	inc coll1_x
+	inc ptr1
 	sec
 	sbc #$03
 	jmp ms050
-ms060:	ldx coll1_x
+ms060:	ldx ptr1
 	cpx #$0a
 	bne ms070
 	ldy #MOBMSB
@@ -1128,7 +1133,7 @@ ms080:	lda sprite_dir
 	sta move_dir
 	ldy sprite_xreg
 	lda sprite_dir
-	cmp #$01
+	cmp #UP
 	bne ms090
 	lda (VIC_MOBY),y
 	sec
@@ -1142,7 +1147,7 @@ ms090:	cmp #$02
 	adc #2
 	sta (VIC_MOBY),y
 	jmp mstunn
-ms100:  cmp #$03
+ms100:  cmp #LEFT
 	bne ms120
 	lda (VIC),y
 	sec
@@ -1158,7 +1163,7 @@ ms100:  cmp #$03
 	and temp1
 	sta (VIC),y
 ms110:  jmp mstunn
-ms120:  cmp #$04
+ms120:  cmp #RIGHT
 	bne mstunn
 	lda (VIC),y
 	clc
@@ -1183,7 +1188,7 @@ msmove:	lda (VIC),y
 	jsr CalcScreenPosition		; calc char position
 	lda sprite_dir
 	beq msx
-	cmp #3				; check dirs and move x, y
+	cmp #LEFT			; check dirs and move x, y
 	bcc msverti
 	beq msleft
 ; move right
@@ -1193,7 +1198,7 @@ msmove:	lda (VIC),y
 msleft:	dec move_x
 	jmp msmvscr
 
-msverti:cmp #1
+msverti:cmp #UP
 	bne msdown
 ; move up
 	dec move_y
@@ -1214,17 +1219,12 @@ mslinlp:ldy move_y
 	jmp mslinlp			; next line
 ; check if wall = dir not allowed
 mschkwa:sta draw_ptr
-
-	lda #GAMEBANK
-	sta IndirectBank		; switch indirect to game bank
-	ldy #0
-	lda (draw_ptr),y		; load char
+	ldx #0
+	lda (draw_ptr,x)		; load char
 	beq msx				; return if no wall
-	lda #0
+	lda #WALL
 	sta sprite_dir			; clear sprite dir if dir not allowed
-msx:	lda #SYSTEMBANK
-	sta IndirectBank		; restore indirect bank
-	rts
+msx:	rts
 ; $e6b3 tunnel
 mstunn:	ldy #MOBMSB
 	lda (VIC),y
@@ -1329,9 +1329,11 @@ drawmz:	sta draw_ptr			; store draw ptr lo
 	clc
 	adc #SH				; add screen base address hi
 	sta draw_ptr+1
-	ldy #0
+	stx temp5
+	ldx #0
 	lda draw_char
-	sta (draw_ptr),y		; store tile to screen
+	sta (draw_ptr,x)		; store tile to screen
+	ldx temp5
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $e754 Move Worrior Shot
@@ -1368,7 +1370,7 @@ wswallr:lda VIC64+MOBX+14
 	bcs wsdisab			; ...reached - shot off
 ; $e78d move shot
 wsmove:	lda worrior_shot_dir
-	cmp #$03
+	cmp #LEFT
 	bcc wsverti			; branch to vertical shot move
 	bne wsright			; branch to shot right
 ; move shot left
@@ -1396,7 +1398,7 @@ wsright:inc VIC64+MOBX+14		; right 4 steps
 	sta VIC64+MOBMSB
 	rts
 ; $e7cd move shot up
-wsverti:cmp #$01
+wsverti:cmp #UP
 	bne wsdown
 	dec VIC64+MOBY+14		; up 4 steps
 	dec VIC64+MOBY+14
@@ -1445,7 +1447,7 @@ nsnomsb:lda #$7f
 	sta VIC64+MOBMSB		; clear x msb
 nsdir:  lda worrior_dir
 	sta worrior_shot_dir
-	cmp #$03
+	cmp #LEFT
 	bcc nsverti			; branch if vertiacl worrior direction
 	lda #$fd
 	sta sprite_data+7		; sprite pattern horizontal
@@ -1504,11 +1506,11 @@ mm040:  lda #$17
 
 	ldy #MOBMSB
 	lda (VIC),y
-	sta temp5			; save mob x msb
+	sta temp1			; save mob x msb
 
 	lda BitTable,x
 	ora #$01
-	and temp5
+	and temp1
 	beq mm050
 	cmp #$01
 	beq mm060
@@ -1517,10 +1519,10 @@ mm040:  lda #$17
 mm050:  txa
 	tay
 	lda (VIC),y
-	sta temp5			; save monster x pos
+	sta temp1			; save monster x pos
 	ldy #MOBX
 	lda (VIC),y			; load worrior x pos
-	cmp temp5
+	cmp temp1
 	bcc mm080
 mm060:  ldy #RANDOM
 	lda (SID),y			; get random
@@ -1537,10 +1539,10 @@ mm090:  lda #$03
 mm100:  txa
 	tay
 	lda (VIC_MOBY),y
-	sta temp5			; save monster y pos
+	sta temp1			; save monster y pos
 	ldy #MOBY
 	lda (VIC),y			; load worrior y pos
-	cmp temp5
+	cmp temp1
 	bcc mm120
 	ldy #RANDOM
 	lda (SID),y			; get random
@@ -1576,7 +1578,7 @@ mm170:  jmp mmloop
 mm180:  lda move_dir
 	clc
 	adc #$01
-	cmp #$04
+	cmp #RIGHT
 	bcc mm190
 	ldy #RANDOM
 	lda (SID),y			; get random
@@ -2107,7 +2109,7 @@ mmswalr:lda VIC64+MOBX+12
 	bcs msdisab			; ...reached - shot off
 ; move shot
 mmsmove:lda monster_shot_dir
-	cmp #$03
+	cmp #LEFT
 	bcc mmsvert			; branch to vertical shot move
 	bne mmsrigt			; branch to shot right
 ; move shot left
@@ -2131,7 +2133,7 @@ mmsrigt:inc VIC64+MOBX+12		; right 2 steps
 	sta VIC64+MOBMSB		; set x msb bit#6
 	rts
 ; $ move shot up
-mmsvert:cmp #$01
+mmsvert:cmp #UP
 	bne mmsdown
 	dec VIC64+MOBY+12		; up 2 steps
 	dec VIC64+MOBY+12
@@ -2279,7 +2281,8 @@ us30:	dec sound1
 	adc #$00
 	sta sound_ptr+1
 	ldy #$00
-	lda (sound_ptr),y
+	tya
+	ora (sound_ptr),y
 	bne us60
 	lda sound_no
 	cmp #$01
@@ -2292,7 +2295,8 @@ us40:	cmp #2
 us50:	jmp pls03
 us60:	sta sound1
 	ldy #$01
-	lda (sound_ptr),y
+	lda #$00
+	ora (sound_ptr),y
 	asl
 	tax
 	lda Notes,x
