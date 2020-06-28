@@ -2243,7 +2243,6 @@ pls08:  cmp #8
 	lda #$21
 	ldy #V2CTRL
 	sta (SID),y
-	rts
 plsx:	rts
 ; -------------------------------------------------------------------------------------------------
 ; $edc3 update game sound
@@ -2291,7 +2290,7 @@ us30:	dec sound1
 	bne usx
 	clc
 	lda sound_ptr
-	adc #$02
+	adc #2
 	sta sound_ptr
 	lda sound_ptr+1
 	adc #$00
@@ -2301,7 +2300,7 @@ us30:	dec sound1
 	ora (sound_ptr),y
 	bne us60
 	lda sound_no
-	cmp #$01
+	cmp #1
 	bne us40
 	jmp PlaySound
 
@@ -2310,7 +2309,7 @@ us40:	cmp #2
 	jmp pls02
 us50:	jmp pls03
 us60:	sta sound1
-	ldy #$01
+	ldy #1
 	lda #$00
 	ora (sound_ptr),y
 	asl
