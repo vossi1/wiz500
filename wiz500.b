@@ -324,7 +324,7 @@ decwor:	dec players			; decrease lives
 	jmp GameOver			; game over
 ; -------------------------------------------------------------------------------------------------
 ; $e0c5 Checks F1 key for game start
-;   returns .a = $01 if F1 pressed
+;   returns .a = 0 if F1 pressed
 CheckF1Key:
 	ldx #$fe
 	jsr chkkey			; output .x to keyboard 0-7 and returns input in .x
