@@ -335,33 +335,35 @@ CheckF1Key:
 ; $e0db Check joystick and keyboard movement/fire
 CheckJoyKey:
 	lda #$1f			; init key value
-	ldx #$df
+	ldx #$7f
 	jsr chkkey
-	cpx #$fb			; check 'L' = left
-	bne chkup
+	cpx #$2f			; check ',' = left
+	bne chkrght
 	and #$fb			; clear bit #2
-	bne chkx
-chkup:  cpx #$fd			; check 'P'
+	bne chkx			; always
+chkrght:cpx #$1f			; check '.' = right
+	bne chkup
+	and #$f7			; clear bit #3
+	bne chkx			; always
+chkup:	ldx #$fd
+	jsr chkkey
+	cpx #$3b			; check 'Q' = up
 	bne chkdown
 	and #$fe			; clear bit #0
-	bne chkx
-chkdown:cpx #$ef			; check '.'
+	bne chkx			; always
+chkdown:cpx #$37			; check 'A' = down
 	bne chkfire
 	and #$fd			; clear bit #1
-	bne chkx
-chkfire:ldx #$fd
+	bne chkx			; always
+chkfire:ldx #$bf
 	jsr chkkey
-	cpx #$fb			; check 'A'
-	bne chkrght
+	cpx #$1f			; check spc = fire
+	bne chkx
 	and #$ef			; clear bit #4
-	bne chkx
-chkrght:ldx #$bf
-	jsr chkkey
-	cpx #$fb			; check ';'
-	bne chkx
-	and #$f7			; clear bit #3
-chkx:	sta key				; store key
-	jmp chkjoy
+chkx:	
+	sta key				; store key
+jmp test
+;	jmp chkjoy
 ; check tpi2
 chkkey:	pha				; remember key var
 	txa				; move output key value to .a
@@ -373,10 +375,11 @@ debounc:lda (TPI2),y			; load TPI2 port C
 	lda (TPI2),y
 	cmp temp1
 	bne debounc			; debounce
+	and #$3f			; isolate keyboard bits 0-5
 	tax				; key input to .x
 	pla				; restore key var
 	rts
-; $e12c check joystick
+; check joystick
 chkjoy:	ldx #$00
 	stx fire
 	stx CIA64+DDRA			; all CIA ports input
@@ -384,6 +387,9 @@ chkjoy:	ldx #$00
 debjoy:	lda CIA64+PRB			; load joystick port 2 (bit #0-4)
 	cmp CIA64+PRB
 	bne debjoy			; debounce joystick
+
+test:	lda #$1f
+
 	and key				; and pressed key (bit# = 0)
 ; store joystick/keyboard movement/fire
 	tay
@@ -1774,9 +1780,10 @@ expl4:	cmp #$c0
 
 expl5:	cmp #$d0
 	bne explx
-	lda VIC64+MOBENA
+	ldy #MOBENA
+	lda (VIC),y
 	and #$ff-1
-	sta VIC64+MOBENA		; disable player sprite
+	sta (VIC),y			; disable player sprite
 explx:	jmp exnext
 ; state neg, but not player sprite
 exnotpl:lda sprite_state,x
@@ -1820,8 +1827,11 @@ exmon3:	cmp #$b0
 	bne exmon4
 	lda BitTable,x			; load monster bit
 	eor #$ff
-	and VIC64+MOBENA
-	sta VIC64+MOBENA		; disable monster sprite
+	sta temp1
+	ldy #MOBENA
+	lda (VIC),y
+	and temp1
+	sta (VIC),y			; disable monster sprite
 	jmp exnext
 ; check if level finished - all targets destroyed
 exmon4:	cpx #6

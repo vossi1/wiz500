@@ -115,7 +115,7 @@ SH = >ScreenRAMbase			; Highbyte Screen RAM base
 !addr score		= $02		; 3bytes score
 !addr highscore		= $05		; 3bytes highscore
 !addr key		= $08		; pressed key/joystick
-!addr coll1_x		= $09		; 16bit pointer
+!addr ptr1		= $09		; 16bit pointer
 !addr ptr2		= $0b		; 16bit pointer
 !addr temp1		= $0d
 !addr temp2		= $0e
@@ -324,24 +324,24 @@ CheckJoyKey:
 	cpx #$fb			; check 'L' = left
 	bne chkup
 	and #$fb			; clear bit #2
-	bne chkx
-chkup:  cpx #$fd			; check 'P'
+	bne chkx			; always
+chkup:  cpx #$fd			; check 'P' = up
 	bne chkdown
 	and #$fe			; clear bit #0
-	bne chkx
-chkdown:cpx #$ef			; check '.'
+	bne chkx			; always
+chkdown:cpx #$ef			; check '.' = down
 	bne chkfire
 	and #$fd			; clear bit #1
-	bne chkx
+	bne chkx			; always
 chkfire:ldx #$fd
 	jsr chkkey
-	cpx #$fb			; check 'A'
+	cpx #$fb			; check 'A' = fire
 	bne chkrght
 	and #$ef			; clear bit #4
-	bne chkx
+	bne chkx			; always
 chkrght:ldx #$bf
 	jsr chkkey
-	cpx #$fb			; check ';'
+	cpx #$fb			; check ';' = right
 	bne chkx
 	and #$f7			; clear bit #3
 chkx:	sta key				; store key
@@ -453,7 +453,7 @@ ScreenCopy:				; copies from .x, .y
 	stx ptr1
 	sty ptr1+1
 
-scrnewt:ldy #0				; set pointer1 to new target
+scrnewt:ldy #0				; set pointer1 to new source
 	sty temp2
 	lda (ptr1),y
 	sta ptr2
@@ -1013,7 +1013,7 @@ ms010:	beq ms020
 	jmp ms010
 
 ms020:	ldx ptr1
-	lda Table14+13,x
+	lda SpriteMazePosY,x
 	ldx sprite_xreg
 	sta VIC64+MOBY,x
 	jmp ms080
@@ -1044,7 +1044,7 @@ ms060:	ldx ptr1
 	lda sprite_xmsb
 	ora VIC64+MOBMSB
 	sta VIC64+MOBMSB
-ms070:	lda Table14,x
+ms070:	lda SpriteMazePosX,x
 	ldx sprite_xreg
 	sta VIC64+MOBX,x
 ms080:	lda sprite_dir
@@ -1167,10 +1167,10 @@ mstuckv:lda VIC64+MOBY,x
 msx2:	rts
 ; -------------------------------------------------------------------------------------------------
 ; $e6f5
-Table14:!byte $19, $31, $49, $61, $79, $91, $a9, $c1
-	!byte $d9, $f1, $0a, $22, $39
+SpriteMazePosX:
+	!byte $19, $31, $49, $61, $79, $91, $a9, $c1, $d9, $f1, $0a, $22, $39
 ; $e702
-Table15:
+SpriteMazePosY:
 	!byte $33, $4b, $63, $7b, $93, $ab, $c3
 ; -------------------------------------------------------------------------------------------------
 ; e709 Calc sprite screen position
