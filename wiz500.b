@@ -822,7 +822,8 @@ newhisc:lda score			; store new highscore
 	jsr PrintScore
 ; game over - no highscore
 nohisc:	lda #$00
-	sta SID64+MODVOL		; sound off
+	ldy #MODVOL
+	sta (SID),y
 	inc move
 	ldx #<TextGameOver
 	ldy #>TextGameOver
@@ -1094,7 +1095,7 @@ ms010:	beq ms020
 	jmp ms010
 
 ms020:	ldx ptr1
-	lda Table14+13,x
+	lda SpriteMazePosY,x
 	ldy sprite_xreg
 	sta (VIC_MOBY),y
 	jmp ms080
@@ -1126,7 +1127,7 @@ ms060:	ldx ptr1
 	lda (VIC),y
 	ora sprite_xmsb
 	sta (VIC),y
-ms070:	lda Table14,x
+ms070:	lda SpriteMazePosX,x
 	ldy sprite_xreg
 	sta (VIC),y
 ms080:	lda sprite_dir
@@ -1273,10 +1274,10 @@ mstuckv:ldy sprite_xreg
 msx2:	rts
 ; -------------------------------------------------------------------------------------------------
 ; $e6f5
-Table14:!byte $19, $31, $49, $61, $79, $91, $a9, $c1
-	!byte $d9, $f1, $0a, $22, $39
+SpriteMazePosX:
+	!byte $19, $31, $49, $61, $79, $91, $a9, $c1, $d9, $f1, $0a, $22, $39
 ; $e702
-Table15:
+SpriteMazePosY:
 	!byte $33, $4b, $63, $7b, $93, $ab, $c3
 ; -------------------------------------------------------------------------------------------------
 ; e709 Calc sprite screen position
@@ -1790,10 +1791,11 @@ exnotpl:lda sprite_state,x
 	lsr
 	and #$07			; calc final value
 	tay
-	lda ScoreMonsterStartX100,y		; load monster score
+	lda ScoreMonsterStartX100,y	; load monster score
 	cmp #5
 	bne spadsco			; skip if not max score 5
-	lda SID64+RANDOM
+	ldy #RANDOM
+	lda (SID),y			; get random
 	and #$30			; calc special score
 	clc
 	adc #$10
@@ -2162,7 +2164,8 @@ PlaySound:
 	lda #>Sound1
 	sta sound_ptr+1
 	lda #$21
-	sta SID64+V1CTRL
+	ldy #V1CTRL
+	sta (SID),y
 	lda #$01
 	sta sound1
 	rts
@@ -2194,7 +2197,8 @@ pls04:  cmp #4
 	lda #$0f
 	sta sound3
 	lda #$81
-	sta SID64+V2CTRL
+	ldy #V2CTRL
+	sta (SID),y
 	rts
 ; $ed7d
 pls05:  cmp #5
@@ -2202,7 +2206,8 @@ pls05:  cmp #5
 	lda #$0f
 	sta sound4
 	lda #$81
-	sta SID64+V3CTRL
+	ldy #V3CTRL
+	sta (SID),y
 	rts
 ; $ed8b Player explosion
 pls06:  cmp #6
@@ -2211,8 +2216,10 @@ pls06:  cmp #6
 	sta sound4
 	sta sound3
 	lda #$81
-	sta SID64+V2CTRL
-	sta SID64+V3CTRL
+	ldy #V2CTRL
+	sta (SID),y
+	ldy #V3CTRL
+	sta (SID),y
 	rts
 ; $ed9e Bonus sound
 pls07:  cmp #7
@@ -2220,9 +2227,11 @@ pls07:  cmp #7
 	lda #$3f
 	sta sound2
 	asl
-	sta SID64+V2HI
+	ldy #V2HI
+	sta (SID),y
 	lda #$21
-	sta SID64+V2CTRL
+	ldy #V2CTRL
+	sta (SID),y
 	lda #$00
 	sta sound3
 	rts
@@ -2232,7 +2241,8 @@ pls08:  cmp #8
 	lda #$07
 	sta sound2
 	lda #$21
-	sta SID64+V2CTRL
+	ldy #V2CTRL
+	sta (SID),y
 	rts
 plsx:	rts
 ; -------------------------------------------------------------------------------------------------
@@ -2243,21 +2253,25 @@ UpdateSound:
 	asl
 	asl
 	asl
-	sta SID64+V2HI
+	ldy #V2HI
+	sta (SID),y
 	dec sound3
 	bne us10
 	lda #$80
-	sta SID64+V2CTRL
+	ldy #V2CTRL
+	sta (SID),y
 us10:	lda sound4
 	beq us20
 	asl
 	asl
 	adc #$07
-	sta SID64+V3HI
+	ldy #V3HI
+	sta (SID),y
 	dec sound4
 	bne us20
 	lda #$80
-	sta SID64+V3CTRL
+	ldy #V3CTRL
+	sta (SID),y
 us20:	lda sound2
 	beq us30
 	lda sound2
@@ -2266,11 +2280,13 @@ us20:	lda sound2
 	and #$01
 	tax
 	lda Sound1,x
-	sta SID64+V2HI
+	ldy #V2HI
+	sta (SID),y
 	dec sound2
 	bne us30
 	lda #$20
-	sta SID64+V2CTRL
+	ldy #V2CTRL
+	sta (SID),y
 us30:	dec sound1
 	bne usx
 	clc
@@ -2300,9 +2316,11 @@ us60:	sta sound1
 	asl
 	tax
 	lda Notes,x
-	sta SID64+V1LO
+	ldy #V1LO
+	sta (SID),y
 	lda Notes+1,x
-	sta SID64+V1HI
+	ldy #V1HI
+	sta (SID),y
 usx:	rts
 ; $ee43
 
