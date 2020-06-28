@@ -202,19 +202,17 @@ SH = >ScreenRAMbase			; Highbyte Screen RAM base
 !addr monster_shot_dir	= $77
 ; ***************************************** VARIABLES *********************************************
 ; ************************************** P500 ZERO PAGE *******************************************
-!addr ColorRAM0         = $e6
-!addr ColorRAM1         = $e8
-!addr ColorRAM2         = $ea
-!addr ColorRAM3         = $ec
-!addr VIC               = $ee
-!addr VIC01             = $f0
-!addr VIC27             = $f2
-!addr SID               = $f4
-!addr CIA               = $f6
-!addr TPI1              = $f8
-!addr TPI2              = $fa
-!addr CharROM0          = $fc
-!addr CharROM1          = $fe
+!addr ColorRAM0		= $e6
+!addr ColorRAM1		= $e8
+!addr ColorRAM2		= $ea
+!addr ColorRAM3		= $ec
+!addr VIC		= $ee
+!addr VIC_MOBY		= $f0
+!addr VIC_MOBCOL	= $f2
+!addr SID		= $f4
+!addr CIA		= $f6
+!addr TPI1		= $f8
+!addr TPI2		= $fa
 ; ****************************************** MACROS ***********************************************
 ; ***************************************** ZONE CODE *********************************************
 !zone code
@@ -1054,15 +1052,16 @@ WorriorSpriteTable:
 ; -------------------------------------------------------------------------------------------------
 ; Move sprite (sprite_xreg, _xmsb, _dir)
 MoveSprite:
-	ldx sprite_xreg
+	ldy sprite_xreg
 	lda #$00
 	sta coll1_x
 	jsr msmove			; move sprite (sprite dir = 0 -> wall reached!)
 	lda sprite_xmsb
 	sta move_xmsb
-	lda VIC64+MOBX,x		; set new position to vic
+	ldy sprite_xreg
+	lda (VIC),y			; set new position to vic
 	sta move_x
-	lda VIC64+MOBY,x
+	lda (VIC_MOBY),y
 	sta move_y
 	jsr CalcScreenPosition		; calc sprite screen position (char based)
 	lda sprite_dir
@@ -1091,8 +1090,8 @@ ms010:	beq ms020
 
 ms020:	ldx coll1_x
 	lda Table14+13,x
-	ldx sprite_xreg
-	sta VIC64+MOBY,x
+	ldy sprite_xreg
+	sta (VIC_MOBY),y
 	jmp ms080
 
 ms030:	lda #$00
@@ -1118,53 +1117,64 @@ ms050:	beq ms060
 ms060:	ldx coll1_x
 	cpx #$0a
 	bne ms070
-	lda sprite_xmsb
-	ora VIC64+MOBMSB
-	sta VIC64+MOBMSB
+	ldy #MOBMSB
+	lda (VIC),y
+	ora sprite_xmsb
+	sta (VIC),y
 ms070:	lda Table14,x
-	ldx sprite_xreg
-	sta VIC64+MOBX,x
+	ldy sprite_xreg
+	sta (VIC),y
 ms080:	lda sprite_dir
 	sta move_dir
-	ldx sprite_xreg
+	ldy sprite_xreg
 	lda sprite_dir
 	cmp #$01
 	bne ms090
-	dec VIC64+MOBY,x
-	dec VIC64+MOBY,x
+	lda (VIC_MOBY),y
+	sec
+	sbc #2
+	sta (VIC_MOBY),y
 	jmp mstunn
 ms090:	cmp #$02
 	bne ms100
-	inc VIC64+MOBY,x
-	inc VIC64+MOBY,x
+	lda (VIC_MOBY),y
+	clc
+	adc #2
+	sta (VIC_MOBY),y
 	jmp mstunn
 ms100:  cmp #$03
 	bne ms120
-	dec VIC64+MOBX,x
-	dec VIC64+MOBX,x
-	lda VIC64+MOBX,x
+	lda (VIC),y
+	sec
+	sbc #2
+	sta (VIC),y
 	cmp #$fe
 	bcc ms110
 	lda sprite_xmsb
 	eor #$ff
-	and VIC64+MOBMSB
-	sta VIC64+MOBMSB
+	sta temp1
+	ldy #MOBMSB
+	lda (VIC),y
+	and temp1
+	sta (VIC),y
 ms110:  jmp mstunn
 ms120:  cmp #$04
 	bne mstunn
-	inc VIC64+MOBX,x
-	inc VIC64+MOBX,x
-	lda VIC64+MOBX,x
+	lda (VIC),y
+	clc
+	adc #2
+	sta (VIC),y
 	cmp #$02
 	bcs mstunn
-	lda sprite_xmsb
-	ora VIC64+MOBMSB
-	sta VIC64+MOBMSB
+	ldy #MOBMSB
+	lda (VIC),y
+	ora sprite_xmsb
+	sta (VIC),y
 	jmp mstunn
 ; move sprite
-msmove:	lda VIC64+MOBX,x
+msmove:	lda (VIC),y
 	sta move_x			; store x
-	lda VIC64+MOBY,x
+	lda (VIC_MOBY),y
 	clc
 	sbc #6
 	sta move_y			; store y-6
@@ -1202,45 +1212,64 @@ mslinlp:ldy move_y
 	bcc mslinlp			; next line
 	inc draw_ptr+1			; inc ptr hi
 	jmp mslinlp			; next line
-; check if wall = dir not allowe
+; check if wall = dir not allowed
 mschkwa:sta draw_ptr
+
+	lda #GAMEBANK
+	sta IndirectBank		; switch indirect to game bank
 	ldy #0
 	lda (draw_ptr),y		; load char
 	beq msx				; return if no wall
-	lda #$00
+	lda #0
 	sta sprite_dir			; clear sprite dir if dir not allowed
-msx:	rts
+msx:	lda #SYSTEMBANK
+	sta IndirectBank		; restore indirect bank
+	rts
 ; $e6b3 tunnel
-mstunn:	lda sprite_xmsb
-	and VIC64+MOBMSB
+mstunn:	ldy #MOBMSB
+	lda (VIC),y
+	and sprite_xmsb
 	bne msckrig			; branch if x msb set
-	lda VIC64+MOBX,x
+	ldy sprite_xreg
+	lda (VIC),y
 	cmp #$16			; left tunnel reached?
 	bcs mstuckv			; not...skip
 ; tunnel left
-	lda sprite_xmsb
-	ora VIC64+MOBMSB
-	sta VIC64+MOBMSB		; set x msb
+	ldy #MOBMSB
+	lda (VIC),y
+	ora sprite_xmsb
+	sta (VIC),y			; set x msb
 	lda #$40
-	sta VIC64+MOBX,x		; set x to tunnel right
+	ldy sprite_xreg
+	sta (VIC),y			; set x to tunnel right
 	rts
 ; $e6cf tunnel right
 msckrig:beq mstuckv			; skip if .a = 0
-	lda VIC64+MOBX,x
+	ldy sprite_xreg
+	lda (VIC),y
 	cmp #$42			; check tunnel reached
 	bcc mstuckv			; not...skip
+	
 	lda sprite_xmsb
 	eor #$ff			; xor x msb for and operation
-	and VIC64+MOBMSB
-	sta VIC64+MOBMSB		; clear x msb
+	sta temp1
+	ldy #MOBMSB
+	lda (VIC),y
+	and temp1
+	sta (VIC),y			; clear x msb
+	
+	ldy sprite_xreg
 	lda #$18
-	sta VIC64+MOBX,x		; set x to tunnel left
+	sta (VIC),y			; set x to tunnel left
 ; check tunnel vertical position
-mstuckv:lda VIC64+MOBY,x
+mstuckv:ldy sprite_xreg
+	lda (VIC_MOBY),y
 	cmp #$31
 	bcs msx2			; skip if not exactly tunnel v pos
-	inc VIC64+MOBY,x
-	inc VIC64+MOBY,x		; inc vpos +2 for exactly tunnel v pos
+	lda (VIC_MOBY),y
+	clc
+	adc #2
+	sta (VIC_MOBY),y
 msx2:	rts
 ; -------------------------------------------------------------------------------------------------
 ; $e6f5
@@ -1266,8 +1295,9 @@ CalcScreenPosition:
 	clc
 	bcc cspdivx
 cspmsb:	pha				; remember x
-	lda move_xmsb
-	and VIC64+MOBMSB		; load and isolate x-msb
+	ldy #MOBMSB
+	lda (VIC),y
+	and move_xmsb			; load and isolate x-msb
 	clc
 	beq cspnmsb			; skip if msb not set
 	sec				; set c
@@ -1467,39 +1497,59 @@ mm030:	lda SpritePosTable,x
 mm040:  lda #$17
 	sta monster_cnt-1,x
 	ldx sprite_xreg
-	lda SID64+RANDOM
+	ldy #RANDOM
+	lda (SID),y			; get random
 	and #$01
 	beq mm100
+
+	ldy #MOBMSB
+	lda (VIC),y
+	sta temp5			; save mob x msb
+
 	lda BitTable,x
 	ora #$01
-	and VIC64+MOBMSB
+	and temp5
 	beq mm050
 	cmp #$01
 	beq mm060
 	cmp BitTable,x
 	beq mm080
-mm050:  lda VIC64
-	cmp VIC64+MOBX,x
+mm050:  txa
+	tay
+	lda (VIC),y
+	sta temp5			; save monster x pos
+	ldy #MOBX
+	lda (VIC),y			; load worrior x pos
+	cmp temp5
 	bcc mm080
-mm060:  lda SID64+RANDOM
+mm060:  ldy #RANDOM
+	lda (SID),y			; get random
 	and #$03
 	beq mm090
 mm070:  lda #$04
 	jmp mm140
-mm080:  lda SID64+RANDOM
+mm080:  ldy #RANDOM
+	lda (SID),y			; get random
 	and #$03
 	beq mm070
 mm090:  lda #$03
 	jmp mm140
-mm100:  lda VIC64+MOBY
-	cmp VIC64+MOBY,x
+mm100:  txa
+	tay
+	lda (VIC_MOBY),y
+	sta temp5			; save monster y pos
+	ldy #MOBY
+	lda (VIC),y			; load worrior y pos
+	cmp temp5
 	bcc mm120
-	lda SID64+RANDOM
+	ldy #RANDOM
+	lda (SID),y			; get random
 	and #$03
 	beq mm130
 mm110:  lda #$02
 	jmp mm140
-mm120:  lda SID64+RANDOM
+mm120:  ldy #RANDOM
+	lda (SID),y			; get random
 	and #$03
 	beq mm110
 mm130:  lda #$01
@@ -1528,7 +1578,8 @@ mm180:  lda move_dir
 	adc #$01
 	cmp #$04
 	bcc mm190
-	lda SID64+RANDOM
+	ldy #RANDOM
+	lda (SID),y			; get random
 	and #$03
 mm190:  sta move_dir
 mmx:	rts
@@ -1602,15 +1653,23 @@ sm70:	lda #1
 	sta state
 sm80:	tya
 	pha
+	
+	ldy #0
+	lda (VIC_MOBY),y
+	sta temp1			; save worrior y pos
+	ldy #RANDOM
+	lda (SID),y
+	sta temp2			; save random
+
 	txa
 	pha
 	asl
 	tay
-	lda SID64+RANDOM
+	lda temp2
 	and #$07
 	tax
 	lda MonsterStartX,x
-	sta VIC64+MOBX,y
+	sta (VIC),y
 	lda timer2
 	lsr
 	lsr
@@ -1620,33 +1679,36 @@ sm80:	tya
 	and #$07
 	tax
 	lda MonsterStartY,x
-	sta VIC64+MOBY,y
+	sta (VIC_MOBY),y
 	clc
 	adc #$18
-	cmp VIC64+MOBY
+	cmp temp1			; worrior y pos
 	bcs sm90
 	sec
 	sbc #$30
-	cmp VIC64+MOBY
+	cmp temp1
 	bcc sm90
-	lda VIC64+MOBY
+	lda temp1
 	sbc #$24
-	sta VIC64+MOBY,y
+	sta (VIC_MOBY),y
 sm90:	pla
-	tax
-	pla
 	tay
+	pla
+	tax
+	lda MonsterValueTable,x
+	sta monster_value-1,y
+	lda MonsterTypeTable,x
+	sta sprite_data,y
+	sta SpritePointer,y
+	lda MonsterColorTable,x
+	sta (VIC_MOBCOL),y
+	tya
+	tax
 	inc sprite_state,x
-	lda MonsterValueTable,y
-	sta monster_value-1,x
-	lda MonsterTypeTable,y
-	sta sprite_data,x
-	sta SpritePointer,x
-	lda MonsterColorTable,y
-	sta VIC64+MOBCOL,x
-	lda BitTable,x
-	ora VIC64+MOBENA
-	sta VIC64+MOBENA
+	ldy #MOBENA
+	lda (VIC),y
+	ora BitTable,x
+	sta (VIC),y
 	rts
 ; -------------------------------------------------------------------------------------------------
 ; $ea08 Monster tables
@@ -2499,14 +2561,12 @@ IOPointerTable:
 	!word ColorRAMbase+$200
 	!word ColorRAMbase+$300
 	!word VICbase
-	!word VICbase+1
-	!word VICbase+$27
+	!word VICbase+MOBY
+	!word VICbase+MOBCOL
 	!word SIDbase
 	!word CIAbase
 	!word TPI1base
 	!word TPI2base
-	!word CharROMbase
-	!word CharROMbase+$100
 IOPointerEnd:
 ; **************************************** ZONE SPRITES *******************************************
 !zone sprites ; sprite data $e5 - $fe
