@@ -134,12 +134,6 @@ AIR		= $7
 !addr HW_IRQ            = $fffe		; System IRQ Vector
 !addr HW_NMI            = $fffa		; System NMI Vector
 SH = >ScreenRAMbase			; Highbyte Screen RAM base
-; *************************************** C64 ADDRESSES *******************************************
-!addr CPUPort64         = $01		; 6510 CPU port
-!addr VIC64		= $d000		; VIC
-!addr SID64		= $d400		; SID
-!addr ColorRAM64        = $d800		; Color RAM
-!addr CIA64		= $dc00		; CIA
 ; ************************************** USER ADDRESSES *******************************************
 
 ; ***************************************** ZERO PAGE *********************************************
@@ -759,9 +753,8 @@ SetupWorrior:
 	lda #$37
 	ldy #MOBX
 	sta (VIC),y
-	iny				; y-pos
 	lda #$ab
-	sta (VIC),y
+	sta (VIC_MOBY),y
 	lda #$fd
 	sta sprite_data+7		; set shot horizontal pattern
 	ldx #$ff
@@ -923,8 +916,7 @@ ssinspr:txa
 	sta sprite_state+1,x		; set right direction = $d7
 	sta (VIC),y			; setup monsters sprites 1-5
 	lda StartScreenMonsterVpos,x
-	iny				; y pos
-	sta (VIC),y
+	sta (VIC_MOBY),y
 	lda StartScreenMonsterData,x
 	sta SpritePointer+1,x
 	txa
@@ -1017,10 +1009,8 @@ Interrupt:
 	lda (CIA),y			; load irq-reg
 	and #$02
 	beq irqx			; skip if not timer b
-	lda timer
-	clc
-	adc #4				; timer +=4
-	sta timer
+	inc timer
+	inc timer
 irqx:	pla
 	tay
 	pla
@@ -1913,8 +1903,7 @@ ccmonst:lda sprite_state+7
 cc20:	ldy #MOBX+14
 	lda (VIC),y
 	sta coll1_x			; store player shot x in coll1_x
-	iny
-	lda (VIC),y
+	lda (VIC_MOBY),y
 	sta coll1_y			; store player shot y in coll1_y
 	lda collision_mob
 	and #$80
@@ -2043,29 +2032,40 @@ shnextm:inx
 	bne shlp1			; next monster
 	rts
 ; $ec1f check if same x or y pos with worrior
-shmonon:txa
+shmonon:ldy #MOBX
+	lda (VIC),y
+	sta temp1			; save worrior x
+	lda (VIC_MOBY),y
+	sta temp2			; save worrior y
+	txa
 	asl				; cal x pos for monster
 	tay
-	lda VIC64+MOBX
-	cmp VIC64+MOBX,y		; compare with worrior
+	lda (VIC_MOBY),y
+	sta temp4			; save monster y
+	lda (VIC),y
+	sta temp3			; save monster x
+	cmp temp1			; compare with worrior
 	beq shv				; if x same -> shoot vertical
 ; horizontal
-	lda VIC64+MOBY
-	cmp VIC64+MOBY,y		; compare y
+	lda temp4
+	cmp temp2			; compare y
 	bne shnextm			; if not same -> check next monster
 ; find h direction
-	lda VIC64+MOBX
-	cmp VIC64+MOBX,y		; compare x
-	lda VIC64+MOBMSB
+	lda temp1
+	cmp temp3			; compare x
+	ldy #MOBMSB
+	lda (VIC),y
 	and #$01			; check worrior x msb
 	bne shwmsb			; branch if set
 ; worrior x msb = 0
-	lda VIC64+MOBMSB
+	ldy #MOBMSB
+	lda (VIC),y
 	and BitTable,x			; check monster x msb 
 	bne shmmsb
 	beq shh				; both msb clear
 ; worrior x msb = 1
-shwmsb:	lda VIC64+MOBMSB
+shwmsb:	ldy #MOBMSB
+	lda (VIC),y
 	and BitTable,x
 	bne shh				; both msb set
 ; x msb's are different
@@ -2081,8 +2081,8 @@ shhoriz:sta monster_shot_dir
 	sta sprite_data+6		; set pattern horizontal
 	bne shset			; always
 ; vertical
-shv:	lda VIC64+MOBY
-	cmp VIC64+MOBY,y
+shv:	lda temp2
+	cmp temp4
 	lda #2				; down
 	bcs shverti
 	lda #1				; up
@@ -2092,22 +2092,25 @@ shverti:sta monster_shot_dir
 	sta sprite_data+6		; set pattern vertical
 shset:  lda #$00
 	sta sprite_state+6		; set state on
-	lda VIC64+MOBX,y		; set position
-	sta VIC64+MOBX+12
-	lda VIC64+MOBY,y
-	sta VIC64+MOBY+12
-	lda VIC64+MOBMSB
+	ldy #12
+	lda temp3			; set position
+	sta (VIC),y
+	lda temp4
+	sta (VIC_MOBY),y
+	ldy #MOBMSB
+	lda (VIC),y
 	and BitTable,x			; check x msb
 	beq shclmsb
-	lda VIC64+MOBMSB		; set x msb
+	lda (VIC),y			; set x msb
 	ora #$40
 	bne shenabl
-shclmsb:lda VIC64+MOBMSB
+shclmsb:lda (VIC),y
 	and #$bf
-shenabl:sta VIC64+MOBMSB
-	lda VIC64+MOBENA
+shenabl:sta (VIC),y
+	ldy #MOBENA
+	lda (VIC),y
 	ora #$40
-	sta VIC64+MOBENA		; enable monster shot
+	sta (VIC),y			; enable monster shot
 	lda monster_shot_dir
 	sta monster_dir-1,x
 	rts
@@ -2124,21 +2127,25 @@ mssshot:lda collision_bgr
 ; collison with bgr - disable monster shot
 msdisab:lda #$ff
 	sta sprite_state+6		; state off
-	lda VIC64+MOBENA
+	ldy #MOBENA
+	lda (VIC),y
 	and #$bf
-	sta VIC64+MOBENA		; disable sprite
+	sta (VIC),y			; disable sprite
 	rts
 ; $ecc3 check maze limits
-mmsbgr:	lda VIC64+MOBMSB
+mmsbgr:	ldy #MOBMSB
+	lda (VIC),y
 	and #$40
 	bne mmswalr			; branch if x msb set
 ; check left maze limit
-	lda VIC64+MOBX+12
+	ldy #MOBX+12
+	lda (VIC),y
 	cmp #$14			; check left limit
 	bcc msdisab			; ...reached - shot off
 	bcs mmsmove			; always
 ; check maze right limit
-mmswalr:lda VIC64+MOBX+12
+mmswalr:ldy #MOBX+12
+	lda (VIC),y
 	cmp #$42
 	bcs msdisab			; ...reached - shot off
 ; move shot
@@ -2147,38 +2154,47 @@ mmsmove:lda monster_shot_dir
 	bcc mmsvert			; branch to vertical shot move
 	bne mmsrigt			; branch to shot right
 ; move shot left
-	dec VIC64+MOBX+12		; left 2 steps
-	dec VIC64+MOBX+12
-	lda VIC64+MOBX+12
+	ldy #MOBX+12
+	lda (VIC),y
+	sec
+	sbc #2				; left 2 steps
+	sta (VIC),y
 	cmp #$fe			; check x byte max limit
 	bcc mmsx
-	lda VIC64+MOBMSB
+	ldy #MOBMSB
+	lda (VIC),y
 	and #$bf
-	sta VIC64+MOBMSB		; clear x msb bit#6
+	sta (VIC),y			; clear x msb bit#6
 	rts
 ; $ecf8 move shot right
-mmsrigt:inc VIC64+MOBX+12		; right 2 steps
-	inc VIC64+MOBX+12
-	lda VIC64+MOBX+12
+mmsrigt:ldy #MOBX+12
+	lda (VIC),y
+	clc
+	adc #2				; right 2 steps
+	sta (VIC),y
 	cmp #$02			; check x byte min limit
 	bcs mmsx
-	lda VIC64+MOBMSB
+	ldy #MOBMSB
+	lda (VIC),y
 	ora #$40
-	sta VIC64+MOBMSB		; set x msb bit#6
+	sta (VIC),y			; set x msb bit#6
 	rts
 ; $ move shot up
 mmsvert:cmp #UP
 	bne mmsdown
-	dec VIC64+MOBY+12		; up 2 steps
-	dec VIC64+MOBY+12
-	lda VIC64+MOBY+12
+	ldy #MOBY+12
+	lda (VIC),y
+	sec
+	sbc #2				; up 2 steps
+	sta (VIC),y
 	cmp #$2a
 	bcc mmswall			; branch if upper maze limit reached
 	rts
 ; $ed20 move shot down
-mmsdown:inc VIC64+MOBY+12		; down 2 steps
-	inc VIC64+MOBY+12
-	lda VIC64+MOBY+12
+mmsdown:ldy #MOBY+12
+	clc
+	adc #2				; down 2 steps
+	sta (VIC),y 	
 	cmp #$ca
 	bcs mmswall			; branch if lower maze limit reached
 mmsx:	rts
@@ -2599,7 +2615,7 @@ iniiolp:lda IOPointerTable,x            ; copy 8 IO pointer to ZP
 	lda #$01
 	ldy #CRB
 	sta (CIA),y			; timer b phi2, cont, start
-	lda #$e0	; ***** x4 slower because longer irq handler > compensated with timer +=4
+	lda #$70	; ***** x2 slower because longer irq handler > compensated with timer +=2
 	ldy #TBLO
 	sta (CIA),y			; timer b prescaler = 56
 	lda #$00
