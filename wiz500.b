@@ -1355,24 +1355,30 @@ wsshot:	lda collision_bgr
 ; collison with bgr - disbale worrior shot
 wsdisab:lda #$ff
 	sta sprite_state+7		; state off
+	ldy #MOBENA
+	lda (VIC),y
+	and #$7f
+	sta (VIC),y			; disable sprite
 	lda #$7f
-	and VIC64+MOBENA		; disable sprite
-	sta VIC64+MOBENA
-	lda #$7f
-	and VIC64+MOBMSB		; clear x msb
-	sta VIC64+MOBMSB
+	ldy #MOBMSB
+	lda (VIC),y
+	and #$7f
+	sta (VIC),y			; clear x msb
 	rts
 ; $e776 check maze limits
-wsbgr:	lda VIC64+MOBMSB
+wsbgr:	ldy #MOBMSB
+	lda (VIC),y
 	and #$80
 	bne wswallr			; branch if x msb set
 ; check left maze limit
-	lda VIC64+MOBX+14
+	ldy #MOBX+14
+	lda (VIC),y
 	cmp #$14			; check left limit
 	bcc wsdisab			; ...reached - shot off
 	bcs wsmove			; always
 ; check maze right limit
-wswallr:lda VIC64+MOBX+14
+wswallr:ldy #MOBX+14
+	lda (VIC),y
 	cmp #$42
 	bcs wsdisab			; ...reached - shot off
 ; $e78d move shot
@@ -1381,46 +1387,48 @@ wsmove:	lda worrior_shot_dir
 	bcc wsverti			; branch to vertical shot move
 	bne wsright			; branch to shot right
 ; move shot left
-	dec VIC64+MOBX+14		; left 4 steps
-	dec VIC64+MOBX+14
-	dec VIC64+MOBX+14
-	dec VIC64+MOBX+14
-	lda VIC64+MOBX+14
+	ldy #MOBX+14
+	lda (VIC),y
+	sec
+	sbc #4				; left 4 steps
+	sta (VIC),y
 	cmp #$fc			; check x byte max limit
 	bcc wsx
-	lda #$7f
-	and VIC64+MOBMSB		; clear x msb bit#7
-	sta VIC64+MOBMSB
+	ldy #MOBMSB
+	lda (VIC),y
+	and #$7f
+	sta (VIC),y			; clear x msb bit #7
 wsx:	rts
 ; $e7b1 move shot right
-wsright:inc VIC64+MOBX+14		; right 4 steps
-	inc VIC64+MOBX+14
-	inc VIC64+MOBX+14
-	inc VIC64+MOBX+14
-	lda VIC64+MOBX+14
+wsright:ldy #MOBX+14
+	lda (VIC),y
+	clc
+	adc #4				; right 4 steps
+	sta (VIC),y
 	cmp #$04			; check x byte min limit
 	bcs wsx
-	lda #$80
-	ora VIC64+MOBMSB		; set x msb bit#7
-	sta VIC64+MOBMSB
+	ldy #MOBMSB
+	lda (VIC),y
+	ora #$80
+	sta (VIC),y			; set x msb bit #7
 	rts
 ; $e7cd move shot up
 wsverti:cmp #UP
 	bne wsdown
-	dec VIC64+MOBY+14		; up 4 steps
-	dec VIC64+MOBY+14
-	dec VIC64+MOBY+14
-	dec VIC64+MOBY+14
-	lda VIC64+MOBY+14
+	ldy #MOBY+14
+	lda (VIC),y
+	sec
+	sbc #4				; up 4 steps
+	sta (VIC),y
 	cmp #$2a
 	bcc wswallv			; branch if upper maze limit reached
 	rts
 ; $e7e5 move shot down
-wsdown:	inc VIC64+MOBY+14		; down 4 steps
-	inc VIC64+MOBY+14
-	inc VIC64+MOBY+14
-	inc VIC64+MOBY+14
-	lda VIC64+MOBY+14
+wsdown:	ldy #MOBY+14
+	lda (VIC),y
+	clc
+	adc #4				; down 4 steps
+	sta (VIC),y
 	cmp #$ca
 	bcc wsx2			; branch if lower maze limit reached
 wswallv:jmp wsdisab			; shot off
@@ -1438,20 +1446,25 @@ chkshot:lda fire
 ; $e80a new worrior shot
 shoot:	lda #4
 	jsr PlaySound			; play shoot sound
-	lda VIC64+MOBX
-	sta VIC64+MOBX+14		; set shot position
-	lda VIC64+MOBY
-	sta VIC64+MOBY+14
-	lda VIC64+MOBMSB
+	ldy #MOBX
+	lda (VIC),y
+	ldy #MOBX+14
+	sta (VIC),y			; set shot position
+	ldy #MOBY
+	lda (VIC),y
+	ldy #MOBY+14
+	sta (VIC),y
+	ldy #MOBMSB
+	lda (VIC),y
 	and #$01
 	beq nsnomsb			; skip if not worrior x msb
-	lda #$80
-	ora VIC64+MOBMSB
-	sta VIC64+MOBMSB		; set x msb
+	lda (VIC),y
+	ora #$80
+	sta (VIC),y			; set x msb
 	jmp nsdir
-nsnomsb:lda #$7f
-	and VIC64+MOBMSB
-	sta VIC64+MOBMSB		; clear x msb
+nsnomsb:lda (VIC),y
+	and #$7f
+	sta (VIC),y			; clear x msb
 nsdir:  lda worrior_dir
 	sta worrior_shot_dir
 	cmp #LEFT
@@ -1462,9 +1475,10 @@ nsdir:  lda worrior_dir
 nsverti:lda #$fe
 	sta sprite_data+7		; sprite pattern vertical
 ; enable worrior shot
-nsenabl:lda #$80
-	ora VIC64+MOBENA
-	sta VIC64+MOBENA		; enable sprite
+nsenabl:ldy #MOBENA
+	lda (VIC),y
+	ora #$80
+	sta (VIC),y			; enable sprite
 	lda #$00
 	sta sprite_state+7		; set state
 	rts
