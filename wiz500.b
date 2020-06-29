@@ -334,7 +334,7 @@ CheckF1Key:
 ; -------------------------------------------------------------------------------------------------
 ; $e0db Check joystick and keyboard movement/fire
 CheckJoyKey:
-	lda #$1f			; init key value
+	lda #$ff			; init key value
 	ldx #$7f
 	jsr chkkey
 	cpx #$2f			; check ',' = left
@@ -359,11 +359,10 @@ chkfire:ldx #$bf
 	jsr chkkey
 	cpx #$1f			; check spc = fire
 	bne chkx
-	and #$ef			; clear bit #4
-chkx:	
-	sta key				; store key
-jmp test
-;	jmp chkjoy
+	and #$bf			; clear bit #6
+
+chkx:	sta key				; store key
+	jmp chkjoy
 ; check tpi2
 chkkey:	pha				; remember key var
 	txa				; move output key value to .a
@@ -380,20 +379,20 @@ debounc:lda (TPI2),y			; load TPI2 port C
 	pla				; restore key var
 	rts
 ; check joystick
-chkjoy:	ldx #$00
-	stx fire
-	stx CIA64+DDRA			; all CIA ports input
-	stx CIA64+DDRB
-debjoy:	lda CIA64+PRB			; load joystick port 2 (bit #0-4)
-	cmp CIA64+PRB
-	bne debjoy			; debounce joystick
-
-test:	lda #$1f
+chkjoy:	ldy #0
+	lda (CIA),y			; load cia port a - bit#6 button joystick 1
+	ora #$bf			; set all other bits
+	sta temp1
+	iny
+	lda (CIA),y			; load cia port b - bit#0-3 joystick 1 movement
+	ora #$f0			; set other bit
+	and temp1			; and button
 
 	and key				; and pressed key (bit# = 0)
 ; store joystick/keyboard movement/fire
+	ldx #0				; direction var
 	tay
-	and #$10			; check fire
+	and #$40			; check fire
 	bne jkdown
 	lda #$80
 	sta fire			; store fire
@@ -401,22 +400,22 @@ test:	lda #$1f
 jkdown:	tya
 	and #$02			; check down
 	bne jkup
-	ldx #2
+	ldx #DOWN
 	bne jkx
 jkup:	tya
 	and #$01			; check up
 	bne jkleft
-	ldx #1
+	ldx #UP
 	bne jkx
 jkleft:	tya
 	and #$04			; check left
 	bne jkright
-	ldx #3
+	ldx #LEFT
 	bne jkx
 jkright:tya
 	and #$08			; check right
 	bne jkx
-	ldx #4
+	ldx #RIGHT
 jkx:	stx joykey_dir			; store move direction
 	rts
 ; -------------------------------------------------------------------------------------------------
@@ -788,7 +787,8 @@ MonsterStartY:
 ; $e3af Level finished
 LevelFinished:
 	lda #$00
-	sta VIC64+MOBENA		; disable sprites
+	ldy #MOBENA
+	sta (VIC),y			; disable sprites
 	ldx #<TextBonus3000
 	ldy #>TextBonus3000
 	jsr ScreenCopy			; print 'BONUS 3000'
