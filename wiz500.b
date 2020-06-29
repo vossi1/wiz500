@@ -1882,15 +1882,18 @@ ccchklp:inx				; start with monster sprite 1
 	beq ccmonst			; branch if player shot to check monster hit
 	lda sprite_state,x
 	bmi ccchklp			; next sprite, if off
-	lda VIC64+MOBX
+	ldy #MOBX
+	lda (VIC),y
 	sta coll1_x			; store player x in coll1_x
 	lda #$00
 	sta coll1_x+1
-	lda #$01			; player sprite
-	and VIC64+MOBMSB		; isolate x msb bit
+	ldy #MOBMSB
+	lda (VIC),y
+	and #$01			; isolate x msb bit player
 	beq cc10
 	inc coll1_x+1			; inc coll1_x hi if msb set
-cc10:	lda VIC64+MOBY
+cc10:	ldy #MOBY
+	lda (VIC),y
 	sta coll1_y			; store player y to coll1_y
 	jsr Collision
 	bcc ccchklp			; next sprite if c=0
@@ -1902,13 +1905,16 @@ ccmonst:lda sprite_state+7
 	bmi ccx				; player shot active ?
 	lda #$00
 	sta coll1_x+1
-	lda #$80			; player shot sprite
-	and VIC64+MOBMSB		; isolate x msb
+	ldy #MOBMSB
+	lda (VIC),y
+	and #$80			; isolate x msb player shot sprite
 	beq cc20
 	inc coll1_x+1			; inc coll1_x hi if msb set
-cc20:	lda VIC64+MOBX+14
+cc20:	ldy #MOBX+14
+	lda (VIC),y
 	sta coll1_x			; store player shot x in coll1_x
-	lda VIC64+MOBY+14
+	iny
+	lda (VIC),y
 	sta coll1_y			; store player shot y in coll1_y
 	lda collision_mob
 	and #$80
@@ -1920,9 +1926,10 @@ ccmonlp:lda sprite_state,x
 	bcc ccnxmon			; next monster if c=0
 	lda #$ff
 	sta sprite_state+7		; reset player shot state
-	lda #$7f
-	and VIC64+MOBENA
-	sta VIC64+MOBENA		; disable player shot sprite 7
+	ldy #MOBENA
+	lda (VIC),y
+	and #$7f
+	sta (VIC),y			; disable player shot sprite 7
 	lda #$80
 	sta sprite_state,x		; set player shot state to $80=dead
 	jmp ccx				; exit
@@ -1944,13 +1951,14 @@ Collision:
 ccoll:  txa
 	asl				; x2 calc x-reg
 	tay
-	lda VIC64+MOBX,y		; store x to coll2
+	lda (VIC),y			; store x to coll2
 	sta coll2_x
-	lda VIC64+MOBY,y
+	lda (VIC_MOBY),y
 	sta coll2_y			; store y to coll2
 	lda #$00
 	sta coll2_x+1
-	lda VIC64+MOBMSB
+	ldy #MOBMSB
+	lda (VIC),y
 	and BitTable,x			; isolate x-msb
 	beq co10
 	inc coll2_x+1			; inc coll2 x-hi
