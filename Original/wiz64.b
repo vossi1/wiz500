@@ -3,7 +3,7 @@
 ; Comments, Labels by Vossi 06/2020
 !cpu 6502
 ; switches
-;CRT = 1        ; CRT header for VICE
+CRT = 1        ; CRT header for VICE
 !ifdef CRT {!to "wiz64.crt", plain
 } else{ !to "wiz64.rom", plain }
 !cpu 6502
