@@ -118,7 +118,16 @@ ICR		= $D	; Interrupt control register
 CRA		= $E	; Control register A
 CRB		= $F	; Control register B
 ; tpi
-AIR		= $7
+PA		= $0	; Port register A
+PB		= $1	; Port register B
+PC		= $2	; Port register C
+LIR		= $2	; Interrupt latch register mc=1
+DDPA		= $3	; Data direction register A
+DDPB		= $4	; Data direction register B
+DDPC		= $5	; Data direction register C
+MIR		= $5	; Interrupt mask register mc=1
+CREG		= $6	; Control reg: #0 mc=IRQ mode / #1 ip= IRQ parity / #2-3 edge i3,i4	
+AIR		= $7	; Active interrupt register
 ; ************************************** P500 ADDRESSES *******************************************
 !addr CodeBank          = $00		; code bank register
 !addr IndirectBank      = $01		; indirect bank register
@@ -134,8 +143,6 @@ AIR		= $7
 !addr HW_IRQ            = $fffe		; System IRQ Vector
 !addr HW_NMI            = $fffa		; System NMI Vector
 SH = >ScreenRAMbase			; Highbyte Screen RAM base
-; ************************************** USER ADDRESSES *******************************************
-
 ; ***************************************** ZERO PAGE *********************************************
 !addr score		= $02		; 3bytes score
 !addr highscore		= $05		; 3bytes highscore
@@ -200,7 +207,6 @@ SH = >ScreenRAMbase			; Highbyte Screen RAM base
 !addr sound4		= $75
 !addr bonus_player	= $76
 !addr monster_shot_dir	= $77
-; ***************************************** VARIABLES *********************************************
 ; ************************************** P500 ZERO PAGE *******************************************
 !addr ColorRAM0		= $e6
 !addr ColorRAM1		= $e8
@@ -360,9 +366,9 @@ chkx:	sta key				; store key
 ; check tpi2
 chkkey:	pha				; remember key var
 	txa				; move output key value to .a
-	ldy #1
+	ldy #PB
 	sta (TPI2),y			; set TPI2 port B keyboard out 0-7
-	iny
+	iny				; pc
 debounc:lda (TPI2),y			; load TPI2 port C
 	sta temp1
 	lda (TPI2),y
@@ -373,11 +379,11 @@ debounc:lda (TPI2),y			; load TPI2 port C
 	pla				; restore key var
 	rts
 ; check joystick
-chkjoy:	ldy #0
+chkjoy:	ldy #PRA
 	lda (CIA),y			; load cia port a - bit#6 button joystick 1
 	ora #$bf			; set all other bits
 	sta temp1
-	iny
+	iny				; prb
 	lda (CIA),y			; load cia port b - bit#0-3 joystick 1 movement
 	ora #$f0			; set other bit
 	and temp1			; and button
@@ -733,12 +739,13 @@ levmax4:lda TargetTable-1,x		; setup targets
 ; -------------------------------------------------------------------------------------------------
 ; Targets level 1-4
 TargetTable:
-	!byte $04, $05, $06, $06
-	!byte $03, $04, $05, $06
-	!byte $02, $04, $06, $06
-	!byte $01, $02, $03, $04
-	!byte $00, $01, $00, $02
-	!byte $0a, $10, $14, $18
+; Level		1    2    3    4
+	!byte $04, $05, $06, $06	; Burwors
+	!byte $03, $04, $05, $06	; Gorwors
+	!byte $02, $04, $06, $06	; Thorwors
+	!byte $01, $02, $03, $04	; Worloks
+	!byte $00, $01, $00, $02	; Wizard Of Wars
+	!byte $0a, $10, $14, $18	; Total monsters to kill in level
 ; -------------------------------------------------------------------------------------------------
 ; $e36b Setup worrior sprite
 SetupWorrior:
@@ -1437,6 +1444,7 @@ chkshot:lda fire
 shoot:	lda #4
 	jsr PlaySound			; play shoot sound
 	ldy #MOBX
+	sty fire			; reset fire var
 	lda (VIC),y
 	ldy #MOBX+14
 	sta (VIC),y			; set shot position
@@ -2586,12 +2594,12 @@ iniiolp:lda IOPointerTable,x            ; copy 8 IO pointer to ZP
 	cpx #IOPointerEnd-IOPointerTable; number of IO pointers
 	bne iniiolp
 	
-	ldy #$06
+	ldy #CREG
 	lda (TPI1),y                    ; load TRI1 control register
 	and #$0f                        ; clear CA, CB control bits#4-7 vic bank 0/15 select 
 	ora #$a0                        ; set bit#5,4=10 CA=low -> Video matrix in bank 0
 	sta (TPI1),y                    ; set bit#7,6=10 CB=high -> Characterset in bank 0 
-	ldy #$02
+	ldy #PC
 	lda (TPI2),y                    ; load TPI2 port c
 	ora #$c0                        ; set bit#6,7 vic 16k select bank $c000-$ffff
 	sta (TPI2),y                    ; store to TPI2 port c
@@ -2602,10 +2610,10 @@ iniiolp:lda IOPointerTable,x            ; copy 8 IO pointer to ZP
 ;	ldy #$0d                        ; CIA interrupt control register
 ;	sta (CIA),y                     ; disable all hardware interrupts
 	lda #$04
-	ldy #$05
+	ldy #MIR
 	sta (TPI1),y                    ; set TPI1 reg $5 interrupt mask reg = $04 - enable CIA irq
 	lda #$ff
-	ldy #$00
+	ldy #PA
 	sta (TPI2),y                    ; reset TPI2 port a to no column
 
 	lda #$1f
