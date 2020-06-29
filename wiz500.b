@@ -277,6 +277,7 @@ newlev:	txa
 
 GameLoop:
 	lda timer
+	and #$fe
 	bne GameLoop			; wait 1 loop of timer
 	jsr CopySpritePointer		; copies all sprites data pointers to the vic pointers
 	ldy #MOBMOB
@@ -422,6 +423,7 @@ jkx:	stx joykey_dir			; store move direction
 ; $e170 Game Cycle: do .x cycles
 GameUpdate:
 	lda timer
+	and #$fe
 	bne GameUpdate			; wait timer
 
 	tya				; save regs
@@ -435,6 +437,7 @@ GameUpdate:
 	tay
 
 guwait:	lda timer
+	and #$fe
 	bne guwait			; wait timer
 
 	dex
@@ -945,6 +948,7 @@ ssinspr:txa
 sssprlp:lda timer			; wait
 	bne sssprlp
 sswait:	lda timer
+	and #$fe
 	bne sswait
 	inc delay
 	lda delay
@@ -1009,13 +1013,13 @@ Interrupt:
 	pha
 	ldy #AIR
 	lda (TPI1),y
-	beq irqx
+;	beq irqx
 	lda #$00
 	sta (TPI1),y			; pop interrupt
 	ldy #ICR
 	lda (CIA),y			; load irq-reg
-	and #$02
-	beq irqx			; skip if not timer b
+;	and #$02
+;	beq irqx			; skip if not timer b
 	inc timer
 	inc timer
 irqx:	pla
@@ -2527,7 +2531,7 @@ GameScreenData:
 	!byte $0b, $22, $0f, $1b, END
 ; $f3c2
 StartScreenData:
-	!byte $52, $04, $1a, $1e, $1c, $12, $00, $24
+	!byte $52, SH , $1a, $1e, $1c, $12, $00, $24
 	!byte $10, $02, $25, $00, $19, $1b, ADR, $a2
 	!byte SH , $0c, $1e, $1d, $1d, $19, $18, $00
 	!byte $19, $18, $00, $14, $19, $22, $1c, $1d
