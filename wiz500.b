@@ -11,11 +11,11 @@
 ;
 ;
 ; ########################################### BUGS ################################################
-; endless worrior fire ;)
+; sometimes the 'worlok' doesn't appears and you stuck without monster ;)
 ; ######################################### P500 MODS #############################################
 ; Indirect reg is always = 15, all other indirect operations with ora(),y lda(,x) sta(,x)
 ; ******************************************* INFO ************************************************
-; ESC in start screen enabled never die cheat - only for testing the levels ;)
+; ESC in start screen enables 'never die' cheat - only allowed for testing the levels !!!
 ; ***************************************** CONSTANTS *********************************************
 FILL		= $aa	; fills free memory areas with $aa
 NOPCODE		= $ea	; nop instruction for fill
