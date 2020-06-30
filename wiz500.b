@@ -207,6 +207,7 @@ SH = >ScreenRAMbase			; Highbyte Screen RAM base
 !addr sound4		= $75
 !addr bonus_player	= $76
 !addr monster_shot_dir	= $77
+!addr cheat		= $78		; >0 = never die
 ; ************************************** P500 ZERO PAGE *******************************************
 !addr ColorRAM0		= $e6
 !addr ColorRAM1		= $e8
@@ -277,7 +278,7 @@ newlev:	txa
 
 GameLoop:
 	lda timer
-	and #$fe
+	and #$fc
 	bne GameLoop			; wait 1 loop of timer
 	jsr CopySpritePointer		; copies all sprites data pointers to the vic pointers
 	ldy #MOBMOB
@@ -319,19 +320,31 @@ slowmon:jsr WorriorShot			; check and move worrior shot
 	bmi decwor			; branch if player sprite off (dead)
 	jmp LevelFinished		; level finished
 
-decwor:	dec players			; decrease lives
+decwor:	lda cheat			; check cheat
+	bne TryAgain			; never die
+	dec players			; decrease lives
 	bne TryAgain			; next try if live > 0
 
 	jmp GameOver			; game over
 ; -------------------------------------------------------------------------------------------------
-; $e0c5 Checks F1 key for game start
+; Checks F1 key for game start
 ;   returns .a = 0 if F1 pressed
 CheckF1Key:
 	ldx #$fe
 	jsr chkkey			; output .x to keyboard 0-7 and returns input in .x
 	txa
 	and #$01			; isolate bit#1 F1
-	rts
+	beq chkf1x			; F1 pressed
+; check cheat
+	txa
+	and #$02			; check ESC
+	bne chkbut
+	stx cheat			; never die
+; check button
+chkbut:	ldy #PRA
+	lda (CIA),y			; load cia port a - bit#6 button joystick 1
+	and #$40			; isolate button joy1 bit #6
+chkf1x:	rts
 ; -------------------------------------------------------------------------------------------------
 ; $e0db Check joystick and keyboard movement/fire
 CheckJoyKey:
@@ -423,7 +436,7 @@ jkx:	stx joykey_dir			; store move direction
 ; $e170 Game Cycle: do .x cycles
 GameUpdate:
 	lda timer
-	and #$fe
+	and #$fc
 	bne GameUpdate			; wait timer
 
 	tya				; save regs
@@ -437,7 +450,7 @@ GameUpdate:
 	tay
 
 guwait:	lda timer
-	and #$fe
+	and #$fc
 	bne guwait			; wait timer
 
 	dex
@@ -945,11 +958,12 @@ ssinspr:txa
 	ldy #MOBENA
 	sta (VIC),y			; enable monsters
 
-sssprlp:lda timer			; wait
-	bne sssprlp
+sssprlp:lda timer
+	and #$fc
+	bne sssprlp			; wait
 sswait:	lda timer
-	and #$fe
-	bne sswait
+	and #$fc
+	bne sswait			; wait
 	inc delay
 	lda delay
 	and #$3f			; delay next movement
@@ -1020,8 +1034,10 @@ Interrupt:
 	lda (CIA),y			; load irq-reg
 ;	and #$02
 ;	beq irqx			; skip if not timer b
-	inc timer
-	inc timer
+	lda timer
+	clc
+	adc #4				; add 4
+	sta timer
 irqx:	pla
 	tay
 	pla
@@ -2628,7 +2644,7 @@ iniiolp:lda IOPointerTable,x            ; copy 8 IO pointer to ZP
 	lda #$01
 	ldy #CRB
 	sta (CIA),y			; timer b phi2, cont, start
-	lda #$70	; ***** x2 slower because longer irq handler > compensated with timer +=2
+	lda #$e0	; ***** x4 slower because longer irq handler > compensated with timer add 4
 	ldy #TBLO
 	sta (CIA),y			; timer b prescaler = 56
 	lda #$00
