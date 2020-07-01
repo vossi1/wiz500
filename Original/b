@@ -1,4 +1,4 @@
 #!/bin/sh
-acme -v wiz64.b
+acme -v wiz64.a
 diff -s wiz64.rom wizard.rom
 cmp wiz64.rom wizard.rom
