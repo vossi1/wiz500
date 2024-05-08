@@ -2618,7 +2618,7 @@ iniiolp:lda IOPointerTable,x            ; copy 8 IO pointer to ZP
 	lda (TPI1),y                    ; load TRI1 control register
 	and #$0f                        ; clear CA, CB control bits#4-7 vic bank 0/15 select 
 	ora #$a0                        ; set bit#5,4=10 CA=low -> Video matrix in bank 0
-	sta (TPI1),y                    ; set bit#7,6=10 CB=high -> Characterset in bank 0 
+	sta (TPI1),y                    ; set bit#7,6=10 CB=low -> Characterset in bank 0 
 	ldy #PC
 	lda (TPI2),y                    ; load TPI2 port c
 	ora #$c0                        ; set bit#6,7 vic 16k select bank $c000-$ffff
